@@ -45,6 +45,18 @@ class RenderError(WorkerError):
         super().__init__(code, message)
 
 
+class LlmUnavailableError(WorkerError):
+    """Ollama is not running, timed out, or does not have the model."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(ErrorCode.WORKER_UNAVAILABLE, message)
+
+
+class LlmInvalidOutputError(WorkerError):
+    def __init__(self, message: str) -> None:
+        super().__init__(ErrorCode.LLM_INVALID_OUTPUT, message)
+
+
 class JobCancelledError(WorkerError):
     def __init__(self) -> None:
         super().__init__(ErrorCode.RENDER_CANCELLED, "The job was cancelled")

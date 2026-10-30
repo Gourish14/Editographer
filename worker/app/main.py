@@ -17,6 +17,7 @@ from app.adapters.file_cache import FileCache
 from app.adapters.http_backend_notifier import HttpBackendNotifier
 from app.adapters.librosa_curves import LibrosaCurveExtractor
 from app.adapters.nvml_gpu_guard import NvmlGpuGuard
+from app.adapters.ollama_llm import OllamaLlmClient
 from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
 from app.adapters.scenedetect_shots import SceneDetectShots
 from app.adapters.xxhash_hasher import XxhashHasher
@@ -24,6 +25,7 @@ from app.api.routes import create_api
 from app.application.analyze_asset import AnalyzeAsset
 from app.application.analyze_music import AnalyzeMusic
 from app.application.analyze_shots import AnalyzeShots
+from app.application.direct_edit import DirectEdit
 from app.application.job_runner import JobRunner
 from app.application.render_job import RenderEdit
 from app.config import Settings
@@ -44,8 +46,10 @@ def build_app() -> FastAPI:
         OpenCvFrameSampler(models / "mediapipe" / "blaze_face_short_range.tflite"),
     )
     cache = FileCache(media_root)
+    gpu = NvmlGpuGuard()
+    director = DirectEdit(OllamaLlmClient.create(settings.ollama_url), gpu)
     render_edit = RenderEdit(
-        media_root, cache, cache, FfmpegCompositor(), FfmpegAudioFinisher(), notifier
+        media_root, cache, cache, FfmpegCompositor(), FfmpegAudioFinisher(), notifier, director
     )
     analyze_asset = AnalyzeAsset(
         media_root,
@@ -60,7 +64,7 @@ def build_app() -> FastAPI:
     )
     return create_api(
         runner=JobRunner(notifier),
-        gpu=NvmlGpuGuard(),
+        gpu=gpu,
         analyze=analyze_asset.run,
         render=render_edit.run,
         token=settings.worker_token,
