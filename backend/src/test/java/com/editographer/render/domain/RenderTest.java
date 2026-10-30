@@ -16,9 +16,17 @@ class RenderTest {
 
   private static final Instant NOW = Instant.parse("2026-10-30T10:00:00Z");
   private static final RenderSettings SETTINGS =
-      new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 7L);
+      new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 7L, null, null);
 
   private final Render render = Render.queued(ProjectId.newId(), SETTINGS, NOW);
+
+  @Test
+  void aFollowPointMustSitInsideTheFrame() {
+    assertThatThrownBy(() -> new RenderSettings.FollowPoint(1.2, 0.5, 0))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new RenderSettings.FollowPoint(0.5, 0.5, -1))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
 
   @Test
   void aNewRenderIsQueuedAtZero() {
@@ -108,14 +116,18 @@ class RenderTest {
   })
   void rejectsValuesOutsideTheSpec(String ratio, String quality, int fps, String mode) {
     assertThatThrownBy(
-            () -> new RenderSettings(ratio, quality, fps, "auto", mode, null, null, false, 1L))
+            () ->
+                new RenderSettings(
+                    ratio, quality, fps, "auto", mode, null, null, false, 1L, null, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"16:9", "9:16", "1:1", "4:5", "4:3", "21:9"})
   void acceptsEveryRatioFromTheSpec(String ratio) {
-    assertThat(new RenderSettings(ratio, "8K", 60, "auto", "max", 30, "p", true, 1L).ratio())
+    assertThat(
+            new RenderSettings(ratio, "8K", 60, "auto", "max", 30, "p", true, 1L, null, null)
+                .ratio())
         .isEqualTo(ratio);
   }
 
@@ -123,7 +135,9 @@ class RenderTest {
   @ValueSource(ints = {0, -5})
   void rejectsANonPositiveLength(int length) {
     assertThatThrownBy(
-            () -> new RenderSettings("9:16", "4K", 30, "auto", "fast", length, null, false, 1L))
+            () ->
+                new RenderSettings(
+                    "9:16", "4K", 30, "auto", "fast", length, null, false, 1L, null, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

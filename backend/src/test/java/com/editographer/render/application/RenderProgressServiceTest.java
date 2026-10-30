@@ -37,7 +37,7 @@ class RenderProgressServiceTest {
   private final Render render =
       Render.queued(
           ProjectId.newId(),
-          new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 1L),
+          new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 1L, null, null),
           NOW);
 
   private void stored(Render value) {
