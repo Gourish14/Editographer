@@ -38,7 +38,7 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
       "assetId": "p1",
       "type": "photo",
       "at": 13.34, "duration": 0.47,
-      "motion": { "type": "parallax|kenburns", "depth": true, "direction": "push_in" }
+      "motion": { "type": "parallax|kenburns", "depth": true, "direction": "push_in", "focusX": 0.62, "focusY": 0.4 }
     },
     {
       "id": "s3",
@@ -77,6 +77,8 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
 | `camera360.projection` | rectilinear, tinyplanet, rabbithole |
 | `ease` | linear, easeInOutCubic, easeOutExpo, easeInExpo, bezier(0.7,0,0.3,1) |
 | `source.cameraMode` | see `08-osmo360.md` |
+
+`motion.focusX` and `motion.focusY` are the point a photo pushes toward, as shares of the frame (default 0.5, the center). In `camera360.keyframes`, `ease` shapes the span that starts at that keyframe, and a span uses the projection of its end keyframe, else of its start keyframe, else `camera360.projection`.
 
 ## Prompt constraint JSON
 
