@@ -36,8 +36,9 @@ MODEL_FEATURES = 64
 MODEL_CONVS = 32
 TILE_PX = 512
 COOL_TILE_PX = 256
-TILE_PAD_PX = 10
-"""Extra context around each tile, cut away after, so that tile borders do not show."""
+TILE_PAD_PX = 24
+"""Context around each tile, cut away after. Measured: 10 px left steps of 5 levels at tile
+borders on hard edges, 24 px leaves at most 1, which keeps a fixed seam out of moving video."""
 STATE_KEY = "params"
 
 
