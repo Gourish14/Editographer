@@ -28,6 +28,11 @@ final class RenderMapper {
     entity.prompt = settings.prompt();
     entity.coolMode = settings.coolMode();
     entity.seed = settings.seed();
+    entity.startAt = settings.startAt();
+    RenderSettings.FollowPoint follow = settings.followPoint();
+    entity.followX = follow == null ? null : follow.x();
+    entity.followY = follow == null ? null : follow.y();
+    entity.followTimeSec = follow == null ? null : follow.timeSec();
     entity.status = state.status().name();
     entity.stage = state.stage();
     entity.progress = state.progress();
@@ -54,7 +59,12 @@ final class RenderMapper {
             entity.lengthSec,
             entity.prompt,
             entity.coolMode,
-            entity.seed),
+            entity.seed,
+            entity.startAt,
+            entity.followX == null
+                ? null
+                : new RenderSettings.FollowPoint(
+                    entity.followX, entity.followY, entity.followTimeSec)),
         new RenderState(
             RenderStatus.valueOf(entity.status),
             entity.stage,

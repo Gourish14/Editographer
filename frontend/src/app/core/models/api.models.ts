@@ -46,6 +46,18 @@ export interface RenderSettings {
   readonly prompt: string | null;
   readonly coolMode: boolean;
   readonly seed: number;
+  /** "Render tonight": the render waits in the queue until this ISO time. */
+  readonly startAt: string | null;
+  /** The tap that picks the subject to follow in 360 footage. */
+  readonly followPoint: FollowPoint | null;
+}
+
+export interface FollowPoint {
+  /** 0 to 1 from the left of the frame. */
+  readonly x: number;
+  /** 0 to 1 from the top of the frame. */
+  readonly y: number;
+  readonly timeSec: number;
 }
 
 export type NewRender = Partial<Omit<RenderSettings, 'seed'>>;

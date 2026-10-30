@@ -37,7 +37,7 @@ class RenderJobSenderTest {
   private final RenderJobSender sender = new RenderJobSender(renders, assets, worker);
   private final ProjectId projectId = ProjectId.newId();
   private final RenderSettings settings =
-      new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 1L);
+      new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 1L, null, null);
   private final Render render = Render.queued(projectId, settings, Instant.EPOCH);
   private final Job job =
       new Job(UUID.randomUUID(), JobKind.RENDER, render.id().value(), JobStatus.RUNNING, 1);

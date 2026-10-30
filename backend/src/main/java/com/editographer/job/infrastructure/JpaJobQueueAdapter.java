@@ -5,6 +5,7 @@ import com.editographer.job.domain.JobKind;
 import com.editographer.job.domain.JobQueue;
 import com.editographer.job.domain.JobStatus;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,14 +24,15 @@ final class JpaJobQueueAdapter implements JobQueue {
   }
 
   @Override
-  public void enqueue(JobKind kind, UUID refId) {
+  public void enqueue(JobKind kind, UUID refId, Instant notBefore) {
     jobs.save(
-        new JpaJobEntity(UUID.randomUUID(), kind.name(), refId, kind.priority(), clock.instant()));
+        new JpaJobEntity(
+            UUID.randomUUID(), kind.name(), refId, kind.priority(), clock.instant(), notBefore));
   }
 
   @Override
   public Optional<Job> nextQueued() {
-    return jobs.findFirstByStatusOrderByPriorityAscCreatedAtAsc(JobStatus.QUEUED.name())
+    return jobs.findNextDue(JobStatus.QUEUED.name(), clock.instant())
         .map(JpaJobQueueAdapter::toDomain);
   }
 
