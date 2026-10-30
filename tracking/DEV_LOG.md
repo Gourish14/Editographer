@@ -3,10 +3,10 @@
 Newest first. One entry per working session (template in `specs/12-spec-driven-development.md` §8).
 
 ## 2026-10-31 — Session 2
-- Done: BUG-001, BUG-002, T-105, T-106, T-107.
-- In progress: T-102 in review (only `uv sync` is left, it needs T-108).
+- Done: BUG-001, BUG-002, T-102, T-105, T-106, T-107, T-108.
+- In progress: —
 - Found: BUG-002, CR-007, CR-008, CR-009, CR-010, CR-011.
-- Next: T-108, which also closes T-102.
+- Next: T-109, then T-110 and T-111 (worker analysis).
 - Needs user: nothing.
 
 ## 2026-10-30 — Session 1

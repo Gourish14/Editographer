@@ -8,13 +8,13 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | ID | Title | Status | Depends on |
 | --- | --- | --- | --- |
 | T-101 | Repository scaffold and conventions | Done | — |
-| T-102 | setup.bat and model download script | In review | T-101 |
+| T-102 | setup.bat and model download script | Done | T-101 |
 | T-103 | Backend scaffold (Spring Boot 4, H2, Flyway, errors, logging, ArchUnit) | Done | T-101 |
 | T-104 | Backend: projects feature | Done | T-103 |
 | T-105 | Backend: storage service and tus uploads, assets | Done | T-104 |
 | T-106 | Backend: job queue, dispatcher, worker client, internal callbacks | Done | T-105 |
 | T-107 | Backend: render API and SSE events | Done | T-106 |
-| T-108 | Worker scaffold (uv, FastAPI, settings, logging, GPU guard, health) | Todo | T-101 |
+| T-108 | Worker scaffold (uv, FastAPI, settings, logging, GPU guard, health) | Done | T-101 |
 | T-109 | Worker: ingest (probe, hash, proxy, camera mode, cache) | Todo | T-108 |
 | T-110 | Worker: music analysis and music map (B1) | Todo | T-109 |
 | T-111 | Worker: shot detection and basic scoring (B2 partial) | Todo | T-109 |
@@ -39,16 +39,16 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Added `.gitattributes` so `.bat` files stay CRLF. Empty folders are kept with `.gitkeep`.
 
 ### T-102 — setup.bat and model download script
-- Status: In review
+- Status: Done
 - Spec: 09-local-setup.md#setupbat-run-once, 03-tech-stack.md
 - Depends on: T-101
 - Acceptance criteria:
   - [x] Checks Java ≥ 25, Node ≥ 24.15, `nvidia-smi`; clear message on failure (CR-005).
   - [x] Installs FFmpeg and Ollama via winget only if missing; verifies `hevc_nvenc`.
-  - [ ] Installs uv, Python 3.12, `uv sync` in `worker/`.
+  - [x] Installs uv, Python 3.12, `uv sync` in `worker/`.
   - [x] `scripts/download_models.py` downloads Phase 1 weights with SHA-256 checks, idempotent.
   - [x] Creates `config/local.env` with a random worker token; safe to re-run.
-- Notes: `setup.bat` completed twice on the target machine after BUG-001; the second run skipped finished work and kept the token. Only `uv sync` is left, and it needs `worker/pyproject.toml` from T-108.
+- Notes: `setup.bat` completed twice on the target machine after BUG-001; the second run skipped finished work and kept the token. A third full run after T-108 covered `uv sync` too.
 
 ### T-103 — Backend scaffold
 - Status: Done
@@ -103,14 +103,15 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: `RenderFlowIntegrationTest` runs the whole flow over real HTTP with only the worker faked. Stage names the worker must send: PLANNING, COMPOSING, UPSCALING, ENCODING; any other stage keeps the status. A render needs at least one music track and one clip (CR-010). Spec 07 promises an SSE update when an asset finishes but has no endpoint for it, so T-115 polls assets (CR-011).
 
 ### T-108 — Worker scaffold
-- Status: Todo
+- Status: Done
 - Spec: 11-coding-standards.md#4-worker--python-312, 07-api-and-data.md#worker-api-fastapi-port-8090-localhost-only
 - Depends on: T-101
 - Acceptance criteria:
-  - [ ] uv project on Python 3.12 with layout from 11 §4; ruff, mypy --strict, pytest, import-linter configured.
-  - [ ] FastAPI app on 127.0.0.1:8090 with `/health`, `/jobs/analyze`, `/jobs/render`, `/jobs/{id}/cancel` (202, one job at a time).
-  - [ ] structlog JSON logs to `logs/worker.log` with requestId/jobId.
-  - [ ] `GpuGuard` (lock, load/unload, empty_cache) and NVML status.
+  - [x] uv project on Python 3.12 with layout from 11 §4; ruff, mypy --strict, pytest, import-linter configured.
+  - [x] FastAPI app on 127.0.0.1:8090 with `/health`, `/jobs/analyze`, `/jobs/render`, `/jobs/{id}/cancel` (202, one job at a time).
+  - [x] structlog JSON logs to `logs/worker.log` with requestId/jobId.
+  - [x] `GpuGuard` (lock, load/unload, empty_cache) and NVML status.
+- Notes: Verified with the live worker and backend together on the RTX 3050: upload, dispatch, worker report, asset status. `/jobs/analyze` and `/jobs/render` are accepted but fail on purpose until T-109 and T-113 plug in the real work. A second job gets 409, which the backend treats as "stay queued". PyTorch is added by T-110, the first task that needs it. The `worker` ErrorCode test compares against the Java enum, so the two cannot drift.
 
 ### T-109 — Worker: ingest
 - Status: Todo
