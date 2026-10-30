@@ -5,37 +5,71 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from app.adapters.ffmpeg_filters import segment_filter
+import structlog
+
+from app.adapters.ffmpeg_filters import (
+    XFADE_BY_TRANSITION,
+    StyleFinish,
+    segment_filter,
+    segment_graph,
+    transition_graph,
+)
 from app.adapters.ffmpeg_runner import FfmpegError, run_tool
+from app.config import ROOT
 from app.domain.errors import ErrorCode, RenderError
-from app.domain.plan import Segment
-from app.ports.render import EncodeProfile
+from app.domain.look import BLURRED_TRANSITIONS, MOTION_BLUR, ZOOM_PUNCH, transition_frames
+from app.domain.media import LogProfile
+from app.domain.plan import Effect, Grade, Segment
+from app.ports.render import NO_LOOK, EncodeProfile, NextClip, SegmentLook
+
+log = structlog.get_logger()
 
 BASE_ARGUMENTS = ("ffmpeg", "-hide_banner", "-loglevel", "error", "-y")
 OUT_OF_MEMORY_MARKERS = ("out of memory", "cannot allocate")
+DJI_LOG_LUT = "dji_osmo360_dlogm_to_rec709.cube"
+GENERIC_LOG_LUT = "generic_log_to_rec709.cube"
 
 
 class FfmpegCompositor:
+    def __init__(self, luts_dir: Path = ROOT / "luts") -> None:
+        self._luts_dir = luts_dir
+
     def render_segment(
-        self, source: Path, segment: Segment, frames: int, profile: EncodeProfile, target: Path
+        self,
+        source: Path,
+        segment: Segment,
+        frames: int,
+        profile: EncodeProfile,
+        target: Path,
+        look: SegmentLook = NO_LOOK,
     ) -> None:
-        video_filter = segment_filter(
-            segment.effects, profile.width, profile.height, profile.fps, profile.sharpen
-        )
+        inputs = _input(source, segment.src_in)
+        clip = self._clip_chain(segment.effects, profile, segment.source.log_profile)
+        blend_frames = _blend_frames(segment, frames, profile.fps, look.next_clip)
+        finish = self._finish(segment, frames, blend_frames, profile.fps, look)
+        if look.next_clip is None or blend_frames == 0:
+            graph = segment_graph(clip, finish)
+        else:
+            preroll = blend_frames / profile.fps
+            inputs += _input(look.next_clip.source, max(0.0, look.next_clip.src_in - preroll))
+            graph = transition_graph(
+                clip,
+                self._clip_chain((), profile, look.next_clip.log_profile),
+                XFADE_BY_TRANSITION[segment.transition_out.type],
+                blend_frames,
+                frames,
+                profile.fps,
+                finish,
+            )
         _run(
             [
                 *BASE_ARGUMENTS,
-                "-hwaccel",
-                "auto",
-                "-ss",
-                f"{segment.src_in:.4f}",
-                "-i",
-                str(source),
+                *inputs,
+                "-filter_complex",
+                graph,
                 "-map",
-                "0:v:0",
+                "[out]",
                 "-an",
-                "-vf",
-                video_filter,
                 "-frames:v",
                 str(frames),
                 "-c:v",
@@ -54,6 +88,48 @@ class FfmpegCompositor:
                 "p010le",
                 str(target),
             ]
+        )
+
+    def _clip_chain(
+        self, effects: Sequence[Effect], profile: EncodeProfile, log_profile: str | None
+    ) -> str:
+        return segment_filter(
+            effects,
+            profile.width,
+            profile.height,
+            profile.fps,
+            profile.sharpen,
+            self._log_lut(log_profile),
+        )
+
+    def _log_lut(self, log_profile: str | None) -> Path | None:
+        """Spec 08 rule 4: DJI's LUT first. The generic one is a stated fallback, not DJI's."""
+        if log_profile != LogProfile.DLOG_M.value:
+            return None
+        official = self._luts_dir / DJI_LOG_LUT
+        if official.is_file():
+            return official
+        generic = self._luts_dir / GENERIC_LOG_LUT
+        log.warning("render.dji_lut_missing", fallback=generic.name)
+        return generic if generic.is_file() else None
+
+    def _style_lut(self, grade: Grade) -> Path | None:
+        path = self._luts_dir / f"{grade.lut}.cube"
+        if path.is_file():
+            return path
+        log.warning("render.lut_missing", lut=grade.lut)
+        return None
+
+    def _finish(
+        self, segment: Segment, frames: int, blend_frames: int, fps: int, look: SegmentLook
+    ) -> StyleFinish:
+        grade = look.grade
+        return StyleFinish(
+            lut=self._style_lut(grade) if grade else None,
+            intensity=grade.intensity if grade else 1.0,
+            grain=grade.grain if grade else 0.0,
+            blur_amount=look.motion_blur,
+            blur_windows=_blur_windows(segment, frames, blend_frames, fps),
         )
 
     def join(self, parts: Sequence[Path], target: Path) -> None:
@@ -75,6 +151,34 @@ class FfmpegCompositor:
                 str(target),
             ]
         )
+
+
+def _input(source: Path, start: float) -> list[str]:
+    return ["-hwaccel", "auto", "-ss", f"{start:.4f}", "-i", str(source)]
+
+
+def _blend_frames(segment: Segment, frames: int, fps: int, next_clip: NextClip | None) -> int:
+    """No next clip means no transition. An unknown type falls back to a hard cut."""
+    kind = segment.transition_out.type
+    if next_clip is None or kind not in XFADE_BY_TRANSITION:
+        return 0
+    return transition_frames(segment.transition_out, fps, frames)
+
+
+def _blur_windows(
+    segment: Segment, frames: int, blend_frames: int, fps: int
+) -> tuple[tuple[float, float], ...]:
+    """Times on the segment where something moves fast."""
+    windows = [
+        (effect.at, effect.at + effect.duration)
+        for effect in segment.effects
+        if effect.type == ZOOM_PUNCH
+    ]
+    if blend_frames and segment.transition_out.type in BLURRED_TRANSITIONS:
+        windows.append(((frames - blend_frames) / fps, frames / fps))
+    if not windows and any(effect.type == MOTION_BLUR for effect in segment.effects):
+        windows.append((0.0, frames / fps))
+    return tuple(windows)
 
 
 def _run(arguments: list[str]) -> None:

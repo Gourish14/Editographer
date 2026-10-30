@@ -7,6 +7,8 @@ zoom scales up per frame and then crops back to the output size.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
 
 from app.domain.brain.effects import FLASH, SHAKE, ZOOM_PUNCH
 from app.domain.plan import Effect
@@ -18,12 +20,48 @@ SHAKE_SPEED_Y = 53
 FLASH_COLOR = "white@0.85"
 SHARPEN = "unsharp=5:5:0.6"
 WORK_FORMAT = "yuv420p10le"
+RGB_FORMAT = "gbrp10le"
+HOLD_LAST_FRAME = "tpad=stop=-1:stop_mode=clone"
+ZERO_TIME = "setpts=PTS-STARTPTS"
+GRAIN_SCALE = 20
+MOTION_BLUR_MIN_FRAMES = 2
+MOTION_BLUR_EXTRA_FRAMES = 3
+
+# Spec 06 transition types FFmpeg's xfade can do. A new type only needs a new row. planet_morph
+# is a stand-in here: the true morph is a 360 shader.
+XFADE_BY_TRANSITION = {
+    "flash": "fadewhite",
+    "luma_fade": "fadegrays",
+    "zoom_through": "zoomin",
+    "zoom_whip": "zoomin",
+    "whip_left": "slideleft",
+    "whip_right": "slideright",
+    "spin": "radial",
+    "glitch": "pixelize",
+    "planet_morph": "circleopen",
+}
+
+
+@dataclass(frozen=True)
+class StyleFinish:
+    """What runs after the transition: style LUT, grain, then motion blur on the moving parts."""
+
+    lut: Path | None = None
+    intensity: float = 1.0
+    grain: float = 0.0
+    blur_amount: float = 0.0
+    blur_windows: tuple[tuple[float, float], ...] = ()
 
 
 def segment_filter(
-    effects: Sequence[Effect], width: int, height: int, fps: int, sharpen: bool
+    effects: Sequence[Effect],
+    width: int,
+    height: int,
+    fps: int,
+    sharpen: bool,
+    log_lut: Path | None = None,
 ) -> str:
-    """The -vf chain: conform fps, crop to the ratio, apply effects, finish at the output size."""
+    """One clip's chain: conform fps, crop to the ratio, effects, finish at the output size."""
     aspect = width / height
     chain = [
         f"fps={fps}",
@@ -31,10 +69,93 @@ def segment_filter(
         f"crop=w='min(iw,ih*{aspect:.6f})':h='min(ih,iw/{aspect:.6f})'",
     ]
     chain.extend(_motion_filters(effects, width, height))
+    if log_lut is not None:
+        chain.append(_lut_steps(log_lut, in_matrix=""))
     if sharpen:
         chain.append(SHARPEN)
     chain.extend(_flash(effect) for effect in effects if effect.type == FLASH)
     return ",".join(chain)
+
+
+def segment_graph(clip: str, finish: StyleFinish) -> str:
+    """A segment with a hard cut out. Ends in [out]."""
+    return f"[0:v]{clip},{HOLD_LAST_FRAME}{_finish_steps(finish)}[out]"
+
+
+def transition_graph(
+    clip: str,
+    next_clip: str,
+    transition: str,
+    transition_frames: int,
+    frames: int,
+    fps: int,
+    finish: StyleFinish,
+) -> str:
+    """A segment whose last frames blend into the next clip, ending exactly on the last frame.
+
+    Both streams hold their last frame, so a short source can never cost a frame.
+    """
+    offset = (frames - transition_frames) / fps
+    duration = transition_frames / fps
+    return (
+        f"[0:v]{clip},{HOLD_LAST_FRAME},{ZERO_TIME}[outgoing];"
+        f"[1:v]{next_clip},{HOLD_LAST_FRAME},{ZERO_TIME}[incoming];"
+        f"[outgoing][incoming]xfade=transition={transition}"
+        f":duration={duration:.6f}:offset={offset:.6f}{_finish_steps(finish)}[out]"
+    )
+
+
+def _finish_steps(finish: StyleFinish) -> str:
+    steps = []
+    if finish.lut is not None:
+        steps.append(_style_grade(finish.lut, finish.intensity))
+    if finish.grain > 0:
+        steps.append(_grain(finish.grain))
+    if finish.blur_amount > 0 and finish.blur_windows:
+        steps.append(_motion_blur(finish.blur_amount, finish.blur_windows))
+    return "".join(f",{step}" for step in steps)
+
+
+def _style_grade(lut: Path, intensity: float) -> str:
+    """Full strength is the LUT alone; below that it is blended back over the ungraded frame."""
+    if intensity >= 1.0:
+        return _lut_steps(lut, in_matrix=":in_color_matrix=bt709")
+    return (
+        f"scale=flags=bicubic:in_color_matrix=bt709,format={RGB_FORMAT},"
+        f"split[ungraded][graded];[graded]{_lut3d(lut)}[lut];"
+        f"[ungraded][lut]blend=all_mode=normal:all_opacity={intensity:.3f},{_back_to_work_format()}"
+    )
+
+
+def _lut_steps(lut: Path, in_matrix: str) -> str:
+    """lut3d works on RGB. Going through it by hand keeps the color matrix under our control."""
+    return (
+        f"scale=flags=bicubic{in_matrix},format={RGB_FORMAT},{_lut3d(lut)},{_back_to_work_format()}"
+    )
+
+
+def _back_to_work_format() -> str:
+    return f"scale=flags=bicubic:out_color_matrix=bt709:out_range=tv,format={WORK_FORMAT}"
+
+
+def _lut3d(lut: Path) -> str:
+    return f"lut3d=file='{escape_filter_path(lut)}'"
+
+
+def escape_filter_path(path: Path) -> str:
+    """Forward slashes, and the drive colon escaped so it does not end the option."""
+    return path.as_posix().replace(":", r"\:").replace("'", r"'\''")
+
+
+def _grain(amount: float) -> str:
+    return f"noise=alls={max(1, round(amount * GRAIN_SCALE))}:allf=t"
+
+
+def _motion_blur(amount: float, windows: Sequence[tuple[float, float]]) -> str:
+    """Averages recent frames, like a longer shutter, only while something moves fast."""
+    frames = MOTION_BLUR_MIN_FRAMES + round(min(amount, 1.0) * MOTION_BLUR_EXTRA_FRAMES)
+    moving = "+".join(f"between(t,{start:.4f},{end:.4f})" for start, end in windows)
+    return f"tmix=frames={frames}:enable='{moving}'"
 
 
 def _motion_filters(effects: Sequence[Effect], width: int, height: int) -> list[str]:

@@ -46,9 +46,10 @@ class Reframe(_PlanModel):
 
 class Effect(_PlanModel):
     type: str
-    at: float
-    duration: float
+    at: float = 0.0
+    duration: float = 0.0
     strength: float | None = None
+    amount: float | None = None
 
 
 class Transition(_PlanModel):
@@ -75,6 +76,13 @@ class Segment(_PlanModel):
     effects: tuple[Effect, ...] = ()
     transition_out: Transition = Transition()
     source: Source
+    keep_audio: bool = False
+
+
+class SfxCue(_PlanModel):
+    type: str
+    at: float
+    gain_db: float
 
 
 class EditPlan(_PlanModel):
@@ -85,4 +93,5 @@ class EditPlan(_PlanModel):
     music: MusicWindow
     grade: Grade
     segments: tuple[Segment, ...]
+    sfx: tuple[SfxCue, ...] = ()
     log: tuple[str, ...] = ()
