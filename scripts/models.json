@@ -15,6 +15,30 @@
       "path": "mediapipe/blaze_face_short_range.tflite",
       "size": 229746,
       "sha256": "b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f"
+    },
+    {
+      "name": "yolo11n",
+      "phase": 2,
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
+      "path": "yolo/yolo11n.pt",
+      "size": 5613764,
+      "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1"
+    },
+    {
+      "name": "openclip-vit-b-32-openai",
+      "phase": 2,
+      "url": "https://huggingface.co/timm/vit_base_patch32_clip_224.openai/resolve/main/open_clip_model.safetensors",
+      "path": "clip/vit_b_32_openai.safetensors",
+      "size": 605143284,
+      "sha256": "e6d1bd7789aa45192b3bf90570a789b478bae1b74ebcce7eddd908e83a2b7c31"
+    },
+    {
+      "name": "laion-aesthetic-vit-b-32",
+      "phase": 2,
+      "url": "https://github.com/LAION-AI/aesthetic-predictor/raw/main/sa_0_4_vit_b_32_linear.pth",
+      "path": "clip/sa_0_4_vit_b_32_linear.pth",
+      "size": 3047,
+      "sha256": "c7b14cead230694acc7b9447974d3cad78003c72da032e402a303b6c2429e85f"
     }
   ]
 }
