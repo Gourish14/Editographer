@@ -16,6 +16,9 @@ spring:
 
 app:
   media-dir: ${MEDIA_DIR:media}
+  worker-url: http://${WORKER_HOST:127.0.0.1}:${WORKER_PORT:8090}
+  worker-token: ${WORKER_TOKEN:}
+  dispatch-interval-ms: 2000
 
 server:
   address: 127.0.0.1

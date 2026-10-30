@@ -48,6 +48,20 @@ class JpaJobEntity {
     this.createdAt = createdAt;
   }
 
+  void start(String runningStatus, Instant now) {
+    status = runningStatus;
+    startedAt = now;
+    attempts++;
+  }
+
+  void changeStatus(String newStatus) {
+    status = newStatus;
+  }
+
+  UUID getId() {
+    return id;
+  }
+
   String getKind() {
     return kind;
   }

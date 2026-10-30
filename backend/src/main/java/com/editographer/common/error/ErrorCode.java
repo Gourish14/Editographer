@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
   PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND),
   ASSET_NOT_FOUND(HttpStatus.NOT_FOUND),
+  JOB_NOT_FOUND(HttpStatus.NOT_FOUND),
   RENDER_NOT_FOUND(HttpStatus.NOT_FOUND),
   UPLOAD_FAILED(HttpStatus.BAD_REQUEST),
   ASSET_UNSUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
@@ -21,6 +22,7 @@ public enum ErrorCode {
   RENDER_CANCELLED(HttpStatus.CONFLICT),
   VALIDATION_FAILED(HttpStatus.BAD_REQUEST),
   REQUEST_INVALID(HttpStatus.BAD_REQUEST),
+  WORKER_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
   INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
   private final HttpStatus status;

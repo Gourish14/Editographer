@@ -30,7 +30,7 @@ Single-user local app: no login. The backend binds to `localhost` only.
 | Method | Endpoint | Body |
 | --- | --- | --- |
 | POST | /internal/progress | `{ jobId, stage, percent, message }` |
-| POST | /internal/asset-analyzed | `{ assetId, analysisPath, cameraMode, durationSec, width, height, fps }` |
+| POST | /internal/asset-analyzed | `{ assetId, analysisPath, fileHash, cameraMode, logProfile, durationSec, width, height, fps }` |
 | POST | /internal/preview-ready | `{ jobId, path }` |
 | POST | /internal/complete | `{ jobId, status: DONE or FAILED, outputPath?, plan?, error? }` |
 

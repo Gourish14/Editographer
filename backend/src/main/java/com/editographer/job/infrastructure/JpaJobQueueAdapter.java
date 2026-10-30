@@ -1,8 +1,12 @@
 package com.editographer.job.infrastructure;
 
+import com.editographer.job.domain.Job;
 import com.editographer.job.domain.JobKind;
 import com.editographer.job.domain.JobQueue;
+import com.editographer.job.domain.JobStatus;
 import java.time.Clock;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -22,5 +26,57 @@ final class JpaJobQueueAdapter implements JobQueue {
   public void enqueue(JobKind kind, UUID refId) {
     jobs.save(
         new JpaJobEntity(UUID.randomUUID(), kind.name(), refId, kind.priority(), clock.instant()));
+  }
+
+  @Override
+  public Optional<Job> nextQueued() {
+    return jobs.findFirstByStatusOrderByPriorityAscCreatedAtAsc(JobStatus.QUEUED.name())
+        .map(JpaJobQueueAdapter::toDomain);
+  }
+
+  @Override
+  public Optional<Job> findById(UUID id) {
+    return jobs.findById(id).map(JpaJobQueueAdapter::toDomain);
+  }
+
+  @Override
+  public void markRunning(UUID id) {
+    jobs.findById(id)
+        .ifPresent(
+            job -> {
+              job.start(JobStatus.RUNNING.name(), clock.instant());
+              jobs.save(job);
+            });
+  }
+
+  @Override
+  public void requeue(UUID id) {
+    finish(id, JobStatus.QUEUED);
+  }
+
+  @Override
+  public void requeueAllRunning() {
+    List<JpaJobEntity> running = jobs.findByStatus(JobStatus.RUNNING.name());
+    running.forEach(job -> job.changeStatus(JobStatus.QUEUED.name()));
+    jobs.saveAll(running);
+  }
+
+  @Override
+  public void finish(UUID id, JobStatus status) {
+    jobs.findById(id)
+        .ifPresent(
+            job -> {
+              job.changeStatus(status.name());
+              jobs.save(job);
+            });
+  }
+
+  private static Job toDomain(JpaJobEntity row) {
+    return new Job(
+        row.getId(),
+        JobKind.valueOf(row.getKind()),
+        row.getRefId(),
+        JobStatus.valueOf(row.getStatus()),
+        row.getAttempts());
   }
 }

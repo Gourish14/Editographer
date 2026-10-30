@@ -4,6 +4,8 @@ spring:
 
 app:
   media-dir: target/test-media
+  worker-token: test-token
+  scheduling-enabled: false
 
 logging:
   file:

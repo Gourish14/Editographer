@@ -68,6 +68,47 @@ public record Asset(
         now);
   }
 
+  public Asset withAnalysisStatus(AnalysisStatus status) {
+    return new Asset(
+        id,
+        projectId,
+        type,
+        filename,
+        path,
+        sizeBytes,
+        status,
+        fileHash,
+        durationSec,
+        width,
+        height,
+        fps,
+        cameraMode,
+        logProfile,
+        analysisPath,
+        createdAt);
+  }
+
+  /** The asset once the worker has finished analyzing it. */
+  public Asset withAnalysis(AnalysisResult result) {
+    return new Asset(
+        id,
+        projectId,
+        type,
+        filename,
+        path,
+        sizeBytes,
+        AnalysisStatus.DONE,
+        result.fileHash(),
+        result.durationSec(),
+        result.width(),
+        result.height(),
+        result.fps(),
+        result.cameraMode(),
+        result.logProfile(),
+        result.analysisPath(),
+        createdAt);
+  }
+
   /** The folder that holds every upload of a project. */
   public static MediaPath projectFolder(ProjectId projectId) {
     return new MediaPath(UPLOADS_FOLDER + "/" + projectId.value());

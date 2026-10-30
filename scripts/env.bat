@@ -6,6 +6,7 @@ for %%I in ("%ROOT%") do set "ROOT=%%~fI"
 
 set "UV_DIR=%ROOT%\tools\uv"
 set "UV_PYTHON_INSTALL_DIR=%ROOT%\tools\python"
+set "UV_PYTHON_BIN_DIR=%ROOT%\tools\python\bin"
 set "UV_CACHE_DIR=%ROOT%\tools\uv-cache"
 set "UV_PROJECT_ENVIRONMENT=%ROOT%\worker\.venv"
 set "UV_PYTHON=3.12"

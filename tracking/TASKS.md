@@ -8,11 +8,11 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | ID | Title | Status | Depends on |
 | --- | --- | --- | --- |
 | T-101 | Repository scaffold and conventions | Done | — |
-| T-102 | setup.bat and model download script | In progress | T-101 |
+| T-102 | setup.bat and model download script | In review | T-101 |
 | T-103 | Backend scaffold (Spring Boot 4, H2, Flyway, errors, logging, ArchUnit) | Done | T-101 |
 | T-104 | Backend: projects feature | Done | T-103 |
 | T-105 | Backend: storage service and tus uploads, assets | Done | T-104 |
-| T-106 | Backend: job queue, dispatcher, worker client, internal callbacks | Todo | T-105 |
+| T-106 | Backend: job queue, dispatcher, worker client, internal callbacks | Done | T-105 |
 | T-107 | Backend: render API and SSE events | Todo | T-106 |
 | T-108 | Worker scaffold (uv, FastAPI, settings, logging, GPU guard, health) | Todo | T-101 |
 | T-109 | Worker: ingest (probe, hash, proxy, camera mode, cache) | Todo | T-108 |
@@ -39,16 +39,16 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Added `.gitattributes` so `.bat` files stay CRLF. Empty folders are kept with `.gitkeep`.
 
 ### T-102 — setup.bat and model download script
-- Status: In progress
+- Status: In review
 - Spec: 09-local-setup.md#setupbat-run-once, 03-tech-stack.md
 - Depends on: T-101
 - Acceptance criteria:
-  - [ ] Checks Java ≥ 25, Node ≥ 24.15, `nvidia-smi`; clear message on failure (CR-005).
-  - [ ] Installs FFmpeg and Ollama via winget only if missing; verifies `hevc_nvenc`.
+  - [x] Checks Java ≥ 25, Node ≥ 24.15, `nvidia-smi`; clear message on failure (CR-005).
+  - [x] Installs FFmpeg and Ollama via winget only if missing; verifies `hevc_nvenc`.
   - [ ] Installs uv, Python 3.12, `uv sync` in `worker/`.
-  - [ ] `scripts/download_models.py` downloads Phase 1 weights with SHA-256 checks, idempotent.
-  - [ ] Creates `config/local.env` with a random worker token; safe to re-run.
-- Notes: Written, but `setup.bat` has not completed a run yet (BUG-001). The downloader passes its 7 unit tests. `uv sync` can only be verified after T-108 creates `worker/pyproject.toml`.
+  - [x] `scripts/download_models.py` downloads Phase 1 weights with SHA-256 checks, idempotent.
+  - [x] Creates `config/local.env` with a random worker token; safe to re-run.
+- Notes: `setup.bat` completed twice on the target machine after BUG-001; the second run skipped finished work and kept the token. Only `uv sync` is left, and it needs `worker/pyproject.toml` from T-108.
 
 ### T-103 — Backend scaffold
 - Status: Done
@@ -60,7 +60,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [x] `GlobalExceptionHandler` returns ProblemDetail with `errorCode`; `ErrorCode` enum.
   - [x] JSON logging to `logs/backend.log`, `RequestIdFilter` with MDC.
   - [x] ArchUnit test enforcing layer rules; JaCoCo, Spotless, Checkstyle configured.
-- Notes: Verified with `mvnw verify` under the test profile (in-memory H2, formatter unit tests). The packaged jar has not yet been started against the file database; that happens with T-117. `AppProperties` is added by the first task that needs a setting.
+- Notes: Verified with `mvnw verify` under the test profile (in-memory H2, formatter unit tests). The packaged jar was started against the file database during T-106. `AppProperties` is added by the first task that needs a setting.
 
 ### T-104 — Backend: projects feature
 - Status: Done
@@ -83,13 +83,14 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: `UploadFlowIntegrationTest` runs a real tus conversation with a resume. Finished files are renamed, not copied. The thumbnail endpoint answers 404 until T-109 writes the file (CR-007). `GET /api/projects/{id}` now includes assets, and DELETE removes the project's upload folder. `JobQueue` only has `enqueue` so far; T-106 adds dispatching and must mark a job FAILED when its asset was deleted while it waited. Not yet tried with a real multi-GB file.
 
 ### T-106 — Backend: job queue and worker integration
-- Status: Todo
+- Status: Done
 - Spec: 02-architecture.md#job-queue-replaces-rabbitmq, 07-api-and-data.md#internal-worker--backend-header-x-worker-token
 - Depends on: T-105
 - Acceptance criteria:
-  - [ ] `JobQueue` port + JPA adapter; priority ordering; restart resets RUNNING → QUEUED.
-  - [ ] `JobDispatcher` polls worker `/health` every 2 s and sends one job when idle.
-  - [ ] `/internal/*` endpoints secured by `X-Worker-Token`; requestId/jobId propagated.
+  - [x] `JobQueue` port + JPA adapter; priority ordering; restart resets RUNNING → QUEUED.
+  - [x] `JobDispatcher` polls worker `/health` every 2 s and sends one job when idle.
+  - [x] `/internal/*` endpoints secured by `X-Worker-Token`; requestId/jobId propagated.
+- Notes: Done with `asset-analyzed` and `complete`; `progress`, `preview-ready` and the RENDER sender come with T-107. A job whose asset was deleted is marked FAILED. Tested against mocks and with the real jar, not yet against the real worker, which T-108 builds. T-108's Python `ErrorCode` must also include `JOB_NOT_FOUND`, `WORKER_TOKEN_INVALID`, `ASSET_NOT_FOUND`, `RENDER_NOT_FOUND`, `VALIDATION_FAILED`, `REQUEST_INVALID` and `INTERNAL_ERROR`.
 
 ### T-107 — Backend: render API and SSE
 - Status: Todo

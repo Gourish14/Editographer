@@ -12,8 +12,16 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-006 | setup.bat installs models and assets per phase | Implemented |
 | CR-007 | Define where asset thumbnails come from | Proposed |
 | CR-008 | Define how .LRF proxies link to their .OSV, and which photo formats count | Proposed |
+| CR-009 | Add fileHash and logProfile to the asset-analyzed callback | Implemented |
 
 ## Details
+
+### CR-009 — Add fileHash and logProfile to the asset-analyzed callback
+- Status: Implemented
+- Requested: 2026-10-31, by Claude during T-106
+- Reason: The `asset` table has `file_hash` and `log_profile`, but the callback in spec 07 did not carry them, so the backend could never fill them in.
+- Impact: specs `07-api-and-data.md`; backend worker callback; T-109 must send both.
+- Decision: auto-approved, does not touch a hard rule or the architecture.
 
 ### CR-008 — Define how .LRF proxies link to their .OSV, and which photo formats count
 - Status: Proposed
