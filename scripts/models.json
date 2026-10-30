@@ -1,0 +1,20 @@
+{
+  "models": [
+    {
+      "name": "beat-this-small0",
+      "phase": 1,
+      "url": "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/small0.ckpt",
+      "path": "beat_this/small0.ckpt",
+      "size": 8451101,
+      "sha256": "6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b"
+    },
+    {
+      "name": "mediapipe-blaze-face-short-range",
+      "phase": 1,
+      "url": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+      "path": "mediapipe/blaze_face_short_range.tflite",
+      "size": 229746,
+      "sha256": "b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f"
+    }
+  ]
+}
