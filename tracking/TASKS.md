@@ -30,8 +30,31 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-301 | Worker: RIFE and Real-ESRGAN adapters | Todo | T-117 |
 | T-302 | Worker: ramps, reframe and camera path rules, 360 projection (B6, B7, 08) | Todo | T-117 |
 | T-303 | Worker: LUTs, D-Log M, transitions, motion blur, SFX, ducking, cool mode | Todo | T-117 |
+| T-401 | Backend and frontend: render tonight, 360 preview, subject picker, live GPU status | Todo | T-117 |
+| T-402 | Worker: speech detection, text rules, text layers | Done | T-117 |
+| T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
+| T-404 | Wire photos, speech and text into analysis, planner and renderer | Todo | T-202, T-303, T-402, T-403 |
 
 ## Details
+
+### T-404 — Wire photos, speech and text into the pipeline
+- Status: Todo
+- Spec: 05-editing-brain.md#b4, #b7, #b8, 06-edit-plan-schema.md
+- Depends on: T-202, T-303, T-402, T-403
+- Acceptance criteria:
+  - [ ] `analyze_asset.py` runs photo analysis and speech detection; the plan gains `text[]`; photo segments render.
+  - [ ] B4: photos fill at most 30% of slots and never a drop, unless the input is only photos.
+  - [ ] Clip audio is kept and music ducks 8 dB only where speech exists.
+
+### T-403 — Worker: photo analysis, Ken Burns, depth parallax
+- Status: Done
+- Spec: 04-pipeline.md#stages (4), 05-editing-brain.md#b4, #b7
+- Notes: Merged but not wired in (T-404). Verified on one generated image, 45 of 45 frames for both motions. Not tested on a real face or a rotated JPEG, and peak VRAM was not measured.
+
+### T-402 — Worker: speech detection, text rules, text layers
+- Status: Done
+- Spec: 05-editing-brain.md#b8, 06-edit-plan-schema.md
+- Notes: Merged but not wired in (T-404). Real Whisper found speech in a synthesized clip and none in the test song. The CUDA path is unverified. Text is drawn in front: SAM 2 text-behind-subject is still to do.
 
 ### T-303 — Worker: look, sound and cool mode
 - Status: Todo

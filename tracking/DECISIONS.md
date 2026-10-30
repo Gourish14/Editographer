@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-014 | Photo parallax and speech defaults | Accepted |
 | ADR-013 | Phase 2 starts before the real-footage Phase 1 gate | Accepted |
 | ADR-012 | Phase 1 composites with FFmpeg filters | Accepted |
 | ADR-011 | The beat grid includes midpoints, and energy is scaled against the peak | Accepted |
@@ -17,6 +18,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-014 — Photo parallax and speech defaults
+- Date / Status: 2026-10-31 / Accepted
+- Context: T-402 and T-403 needed choices the specs leave open.
+- Options considered: FFmpeg `displace` needs x and y maps, so a true parallax was costly; Whisper can run on CPU or GPU.
+- Decision: Parallax is two layers, a depth-masked near layer over the photo, used when depth contrast is at least 0.8. Whisper defaults to the CPU, with CUDA opt-in through `GpuGuard`. `av` is pinned to 16.x because faster-whisper 1.2.1 fails on av 19.
+- Consequences: The 0.8 threshold comes from two generated images and needs tuning on real photos. The `av` pin must be revisited when faster-whisper updates.
 
 ### ADR-013 — Phase 2 starts before the real-footage Phase 1 gate
 - Date / Status: 2026-10-31 / Accepted
