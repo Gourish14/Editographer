@@ -27,8 +27,36 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-118 | Phase 1 gate: end-to-end run, beat-accuracy check, timing | Todo | T-117 |
 | T-201 | Worker: full shot analysis (YOLO, OpenCLIP tags and aesthetics, full B2) | Todo | T-117 |
 | T-202 | Worker: prompt constraints, Ollama director, keyword fallback, 7 styles (B9, B10) | Todo | T-117 |
+| T-301 | Worker: RIFE and Real-ESRGAN adapters | Todo | T-117 |
+| T-302 | Worker: ramps, reframe and camera path rules, 360 projection (B6, B7, 08) | Todo | T-117 |
+| T-303 | Worker: LUTs, D-Log M, transitions, motion blur, SFX, ducking, cool mode | Todo | T-117 |
 
 ## Details
+
+### T-303 — Worker: look, sound and cool mode
+- Status: Todo
+- Spec: 04-pipeline.md, 05-editing-brain.md#b5, #b8, 08-osmo360.md, 09-local-setup.md#cool-mode
+- Depends on: T-117
+- Acceptance criteria:
+  - [ ] Style LUTs and D-Log M to Rec.709 applied by the compositor; transitions and motion blur in the filter graph.
+  - [ ] SFX at -18 dB, speech ducking 8 dB.
+  - [ ] Cool mode: 10 s pause between GPU stages, NVML watch every 2 s, pause at 83 °C, resume at 75 °C.
+
+### T-302 — Worker: motion rules and 360 projection
+- Status: Todo
+- Spec: 05-editing-brain.md#b6, #b7, 08-osmo360.md
+- Depends on: T-117
+- Acceptance criteria:
+  - [ ] Pure `ramps.py` with the B6 curve and source-length integral; pure `reframe.py` with B7 rules and camera360 keyframes.
+  - [ ] Filter builder renders rectilinear, tiny planet and rabbit hole from equirect.
+
+### T-301 — Worker: frame interpolation and upscaling adapters
+- Status: Todo
+- Spec: 03-tech-stack.md, 04-pipeline.md#stages (6, 7), 09-local-setup.md
+- Depends on: T-117
+- Acceptance criteria:
+  - [ ] `Interpolator` and `Upscaler` ports with RIFE 4.x and realesr-general-x4v3 adapters through `GpuGuard`; tiled 512 px, fp16, RIFE scale 0.5 above 4K.
+  - [ ] Weights in `scripts/models.json` at phase 3 and 4 with real checksums.
 
 ### T-201 — Worker: full shot analysis
 - Status: Todo
