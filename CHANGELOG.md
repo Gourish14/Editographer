@@ -18,6 +18,7 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - Projects REST API [T-104].
 - Resumable tus uploads, local media storage, asset list and delete, thumbnail endpoint, ANALYZE jobs queued on upload [T-105].
 - Job queue, dispatcher, worker client, token-protected worker callbacks, restart recovery [T-106].
+- Speed ramp curve, smart reframe rules and 360 projections with FFmpeg, not yet wired in [T-302].
 - Render tonight, 360 preview and subject picker, skipped-prompt list, speed tips, live GPU temperature [T-401].
 - Speech detection, text rules and text layers, not yet wired in [T-402].
 - Photo analysis, Ken Burns and depth parallax, not yet wired in [T-403].

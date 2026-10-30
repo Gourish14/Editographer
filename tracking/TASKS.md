@@ -28,12 +28,13 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-201 | Worker: full shot analysis (YOLO, OpenCLIP tags and aesthetics, full B2) | Todo | T-117 |
 | T-202 | Worker: prompt constraints, Ollama director, keyword fallback, 7 styles (B9, B10) | Todo | T-117 |
 | T-301 | Worker: RIFE and Real-ESRGAN adapters | Todo | T-117 |
-| T-302 | Worker: ramps, reframe and camera path rules, 360 projection (B6, B7, 08) | Todo | T-117 |
+| T-302 | Worker: ramps, reframe and camera path rules, 360 projection (B6, B7, 08) | Done | T-117 |
 | T-303 | Worker: LUTs, D-Log M, transitions, motion blur, SFX, ducking, cool mode | Todo | T-117 |
 | T-401 | Backend and frontend: render tonight, 360 preview, subject picker, live GPU status | Done | T-117 |
 | T-402 | Worker: speech detection, text rules, text layers | Done | T-117 |
 | T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
 | T-404 | Wire photos, speech and text into analysis, planner and renderer | Todo | T-202, T-303, T-402, T-403 |
+| T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Todo | T-202, T-301, T-302, T-303 |
 
 ## Details
 
@@ -71,12 +72,13 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] Cool mode: 10 s pause between GPU stages, NVML watch every 2 s, pause at 83 °C, resume at 75 °C.
 
 ### T-302 — Worker: motion rules and 360 projection
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b6, #b7, 08-osmo360.md
 - Depends on: T-117
 - Acceptance criteria:
-  - [ ] Pure `ramps.py` with the B6 curve and source-length integral; pure `reframe.py` with B7 rules and camera360 keyframes.
-  - [ ] Filter builder renders rectilinear, tiny planet and rabbit hole from equirect.
+  - [x] Pure `ramps.py` with the B6 curve and source-length integral; pure `reframe.py` with B7 rules and camera360 keyframes.
+  - [x] Filter builder renders rectilinear, tiny planet and rabbit hole from equirect.
+- Notes: Modules only, not wired in (T-405). Generated media and CPU only, not real footage or NVENC. Call `limit_pitch` last on every 360 path. Ramps need B11 to use `curve_source_length` and a timeline-to-source mapping before `camera_filter`, or they play at 1×. `crop_path` has no plan field yet. FOV punch and the other spec 08 effects are not built.
 
 ### T-301 — Worker: frame interpolation and upscaling adapters
 - Status: Todo
