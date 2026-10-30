@@ -10,4 +10,4 @@ from scenedetect import ContentDetector, detect
 class SceneDetectShots:
     def detect(self, path: Path) -> tuple[tuple[float, float], ...]:
         scenes = detect(str(path), ContentDetector())
-        return tuple((start.get_seconds(), end.get_seconds()) for start, end in scenes)
+        return tuple((start.seconds, end.seconds) for start, end in scenes)

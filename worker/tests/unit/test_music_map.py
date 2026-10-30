@@ -40,10 +40,10 @@ def test_b1_bpm_comes_from_the_beat_spacing() -> None:
     assert build_music_map(song(TYPICAL)).bpm == 120.0
 
 
-def test_b1_energy_is_normalized_to_zero_through_one() -> None:
+def test_b1_energy_is_relative_to_the_loudest_moment() -> None:
     energy = build_music_map(song(TYPICAL)).energy
 
-    assert min(energy) == 0.0
+    assert min(energy) == pytest.approx(0.2)
     assert max(energy) == 1.0
 
 
@@ -54,8 +54,8 @@ def test_b1_energy_is_smoothed_over_half_a_second() -> None:
     assert 0.0 < music.energy[jump] < 1.0
 
 
-def test_b1_a_flat_song_has_zero_energy_rather_than_failing() -> None:
-    assert set(build_music_map(song([(16, 0.5)])).energy) == {0.0}
+def test_b1_silence_has_zero_energy_rather_than_failing() -> None:
+    assert set(build_music_map(song([(16, 0.0)])).energy) == {0.0}
 
 
 def test_b1_beat_strength_comes_from_the_onset_at_the_beat() -> None:
@@ -130,7 +130,7 @@ def test_b1_a_quiet_part_with_no_drop_before_it_is_not_a_break() -> None:
 
 
 def test_b1_a_middle_part_that_fits_nothing_is_a_verse() -> None:
-    parts = [(8, 0.1), (8, 0.55), (8, 0.1), (8, 0.3)]
+    parts = [(8, 0.1), (8, 0.55), (8, 0.1), (8, 1.0), (8, 0.1)]
 
     assert SectionKind.VERSE in kinds(build_music_map(song(parts)))
 
@@ -165,11 +165,27 @@ def test_b1_a_short_song_uses_what_there_is() -> None:
 
 
 def test_b1_a_song_with_no_drop_uses_its_loudest_stretch() -> None:
-    music = build_music_map(song([(16, 0.1), (8, 0.6), (16, 0.1)]), length_sec=16.0)
+    music = build_music_map(song([(8, 0.6), (8, 1.0), (24, 0.6)]), length_sec=16.0)
 
-    assert SectionKind.DROP not in kinds(music)
-    assert music.edit_window.start == pytest.approx(32.0)
-    assert music.edit_window.end == pytest.approx(48.0)
+    music_without_drop = music.model_copy(
+        update={
+            "sections": tuple(
+                section.model_copy(update={"kind": SectionKind.VERSE})
+                for section in music.sections
+            )
+        }
+    )
+    window = choose_edit_window(
+        music_without_drop.downbeats,
+        music_without_drop.sections,
+        music_without_drop.energy,
+        HOP,
+        music_without_drop.duration_sec,
+        16.0,
+    )
+
+    assert window.start == pytest.approx(16.0)
+    assert window.end == pytest.approx(32.0)
 
 
 def test_b1_downbeats_are_guessed_every_four_beats_when_none_were_found() -> None:

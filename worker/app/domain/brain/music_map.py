@@ -87,7 +87,11 @@ def choose_edit_window(
 
 
 def _energy_curve(rms: Sequence[float], hop_sec: float) -> tuple[float, ...]:
-    """RMS loudness, smoothed over 0.5 s, normalized to 0..1."""
+    """RMS loudness, smoothed over 0.5 s, relative to the loudest moment.
+
+    Dividing by the peak, not stretching min to max, keeps a steady song steady: tiny level
+    changes stay tiny instead of filling the whole 0..1 range.
+    """
     radius = max(1, round(ENERGY_SMOOTHING_SEC / hop_sec / 2))
     prefix = [0.0]
     for value in rms:
@@ -97,14 +101,8 @@ def _energy_curve(rms: Sequence[float], hop_sec: float) -> tuple[float, ...]:
         / (min(len(rms), i + radius + 1) - max(0, i - radius))
         for i in range(len(rms))
     ]
-    return _normalized(smooth)
-
-
-def _normalized(values: Sequence[float]) -> tuple[float, ...]:
-    low, high = min(values, default=0.0), max(values, default=0.0)
-    if math.isclose(low, high):
-        return tuple(0.0 for _ in values)
-    return tuple((value - low) / (high - low) for value in values)
+    peak = max(smooth, default=0.0) or 1.0
+    return tuple(value / peak for value in smooth)
 
 
 def _strengths(times: Sequence[float], onset: Sequence[float], hop_sec: float) -> tuple[Beat, ...]:

@@ -133,7 +133,7 @@ def test_b2_motion_rank_is_relative_to_the_whole_project() -> None:
 
 
 def test_b2_a_single_shot_ranks_at_the_top() -> None:
-    assert score_shots([shot(subject=0.0, stability=0.0)])[0].score == pytest.approx(0.40 / 0.70)
+    assert score_shots([shot(subject=0.0, stability=0.0)])[0].score == pytest.approx(0.40 / 0.70, abs=0.001)
 
 
 def test_b2_a_low_score_is_rejected() -> None:

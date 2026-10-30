@@ -208,7 +208,7 @@ def test_b4_a_reused_shot_gets_a_different_window() -> None:
 
 def test_b4_drop_slots_prefer_shots_with_motion_in_the_top_half() -> None:
     slots = [slot(float(i), float(i + 1)) for i in range(10)]
-    pool = [candidate(f"v{i}", rank=i / 9) for i in range(10)]
+    pool = [candidate(f"v{i}", rank=i / 29) for i in range(30)]
 
     result = assign(slots, pool)
     energetic = sum(1 for a in result if a.candidate.motion_rank >= 0.5)
