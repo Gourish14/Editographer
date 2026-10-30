@@ -116,7 +116,12 @@ export interface ProblemDetail {
 }
 
 export type RenderEvent =
-  | { readonly type: 'progress'; readonly stage: string; readonly percent: number; readonly message: string }
+  | {
+      readonly type: 'progress';
+      readonly stage: string;
+      readonly percent: number;
+      readonly message: string;
+    }
   | { readonly type: 'preview-ready' }
   | { readonly type: 'done' }
   | { readonly type: 'failed'; readonly error: string };

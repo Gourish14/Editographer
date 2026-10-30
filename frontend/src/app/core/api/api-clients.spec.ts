@@ -26,11 +26,11 @@ describe('API clients', () => {
     api.get('p1').subscribe();
     api.delete('p1').subscribe();
 
-    expect(http.expectOne('/api/projects', 'list').request.method).toBe('GET');
-    const create = http.match((request) => request.method === 'POST');
-    expect(create[0].request.body).toEqual({ name: 'Goa' });
-    expect(http.match((request) => request.url === '/api/projects/p1').map((r) => r.request.method))
-      .toEqual(['GET', 'DELETE']);
+    http.expectOne({ method: 'GET', url: '/api/projects' });
+    const create = http.expectOne({ method: 'POST', url: '/api/projects' });
+    expect(create.request.body).toEqual({ name: 'Goa' });
+    http.expectOne({ method: 'GET', url: '/api/projects/p1' });
+    http.expectOne({ method: 'DELETE', url: '/api/projects/p1' });
   });
 
   it('builds asset urls', () => {

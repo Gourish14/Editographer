@@ -61,7 +61,10 @@ const FINISHED = new Set(['DONE', 'FAILED', 'CANCELLED']);
           @if (current.editPlan; as plan) {
             <section class="panel" aria-label="Plan summary">
               <h2>Plan</h2>
-              <p>{{ plan.style }} style · {{ plan.segments.length }} cuts · {{ effectCount() }} effects</p>
+              <p>
+                {{ plan.style }} style · {{ plan.segments.length }} cuts ·
+                {{ effectCount() }} effects
+              </p>
               @for (note of plan.log; track note) {
                 <p class="muted">{{ note }}</p>
               }

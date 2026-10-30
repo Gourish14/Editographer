@@ -34,7 +34,11 @@ describe('AssetGrid', () => {
   }
 
   it('shows the thumbnail of a finished clip', () => {
-    expect(show([asset({})]).querySelector('img')?.getAttribute('src')).toBe('/thumb/a1');
+    expect(
+      show([asset({})])
+        .querySelector('img')
+        ?.getAttribute('src'),
+    ).toBe('/thumb/a1');
   });
 
   it('shows a placeholder for music and for clips still analyzing', () => {

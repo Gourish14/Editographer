@@ -32,7 +32,9 @@ interface ActiveUpload {
     >
       <input type="file" multiple (change)="pick($event)" aria-label="Choose files to upload" />
       <strong>Drop clips, photos and music here</strong>
-      <span class="muted">or click to choose. MP4, MOV, OSV, LRF, JPG, PNG, HEIC, MP3, WAV, M4A, FLAC</span>
+      <span class="muted"
+        >or click to choose. MP4, MOV, OSV, LRF, JPG, PNG, HEIC, MP3, WAV, M4A, FLAC</span
+      >
     </label>
     @for (upload of uploads(); track upload.name) {
       <div class="upload">

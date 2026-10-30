@@ -109,8 +109,7 @@ export class ProjectPage {
   protected readonly canRender = computed(() => {
     const ready = this.assets().filter((asset) => asset.analysisStatus === 'DONE');
     return (
-      ready.some((asset) => asset.type === 'MUSIC') &&
-      ready.some((asset) => asset.type !== 'MUSIC')
+      ready.some((asset) => asset.type === 'MUSIC') && ready.some((asset) => asset.type !== 'MUSIC')
     );
   });
 
