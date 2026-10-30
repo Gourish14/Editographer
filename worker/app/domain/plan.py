@@ -62,19 +62,49 @@ class Source(_PlanModel):
     native_fps: float | None
 
 
+class CameraKeyframe(_PlanModel):
+    """A virtual camera pose. `ease` shapes the span that starts at this keyframe."""
+
+    t: float
+    yaw: float
+    pitch: float
+    roll: float = 0.0
+    fov: float
+    ease: str = "linear"
+    projection: str | None = None
+
+
+class Camera360(_PlanModel):
+    projection: str = "rectilinear"
+    follow: str | None = None
+    keyframes: tuple[CameraKeyframe, ...] = ()
+
+
+class Motion(_PlanModel):
+    """Photo motion. `focus_x` and `focus_y` are the point it pushes toward, as frame shares."""
+
+    type: str = "kenburns"
+    depth: bool = False
+    direction: str = "push_in"
+    focus_x: float = 0.5
+    focus_y: float = 0.5
+
+
 class Segment(_PlanModel):
     id: str
     asset_id: str
     type: str
-    src_in: float
-    src_out: float
+    src_in: float = 0.0
+    src_out: float = 0.0
     at: float
     duration: float
     speed: Speed = Speed()
     reframe: Reframe = Reframe()
     effects: tuple[Effect, ...] = ()
     transition_out: Transition = Transition()
-    source: Source
+    source: Source = Source(camera_mode=None, log_profile=None, native_fps=None)
+    camera360: Camera360 | None = None
+    motion: Motion | None = None
 
 
 class EditPlan(_PlanModel):
