@@ -24,6 +24,7 @@ Single-user local app: no login. The backend binds to `localhost` only.
 | GET | /api/renders/{id}/download | Stream `final.mp4` (supports Range) |
 | GET | /api/styles | Style presets |
 | GET | /api/system | GPU name, VRAM, temperature, worker and Ollama status |
+| POST | /api/client-logs | Browser error `{ message }`, at most 10 logged per minute |
 
 ### Internal (worker → backend, header `X-Worker-Token`)
 

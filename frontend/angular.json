@@ -63,7 +63,8 @@
               "buildTarget": "editographer:build:production"
             },
             "development": {
-              "buildTarget": "editographer:build:development"
+              "buildTarget": "editographer:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

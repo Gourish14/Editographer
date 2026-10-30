@@ -28,8 +28,6 @@ describe('ClientErrorHandler', () => {
   it('stays quiet when the report itself fails', () => {
     TestBed.inject(ClientErrorHandler).handleError(new Error('broken'));
 
-    http
-      .expectOne('/api/client-logs')
-      .flush(null, { status: 500, statusText: 'Server Error' });
+    http.expectOne('/api/client-logs').flush(null, { status: 500, statusText: 'Server Error' });
   });
 });
