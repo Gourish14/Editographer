@@ -3,10 +3,10 @@
 Newest first. One entry per working session (template in `specs/12-spec-driven-development.md` §8).
 
 ## 2026-10-31 — Session 3
-- Done: T-109.
-- In progress: —
-- Found: ADR-010.
-- Next: T-110.
+- Done: T-109, T-110, T-111, T-112, T-113.
+- In progress: T-114 (frontend).
+- Found: ADR-010, ADR-011, ADR-012, CR-012.
+- Next: T-114, T-115, T-116, T-117, then the T-118 gate.
 - Needs user: nothing.
 
 ## 2026-10-31 — Session 2

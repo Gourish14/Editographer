@@ -15,8 +15,16 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-009 | Add fileHash and logProfile to the asset-analyzed callback | Implemented |
 | CR-010 | A render needs at least one music track and one clip | Implemented |
 | CR-011 | Define how the UI learns that an asset finished analysis | Proposed |
+| CR-012 | Subject-aware crop moves to Phase 3 with B7 | Implemented |
 
 ## Details
+
+### CR-012 — Subject-aware crop moves to Phase 3 with B7
+- Status: Implemented
+- Requested: 2026-10-31, by Claude during T-113
+- Reason: Spec 10 lists center/subject crop in Phase 1, but subject tracking needs per-frame boxes and the 1€ filter from B7, which Phase 3 builds as smart reframe.
+- Impact: specs `10-roadmap.md`; Phase 1 crops to center. Risk: a subject near the frame edge can be cut off in vertical ratios until Phase 3.
+- Decision: auto-approved, the gate does not depend on it.
 
 ### CR-011 — Define how the UI learns that an asset finished analysis
 - Status: Proposed

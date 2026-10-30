@@ -58,6 +58,8 @@
 | Text rendering | skia-python | BSD-3 |
 | Speech captions | faster-whisper (small) | MIT |
 | Loudness | pyloudnorm | MIT |
+| Content hash | xxhash | BSD-2 |
+| Optical flow, sharpness | OpenCV (headless) | Apache-2.0 |
 | GPU monitoring | nvidia-ml-py (NVML) | BSD-3 |
 
 ## AI director (Ollama)

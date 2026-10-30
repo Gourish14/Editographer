@@ -4,6 +4,8 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-012 | Phase 1 composites with FFmpeg filters | Accepted |
+| ADR-011 | The beat grid includes midpoints, and energy is scaled against the peak | Accepted |
 | ADR-010 | Osmo camera modes are detected from width and DJI metadata | Accepted |
 | ADR-009 | SpotBugs EI_EXPOSE_REP2 is off outside domain | Accepted |
 | ADR-008 | uv, its Python and its cache live in tools/ | Accepted |
@@ -14,6 +16,20 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-012 — Phase 1 composites with FFmpeg filters
+- Date / Status: 2026-10-31 / Accepted
+- Context: Spec 03 names ModernGL for effects, but the Phase 1 effects are only crops, scales and a flash, and the gate needs 4K in 15 minutes.
+- Options considered: ModernGL now; FFmpeg filters per segment.
+- Decision: Each segment is rendered by one FFmpeg call behind the `Compositor` port. `crop` cannot resize per frame, so a zoom scales per frame and crops back.
+- Consequences: Simple and fast, but compose and encode cannot be reported apart, so Phase 1 progress groups them. Shader transitions in Phase 3 add a second `Compositor`.
+
+### ADR-011 — The beat grid includes midpoints, and energy is scaled against the peak
+- Date / Status: 2026-10-31 / Accepted
+- Context: B3 asks for half-beat cuts while B11 and the gate say every cut lands on a beat. B1 says energy is normalized 0 to 1 without saying how; min-max scaling made a steady song look dramatic.
+- Options considered: drop half-beat cuts; treat midpoints as grid points. Min-max scaling; dividing by the peak.
+- Decision: The grid is every beat plus each midpoint, used by pacing, B11 and `scripts/check_beats.py`. Energy is divided by the song's peak. Section labels check Drop first, then Intro and Outro, then Break, Build, and Verse. Boundaries within 4 bars of a bigger change are dropped.
+- Consequences: Half-beat cuts count as on the beat. B1 thresholds (0.75, 0.4, 0.25) apply to peak-relative energy, so they need checking on real songs at the gate.
 
 ### ADR-010 — Osmo camera modes are detected from width and DJI metadata
 - Date / Status: 2026-10-31 / Accepted

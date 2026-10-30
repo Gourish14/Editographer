@@ -16,10 +16,10 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-107 | Backend: render API and SSE events | Done | T-106 |
 | T-108 | Worker scaffold (uv, FastAPI, settings, logging, GPU guard, health) | Done | T-101 |
 | T-109 | Worker: ingest (probe, hash, proxy, camera mode, cache) | Done | T-108 |
-| T-110 | Worker: music analysis and music map (B1) | Todo | T-109 |
-| T-111 | Worker: shot detection and basic scoring (B2 partial) | Todo | T-109 |
-| T-112 | Worker brain: pacing, assignment, basic effects, validation → edit plan | Todo | T-110, T-111 |
-| T-113 | Worker render: compose, crop all ratios, effects, audio, NVENC encode, Preview + Fast | Todo | T-112 |
+| T-110 | Worker: music analysis and music map (B1) | Done | T-109 |
+| T-111 | Worker: shot detection and basic scoring (B2 partial) | Done | T-109 |
+| T-112 | Worker brain: pacing, assignment, basic effects, validation → edit plan | Done | T-110, T-111 |
+| T-113 | Worker render: compose, crop all ratios, effects, audio, NVENC encode, Preview + Fast | Done | T-112 |
 | T-114 | Frontend scaffold (Angular, structure, API clients, interceptors, lint, tests) | Todo | T-101 |
 | T-115 | Frontend: projects, upload, asset grid, music waveform | Todo | T-114, T-105 |
 | T-116 | Frontend: render settings, live progress, result player and download | Todo | T-115, T-107 |
@@ -125,43 +125,47 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Verified live: a generated 1080p clip went from upload to DONE with a real NVENC proxy and thumbnail. Osmo detection thresholds are unproven against real Osmo files (ADR-010). `GET /api/assets/{id}/waveform` from spec 07 belongs to no task yet, so T-110 adds it.
 
 ### T-110 — Worker: music map (B1)
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b1-music-map-music_mappy
 - Depends on: T-109
 - Acceptance criteria:
-  - [ ] Beat This! adapter + librosa energy/onsets.
-  - [ ] Pure `build_music_map()` with sections, accent beats, edit window; unit tests on synthetic beat/energy data.
-  - [ ] Fixture song produces stable output (golden test).
+  - [x] Beat This! adapter + librosa energy/onsets.
+  - [x] Pure `build_music_map()` with sections, accent beats, edit window; unit tests on synthetic beat/energy data.
+  - [x] Fixture song produces stable output (golden test).
+- Notes: Energy is scaled against the song's peak, not min to max, so a steady song stays steady (ADR-011). Thresholds still need checking on real songs at the gate. Also added `GET /api/assets/{id}/waveform`, which no task covered. PyTorch 2.11 + CUDA 12.8 is the newest pair with a matching torchaudio.
 
 ### T-111 — Worker: shots and basic scoring
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b2-shot-scoring-scoringpy
 - Depends on: T-109
 - Acceptance criteria:
-  - [ ] PySceneDetect shots; motion (optical flow), sharpness, MediaPipe faces, luma at 4 fps on proxies.
-  - [ ] Pure scoring function using available terms (others weighted 0 until Phase 2, weights renormalized); reject rules.
-  - [ ] Peak moment and usable windows stored in analysis JSON.
+  - [x] PySceneDetect shots; motion (optical flow), sharpness, MediaPipe faces, luma at 4 fps on proxies.
+  - [x] Pure scoring function using available terms (others weighted 0 until Phase 2, weights renormalized); reject rules.
+  - [x] Peak moment and usable windows stored in analysis JSON.
+- Notes: Percentile ranks need every clip, so the analysis stores raw numbers and scoring runs at planning. Face detection has only been exercised on clips with no faces.
 
 ### T-112 — Worker brain → edit plan
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b3, #b4, #b5, #b11; 06-edit-plan-schema.md
 - Depends on: T-110, T-111
 - Acceptance criteria:
-  - [ ] Pacing for Velocity and Cinematic; slots cover the window exactly, all on beats.
-  - [ ] Assignment with all B4 constraints; deterministic with seed.
-  - [ ] Basic B5 effects (zoom punch, shake, flash, hard cut) with caps.
-  - [ ] Validation B11; plan JSON matches 06 schema (pydantic model).
-  - [ ] Unit tests named after rules (`test_b4_…`).
+  - [x] Pacing for Velocity and Cinematic; slots cover the window exactly, all on beats.
+  - [x] Assignment with all B4 constraints; deterministic with seed.
+  - [x] Basic B5 effects (zoom punch, shake, flash, hard cut) with caps.
+  - [x] Validation B11; plan JSON matches 06 schema (pydantic model).
+  - [x] Unit tests named after rules (`test_b4_…`).
+- Notes: Half-beat cuts use a grid of beats plus midpoints (ADR-011). A slot longer than every shot is halved on the grid. Other styles fall back to Velocity or Cinematic with a log line until Phase 2. Slow-mo and prompt fit are Phase 2 and 3. Photos are not used yet: they arrive with Ken Burns in Phase 3.
 
 ### T-113 — Worker render (Phase 1 scope)
-- Status: Todo
+- Status: Done
 - Spec: 04-pipeline.md#stages (6, 8, 9), 00-overview.md#output-sizes, 09-local-setup.md#render-modes
 - Depends on: T-112
 - Acceptance criteria:
-  - [ ] Decode only needed windows; subject/center crop for all 6 ratios at 4K.
-  - [ ] Zoom punch, shake, flash rendered; music cut on downbeats; -14 LUFS.
-  - [ ] `hevc_nvenc` 10-bit output; preview.mp4 (1080p) first, then final.
-  - [ ] Progress posted with stage weights from 04.
+  - [x] Decode only needed windows; center crop for all 6 ratios at 4K.
+  - [x] Zoom punch, shake, flash rendered; music cut on downbeats; -14 LUFS.
+  - [x] `hevc_nvenc` 10-bit output; preview.mp4 (1080p) first, then final.
+  - [x] Progress posted with stage weights from 04.
+- Notes: First real end-to-end edit through the live API: 44 cuts, worst 16.7 ms from the grid, 719 of 719 frames, 79 s render for 24 s of 4K on simple test clips. Compositor is FFmpeg filters (ADR-012), which encode as they compose, so progress groups compose and encode. Crop is center only: subject tracking is Phase 3 (B7), and spec 10 lists subject crop for Phase 1, recorded in CR-012.
 
 ### T-114 — Frontend scaffold
 - Status: Todo

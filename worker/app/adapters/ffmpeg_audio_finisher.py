@@ -15,6 +15,9 @@ TARGET_LUFS = -14.0
 SAMPLE_RATE = 48000
 CHANNELS = 2
 AUDIO_BITRATE = "320k"
+LIMIT = 0.97
+LEVELING_PASSES = 3
+CLOSE_ENOUGH_LU = 0.2
 BASE_ARGUMENTS = ("ffmpeg", "-hide_banner", "-loglevel", "error")
 
 
@@ -24,7 +27,7 @@ class FfmpegAudioFinisher:
     ) -> None:
         window = ["-ss", f"{start:.4f}", "-t", f"{duration:.4f}", "-i", str(music)]
         try:
-            gain_db = self._gain_to_target(window)
+            gain_db = _gain_to_target(window)
             run_tool(
                 [
                     *BASE_ARGUMENTS,
@@ -37,15 +40,17 @@ class FfmpegAudioFinisher:
                     "-map",
                     "1:a:0",
                     "-af",
-                    f"volume={gain_db:.2f}dB,alimiter=limit=0.97",
+                    _level_filter(gain_db),
+                    "-ac",
+                    str(CHANNELS),
+                    "-ar",
+                    str(SAMPLE_RATE),
                     "-c:v",
                     "copy",
                     "-c:a",
                     "aac",
                     "-b:a",
                     AUDIO_BITRATE,
-                    "-ar",
-                    str(SAMPLE_RATE),
                     "-movflags",
                     "+faststart",
                     "-shortest",
@@ -55,23 +60,42 @@ class FfmpegAudioFinisher:
         except FfmpegError as error:
             raise RenderError(str(error)) from error
 
-    @staticmethod
-    def _gain_to_target(window: list[str]) -> float:
-        raw = run_tool_for_bytes(
-            [
-                *BASE_ARGUMENTS,
-                *window,
-                "-map",
-                "0:a:0",
-                "-ac",
-                str(CHANNELS),
-                "-ar",
-                str(SAMPLE_RATE),
-                "-f",
-                "f32le",
-                "-",
-            ]
-        )
-        samples = np.frombuffer(raw, dtype=np.float32).reshape(-1, CHANNELS)
-        loudness = pyloudnorm.Meter(SAMPLE_RATE).integrated_loudness(samples)
-        return TARGET_LUFS - loudness if math.isfinite(loudness) else 0.0
+
+def _level_filter(gain_db: float) -> str:
+    return f"volume={gain_db:.2f}dB,alimiter=limit={LIMIT}:level=disabled"
+
+
+def _gain_to_target(window: list[str]) -> float:
+    """The limiter takes back some of any boost, so measure after it and correct."""
+    gain_db = 0.0
+    for _ in range(LEVELING_PASSES):
+        loudness = _measure(window, gain_db)
+        if not math.isfinite(loudness):
+            return gain_db
+        difference = TARGET_LUFS - loudness
+        gain_db += difference
+        if abs(difference) <= CLOSE_ENOUGH_LU:
+            break
+    return gain_db
+
+
+def _measure(window: list[str], gain_db: float) -> float:
+    raw = run_tool_for_bytes(
+        [
+            *BASE_ARGUMENTS,
+            *window,
+            "-map",
+            "0:a:0",
+            "-af",
+            _level_filter(gain_db),
+            "-ac",
+            str(CHANNELS),
+            "-ar",
+            str(SAMPLE_RATE),
+            "-f",
+            "f32le",
+            "-",
+        ]
+    )
+    samples = np.frombuffer(raw, dtype=np.float32).reshape(-1, CHANNELS)
+    return float(pyloudnorm.Meter(SAMPLE_RATE).integrated_loudness(samples))

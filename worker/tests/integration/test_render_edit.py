@@ -10,6 +10,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+import pyloudnorm
 import pytest
 
 from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
@@ -178,6 +180,49 @@ def test_the_final_file_is_4k_hevc_10_bit_with_aac(media: Path, finished: Record
     assert plan is not None
     window = plan["music"]["end"] - plan["music"]["start"]
     assert info.duration_sec == pytest.approx(window, abs=0.1)
+
+
+def test_the_audio_is_stereo_at_minus_14_lufs(media: Path, finished: Recorder) -> None:
+    raw = subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(media / "renders/r1/final.mp4"),
+            "-map",
+            "0:a:0",
+            "-f",
+            "f32le",
+            "-",
+        ],
+        capture_output=True,
+        check=True,
+    ).stdout
+    channels = int(
+        subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=channels",
+                "-of",
+                "csv=p=0",
+                str(media / "renders/r1/final.mp4"),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    )
+    samples = np.frombuffer(raw, dtype=np.float32).reshape(-1, channels)
+
+    assert channels == 2
+    assert pyloudnorm.Meter(48000).integrated_loudness(samples) == pytest.approx(-14.0, abs=0.5)
 
 
 def test_the_preview_is_1080p_and_reported_before_the_final(

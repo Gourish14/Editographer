@@ -5,12 +5,12 @@ Status: Planned → In progress → Done → Verified (phase gate passed). Templ
 | ID | Feature | Spec | Phase | Status |
 | --- | --- | --- | --- | --- |
 | FEAT-001 | Projects and resumable uploads (incl. 16 GB .OSV) | 07, 02 | 1 | In progress |
-| FEAT-002 | Beat, downbeat, energy and section detection | 05#B1 | 1 | Planned |
-| FEAT-003 | Shot detection and highlight scoring | 05#B2 | 1 (basic), 2 (full) | Planned |
-| FEAT-004 | Beat-synced pacing and style presets | 05#B3 | 1 (2 styles), 2 (all 7) | Planned |
-| FEAT-005 | Shot assignment to slots | 05#B4 | 1 | Planned |
-| FEAT-006 | Beat effects: zoom punch, shake, flash, transitions | 05#B5 | 1 (basic), 3 (full) | Planned |
-| FEAT-007 | Export to 6 ratios at 4K with HEVC NVENC | 00, 04 | 1 | Planned |
+| FEAT-002 | Beat, downbeat, energy and section detection | 05#B1 | 1 | Done |
+| FEAT-003 | Shot detection and highlight scoring | 05#B2 | 1 (basic), 2 (full) | In progress |
+| FEAT-004 | Beat-synced pacing and style presets | 05#B3 | 1 (2 styles), 2 (all 7) | In progress |
+| FEAT-005 | Shot assignment to slots | 05#B4 | 1 | Done |
+| FEAT-006 | Beat effects: zoom punch, shake, flash, transitions | 05#B5 | 1 (basic), 3 (full) | In progress |
+| FEAT-007 | Export to 6 ratios at 4K with HEVC NVENC | 00, 04 | 1 | Done |
 | FEAT-008 | Preview-first rendering and live progress | 04, 07 | 1 | In progress |
 | FEAT-009 | AI director with local LLM and fallback | 05#B10 | 2 | Planned |
 | FEAT-010 | Prompt control (prompt → constraints) | 05#B9, 06 | 2 | Planned |

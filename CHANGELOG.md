@@ -18,6 +18,10 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - Projects REST API [T-104].
 - Resumable tus uploads, local media storage, asset list and delete, thumbnail endpoint, ANALYZE jobs queued on upload [T-105].
 - Job queue, dispatcher, worker client, token-protected worker callbacks, restart recovery [T-106].
+- Video renderer: per-segment FFmpeg and NVENC, 1080p preview first, 10-bit HEVC final, all 6 ratios, zoom punch, shake, flash, -14 LUFS stereo music, `scripts/check_beats.py` [T-113].
+- Brain: pacing, shot assignment, beat effects, validation and the edit plan, for Velocity and Cinematic [T-112].
+- Shot detection, frame measurements, and scoring [T-111].
+- Music map: beats, downbeats, energy, sections and edit window; waveform endpoint [T-110].
 - Worker ingest: ffprobe, content hash, analysis cache, NVENC proxies, `.LRF` reuse, thumbnails, Osmo camera and D-Log M detection [T-109].
 - Python worker scaffold: FastAPI API, one-job runner with cancellation, GPU guard, NVML status, JSON logs, backend reports [T-108].
 - Render API with regenerate and cancel, live SSE events, video streaming with Range, style presets, system status [T-107].
