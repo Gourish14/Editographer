@@ -9,7 +9,7 @@ set "MIN_NODE_MAJOR=24"
 set "MIN_NODE_MINOR=15"
 set "UV_VERSION=0.13.6"
 
-echo [1/7] Checking Java, Node and the NVIDIA driver
+echo [1/9] Checking Java, Node and the NVIDIA driver
 where java >nul 2>nul || call :fail "Java not found. Install Java %MIN_JAVA_MAJOR% or newer."
 if errorlevel 1 exit /b 1
 set "JAVA_MAJOR="
@@ -39,7 +39,7 @@ if errorlevel 1 exit /b 1
 nvidia-smi -L >nul 2>nul || call :fail "nvidia-smi could not reach a GPU. Check the NVIDIA driver."
 if errorlevel 1 exit /b 1
 
-echo [2/7] Checking FFmpeg
+echo [2/9] Checking FFmpeg
 call :ensure_tool ffmpeg Gyan.FFmpeg
 if errorlevel 1 exit /b 1
 ffmpeg -hide_banner -encoders 2>nul | findstr /c:"hevc_nvenc" >nul
@@ -53,11 +53,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [3/7] Checking Ollama
+echo [3/9] Checking Ollama
 call :ensure_tool ollama Ollama.Ollama
 if errorlevel 1 exit /b 1
 
-echo [4/7] Installing uv and Python 3.12 into tools\
+echo [4/9] Installing uv and Python 3.12 into tools\
 if not exist "%UV_DIR%\uv.exe" (
     powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:UV_UNMANAGED_INSTALL='%UV_DIR%'; irm https://astral.sh/uv/%UV_VERSION%/install.ps1 | iex"
     if errorlevel 1 (
@@ -71,7 +71,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [5/7] Installing the worker's Python packages
+echo [5/9] Installing the worker's Python packages
 if exist "worker\pyproject.toml" (
     pushd worker
     uv sync
@@ -83,14 +83,42 @@ if exist "worker\pyproject.toml" (
     )
 )
 
-echo [6/7] Downloading model weights
+echo [6/9] Downloading model weights
 uv run --no-project python scripts\download_models.py
 if errorlevel 1 (
     call :fail "Model download failed. Run setup.bat again to resume."
     exit /b 1
 )
 
-echo [7/7] Creating config\local.env and data folders
+echo [7/9] Building the web app
+if exist "frontend\package.json" (
+    pushd frontend
+    call npm ci --no-fund --no-audit
+    set "BUILD_RESULT=!errorlevel!"
+    if "!BUILD_RESULT!"=="0" (
+        call npx ng build
+        set "BUILD_RESULT=!errorlevel!"
+    )
+    popd
+    if not "!BUILD_RESULT!"=="0" (
+        call :fail "The web app did not build."
+        exit /b 1
+    )
+    if exist "backend\src\main\resources\static" rmdir /s /q "backend\src\main\resources\static"
+    xcopy /e /i /q /y "frontend\dist\editographer\browser" "backend\src\main\resources\static" >nul
+)
+
+echo [8/9] Building the backend
+pushd backend
+call mvnw.cmd -B -ntp -q -DskipTests package
+set "BUILD_RESULT=!errorlevel!"
+popd
+if not "!BUILD_RESULT!"=="0" (
+    call :fail "The backend did not build."
+    exit /b 1
+)
+
+echo [9/9] Creating config\local.env and data folders
 if not exist "media" mkdir "media"
 if not exist "data" mkdir "data"
 if not exist "logs" mkdir "logs"
