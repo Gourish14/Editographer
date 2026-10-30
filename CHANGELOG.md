@@ -8,3 +8,4 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - Specs 00–12: overview, features, architecture, stack, pipeline, editing brain, edit plan schema, API and data, Osmo 360, local setup, roadmap, coding standards, spec-driven development process.
 - `CLAUDE.md` with the development command protocol.
 - Tracking files: tasks, features, bugs, change requests, decisions, dev log.
+- Repository scaffold: folder layout, `.gitignore`, `.gitattributes`, `.editorconfig`, `config/local.env.example` [T-101].

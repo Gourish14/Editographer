@@ -1,0 +1,17 @@
+* text=auto eol=lf
+
+# Windows scripts must stay CRLF or cmd.exe misparses labels
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary fixtures and wrappers
+*.jar binary
+*.mp4 binary
+*.mov binary
+*.wav binary
+*.mp3 binary
+*.flac binary
+*.m4a binary
+*.jpg binary
+*.jpeg binary
+*.png binary

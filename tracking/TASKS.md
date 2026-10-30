@@ -7,7 +7,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 
 | ID | Title | Status | Depends on |
 | --- | --- | --- | --- |
-| T-101 | Repository scaffold and conventions | Todo | — |
+| T-101 | Repository scaffold and conventions | Done | — |
 | T-102 | setup.bat and model download script | Todo | T-101 |
 | T-103 | Backend scaffold (Spring Boot 4, H2, Flyway, errors, logging, ArchUnit) | Todo | T-101 |
 | T-104 | Backend: projects feature | Todo | T-103 |
@@ -29,13 +29,14 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 ## Details
 
 ### T-101 — Repository scaffold and conventions
-- Status: Todo
+- Status: Done
 - Spec: 02-architecture.md#project-folder-layout, 11-coding-standards.md#10-git-and-versioning
 - Depends on: —
 - Acceptance criteria:
-  - [ ] Folder layout from 02 exists (`frontend/ backend/ worker/ models/ luts/ sfx/ media/ data/ config/ tools/ scripts/ logs/ tracking/`).
-  - [ ] `git init`, `.gitignore` (media, models, data, logs, venv, node_modules, target, local.env), `.editorconfig`, `VERSION` = 0.0.1.
-  - [ ] `config/local.env.example` with ports, paths, token placeholder.
+  - [x] Folder layout from 02 exists (`frontend/ backend/ worker/ models/ luts/ sfx/ media/ data/ config/ tools/ scripts/ logs/ tracking/`).
+  - [x] `git init`, `.gitignore` (media, models, data, logs, venv, node_modules, target, local.env), `.editorconfig`, `VERSION` = 0.0.1.
+  - [x] `config/local.env.example` with ports, paths, token placeholder.
+- Notes: Added `.gitattributes` so `.bat` files stay CRLF. Empty folders are kept with `.gitkeep`.
 
 ### T-102 — setup.bat and model download script
 - Status: Todo
