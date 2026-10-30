@@ -4,8 +4,10 @@ version = "0.0.1"
 description = "Editographer AI worker: analysis, planning and rendering"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "av>=16,<17",
     "beat-this>=1.1,<2",
     "fastapi>=0.162,<0.163",
+    "faster-whisper>=1.2.1",
     "httpx>=0.28,<0.29",
     "librosa>=1.0,<2",
     "mediapipe>=1.2,<2",
@@ -15,6 +17,7 @@ dependencies = [
     "pydantic-settings>=2.16,<3",
     "pyloudnorm>=0.2,<1",
     "scenedetect>=0.7,<1",
+    "skia-python>=144.1",
     "structlog>=26.1,<27",
     "torch==2.11.0",
     "torchaudio==2.11.0",
@@ -62,7 +65,7 @@ python_version = "3.12"
 files = ["app", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["pynvml", "beat_this.*", "librosa.*", "mediapipe.*", "pyloudnorm.*", "scenedetect.*"]
+module = ["pynvml", "beat_this.*", "librosa.*", "mediapipe.*", "pyloudnorm.*", "scenedetect.*", "skia.*", "faster_whisper.*"]
 ignore_missing_imports = true
 
 [tool.importlinter]
@@ -78,7 +81,7 @@ layers = ["app.main", "app.api | app.adapters", "app.application", "app.ports", 
 name = "Domain stays free of frameworks and I/O"
 type = "forbidden"
 source_modules = ["app.domain"]
-forbidden_modules = ["fastapi", "httpx", "pynvml", "torch", "cv2", "av", "structlog", "librosa", "beat_this", "numpy", "mediapipe", "scenedetect", "pyloudnorm"]
+forbidden_modules = ["fastapi", "httpx", "pynvml", "torch", "cv2", "av", "structlog", "librosa", "beat_this", "numpy", "mediapipe", "scenedetect", "pyloudnorm", "skia", "faster_whisper"]
 
 [[tool.importlinter.contracts]]
 name = "Application uses ports, not libraries"
