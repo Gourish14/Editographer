@@ -15,6 +15,22 @@
       "path": "mediapipe/blaze_face_short_range.tflite",
       "size": 229746,
       "sha256": "b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f"
+    },
+    {
+      "name": "rife-4.25",
+      "phase": 3,
+      "url": "https://github.com/HolyWu/vs-rife/releases/download/model/flownet_v4.25.pkl",
+      "path": "rife/flownet_v4.25.pkl",
+      "size": 24636301,
+      "sha256": "6615790efd627772917205db291f51cd392528a157ecbb2ecaeec3bff8eb6de2"
+    },
+    {
+      "name": "realesr-general-x4v3",
+      "phase": 4,
+      "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth",
+      "path": "realesrgan/realesr-general-x4v3.pth",
+      "size": 4885111,
+      "sha256": "8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292"
     }
   ]
 }
