@@ -1,44 +1,76 @@
 {
-    "models":  [
-                   {
-                       "name":  "beat-this-small0",
-                       "phase":  1,
-                       "url":  "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/small0.ckpt",
-                       "path":  "beat_this/small0.ckpt",
-                       "size":  8451101,
-                       "sha256":  "6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b"
-                   },
-                   {
-                       "name":  "mediapipe-blaze-face-short-range",
-                       "phase":  1,
-                       "url":  "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
-                       "path":  "mediapipe/blaze_face_short_range.tflite",
-                       "size":  229746,
-                       "sha256":  "b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f"
-                   },
-                   {
-                       "name":  "depth-anything-v2-small-config",
-                       "phase":  3,
-                       "url":  "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf/resolve/main/config.json",
-                       "path":  "depth_anything_v2_small/config.json",
-                       "size":  950,
-                       "sha256":  "c56698d3643dde1f83ea2212759e6b31a22b8f827246a36dd007ee8a22b3ff75"
-                   },
-                   {
-                       "name":  "depth-anything-v2-small-preprocessor_config",
-                       "phase":  3,
-                       "url":  "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf/resolve/main/preprocessor_config.json",
-                       "path":  "depth_anything_v2_small/preprocessor_config.json",
-                       "size":  775,
-                       "sha256":  "d41175c0d889477ca8fc67191e540faef14baf6275157b3fdecf78469e6bbf84"
-                   },
-                   {
-                       "name":  "depth-anything-v2-small-model",
-                       "phase":  3,
-                       "url":  "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf/resolve/main/model.safetensors",
-                       "path":  "depth_anything_v2_small/model.safetensors",
-                       "size":  99173660,
-                       "sha256":  "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70"
-                   }
-               ]
+  "models": [
+    {
+      "name": "beat-this-small0",
+      "phase": 1,
+      "url": "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/small0.ckpt",
+      "path": "beat_this/small0.ckpt",
+      "size": 8451101,
+      "sha256": "6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b"
+    },
+    {
+      "name": "mediapipe-blaze-face-short-range",
+      "phase": 1,
+      "url": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+      "path": "mediapipe/blaze_face_short_range.tflite",
+      "size": 229746,
+      "sha256": "b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f"
+    },
+    {
+      "name": "depth-anything-v2-small-config",
+      "phase": 3,
+      "url": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf/resolve/main/config.json",
+      "path": "depth_anything_v2_small/config.json",
+      "size": 950,
+      "sha256": "c56698d3643dde1f83ea2212759e6b31a22b8f827246a36dd007ee8a22b3ff75"
+    },
+    {
+      "name": "depth-anything-v2-small-preprocessor_config",
+      "phase": 3,
+      "url": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf/resolve/main/preprocessor_config.json",
+      "path": "depth_anything_v2_small/preprocessor_config.json",
+      "size": 775,
+      "sha256": "d41175c0d889477ca8fc67191e540faef14baf6275157b3fdecf78469e6bbf84"
+    },
+    {
+      "name": "depth-anything-v2-small-model",
+      "phase": 3,
+      "url": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf/resolve/main/model.safetensors",
+      "path": "depth_anything_v2_small/model.safetensors",
+      "size": 99173660,
+      "sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70"
+    },
+    {
+      "name": "faster-whisper-small-config",
+      "phase": 4,
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/main/config.json",
+      "path": "faster-whisper-small/config.json",
+      "size": 2370,
+      "sha256": "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828"
+    },
+    {
+      "name": "faster-whisper-small-model",
+      "phase": 4,
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/main/model.bin",
+      "path": "faster-whisper-small/model.bin",
+      "size": 483546902,
+      "sha256": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671"
+    },
+    {
+      "name": "faster-whisper-small-tokenizer",
+      "phase": 4,
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/main/tokenizer.json",
+      "path": "faster-whisper-small/tokenizer.json",
+      "size": 2203239,
+      "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab"
+    },
+    {
+      "name": "faster-whisper-small-vocabulary",
+      "phase": 4,
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/main/vocabulary.txt",
+      "path": "faster-whisper-small/vocabulary.txt",
+      "size": 459861,
+      "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913"
+    }
+  ]
 }
