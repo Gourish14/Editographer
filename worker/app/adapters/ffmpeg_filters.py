@@ -1,7 +1,8 @@
 """Builds FFmpeg filter graphs for a segment. Spec: specs/04-pipeline.md#stages (6)
 
 Pure text building, so it can be tested without FFmpeg. crop cannot change size per frame, so a
-zoom scales up per frame and then crops back to the output size.
+zoom scales up per frame and then crops back to the output size. crop reads iw and ih only once,
+so its offsets repeat the scale size expression instead of trusting them.
 """
 
 from __future__ import annotations
@@ -47,10 +48,13 @@ def _motion_filters(effects: Sequence[Effect], width: int, height: int) -> list[
     zoom = "+".join([f"{base:.3f}", *(_punch(effect) for effect in zooms)])
     offset_x = _shake_offset(shakes, SHAKE_SPEED_X, width)
     offset_y = _shake_offset(shakes, SHAKE_SPEED_Y, height)
+    scaled_width = f"2*trunc({width}*({zoom})/2)"
+    scaled_height = f"2*trunc({height}*({zoom})/2)"
     return [
-        f"scale=w='2*trunc({width}*({zoom})/2)':h='2*trunc({height}*({zoom})/2)'"
-        ":eval=frame:flags=lanczos",
-        f"crop={width}:{height}:x='(iw-{width})/2+({offset_x})':y='(ih-{height})/2+({offset_y})'",
+        f"scale=w='{scaled_width}':h='{scaled_height}':eval=frame:flags=lanczos",
+        f"crop={width}:{height}"
+        f":x='({scaled_width}-{width})/2+({offset_x})'"
+        f":y='({scaled_height}-{height})/2+({offset_y})'",
     ]
 
 
