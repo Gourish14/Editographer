@@ -187,6 +187,33 @@ def test_b1_a_song_with_no_drop_uses_its_loudest_stretch() -> None:
     assert window.end == pytest.approx(32.0)
 
 
+def test_b1_a_short_loud_tail_never_beats_a_full_length_window() -> None:
+    music = build_music_map(song([(8, 0.5), (4, 0.6), (2, 1.0)]))
+    no_drops = tuple(
+        section.model_copy(update={"kind": SectionKind.VERSE}) for section in music.sections
+    )
+
+    window = choose_edit_window(
+        music.downbeats, no_drops, music.energy, HOP, music.duration_sec, 16.0
+    )
+
+    assert window.end - window.start >= 16.0 - BAR
+
+
+def test_b1_a_song_shorter_than_the_length_uses_all_of_it() -> None:
+    music = build_music_map(song([(8, 0.5), (2, 1.0)]))
+    no_drops = tuple(
+        section.model_copy(update={"kind": SectionKind.VERSE}) for section in music.sections
+    )
+
+    window = choose_edit_window(
+        music.downbeats, no_drops, music.energy, HOP, music.duration_sec, 60.0
+    )
+
+    assert window.start == music.downbeats[0]
+    assert window.end == music.downbeats[-1]
+
+
 def test_b1_downbeats_are_guessed_every_four_beats_when_none_were_found() -> None:
     features = song(TYPICAL)
     music = build_music_map(

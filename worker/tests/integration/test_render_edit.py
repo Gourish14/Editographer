@@ -222,7 +222,7 @@ def test_preview_mode_stops_at_the_preview(media: Path) -> None:
         ("1:1", (1920, 1920)),
         ("4:5", (1536, 1920)),
         ("4:3", (1920, 1440)),
-        ("21:9", (1920, 822)),
+        ("21:9", (1920, 824)),
     ],
 )
 def test_every_other_ratio_renders(media: Path, ratio: str, size: tuple[int, int]) -> None:

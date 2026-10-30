@@ -77,13 +77,23 @@ def choose_edit_window(
         start = downbeats[max(0, drop_bar - LEAD_IN_BARS)]
         return EditWindow(start=start, end=_end_on_downbeat(downbeats, start, length_sec))
     best = max(
-        downbeats[:-1] or downbeats,
+        _full_length_starts(downbeats, length_sec),
         key=lambda start: _mean_between(
             energy, hop_sec, start, _end_on_downbeat(downbeats, start, length_sec)
         ),
     )
     end = _end_on_downbeat(downbeats, best, length_sec)
     return EditWindow(start=best, end=end if end > best else duration_sec)
+
+
+def _full_length_starts(downbeats: Sequence[float], length_sec: float) -> Sequence[float]:
+    """Downbeats that leave room for the whole length, so a loud tail cannot win by being short.
+
+    A song shorter than the length has none, and then only its first downbeat qualifies.
+    """
+    room = length_sec - fmean(_gaps(downbeats))
+    fitting = [start for start in downbeats if downbeats[-1] - start >= room]
+    return fitting or downbeats[:1]
 
 
 def _energy_curve(rms: Sequence[float], hop_sec: float) -> tuple[float, ...]:
