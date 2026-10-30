@@ -57,12 +57,12 @@ Toggle in render settings. When on:
 
 ## setup.bat (run once)
 
-1. Check Java, Node and NVIDIA driver (`nvidia-smi`); stop with a clear message if missing.
-2. Install FFmpeg (`winget install Gyan.FFmpeg`) if `ffmpeg -encoders` lacks `hevc_nvenc`.
-3. Install Ollama (`winget install Ollama.Ollama`), then `ollama pull qwen3:4b` and `ollama pull qwen2.5vl:3b`.
-4. Install uv, then `uv python install 3.12` and `uv sync` in `worker/` (PyTorch CUDA wheels).
-5. Download model weights into `models/` (Beat This!, YOLO nano, OpenCLIP, SAM 2.1 small, Depth Anything V2 Small, RIFE, Real-ESRGAN) with checksums.
-6. Download free LUTs and SFX into `luts/` and `sfx/`.
+1. Check Java ≥ 25, Node ≥ 24.15 and the NVIDIA driver (`nvidia-smi`); stop with a clear message if missing or too old.
+2. Install FFmpeg (`winget install Gyan.FFmpeg`) if `ffmpeg -encoders` lacks `hevc_nvenc`, then confirm `hevc_nvenc` really opens in 10-bit.
+3. Install Ollama (`winget install Ollama.Ollama`). `ollama pull qwen3:4b` and `ollama pull qwen2.5vl:3b` are added with Phase 2, the first phase that uses them.
+4. Install uv into `tools/uv`, then `uv python install 3.12` (into `tools/python`) and `uv sync` in `worker/` (PyTorch CUDA wheels). `scripts/env.bat` points uv at these folders.
+5. Download model weights into `models/` with checksums, resuming interrupted downloads. The list lives in `scripts/models.json`, tagged by phase: Beat This! and the MediaPipe face model in Phase 1, then YOLO nano, OpenCLIP, SAM 2.1 small, Depth Anything V2 Small, RIFE and Real-ESRGAN with the phases that use them.
+6. Download free LUTs and SFX into `luts/` and `sfx/` (added with Phase 3 and Phase 4).
 7. `npm ci` and `ng build` in `frontend/`, copy the build into `backend/src/main/resources/static/`.
 8. `mvnw package` in `backend/`.
 9. Create `config/local.env` (ports, paths, random worker token) and the `media/` and `data/` folders.

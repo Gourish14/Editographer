@@ -13,7 +13,7 @@
 
 | Tool | How | Why |
 | --- | --- | --- |
-| uv | official installer | Creates a private Python 3.12 inside `worker/.venv` (some AI libraries are not yet stable on 3.13) |
+| uv | official installer, into `tools/uv` | Creates a private Python 3.12 (`tools/python`) used by `worker/.venv` (some AI libraries are not yet stable on 3.13) |
 | FFmpeg (full build with NVENC) | `winget install Gyan.FFmpeg`, or portable copy into `tools/ffmpeg` | Decode, encode, filters, v360 |
 | Ollama | `winget install Ollama.Ollama` | Local LLM runtime |
 

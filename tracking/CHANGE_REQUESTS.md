@@ -8,8 +8,24 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-002 | RTX 3050 6 GB laptop profile, render modes, cool mode | Specs updated |
 | CR-003 | DJI Osmo 360 as primary camera | Specs updated |
 | CR-004 | Enterprise coding standards and spec-driven development process | Specs updated |
+| CR-005 | Raise setup version checks to what the stack needs | Implemented |
+| CR-006 | setup.bat installs models and assets per phase | Implemented |
 
 ## Details
+
+### CR-006 — setup.bat installs models and assets per phase
+- Status: Implemented
+- Requested: 2026-10-30, by Claude during T-102
+- Reason: Spec 09 lists every model, LLM pull, LUT and SFX in `setup.bat`, but T-102 asks for Phase 1 weights only. Pulling about 5 GB of Ollama models that no Phase 1 code uses slows setup for nothing.
+- Impact: specs `09-local-setup.md`; code `setup.bat`, `scripts/models.json`; Phase 2 must add the `ollama pull` step and its weights; Phase 3 and 4 add theirs. No risk to Phase 1.
+- Decision: auto-approved, does not touch a hard rule or the architecture.
+
+### CR-005 — Raise setup version checks to what the stack needs
+- Status: Implemented
+- Requested: 2026-10-30, by Claude during T-102
+- Reason: T-102 said Java ≥ 17 and Node ≥ 20.19, but the backend compiles for Java 25 (ADR-003) and Angular 22 requires Node `^22.22.3 || ^24.15.0`. A machine passing the old checks would fail later with a confusing build error. The target machine already has Java 25.0.1 and Node 24.19.0.
+- Impact: specs `09-local-setup.md`; task T-102 criteria; code `setup.bat`. No risk on the target machine.
+- Decision: auto-approved, does not touch a hard rule or the architecture.
 
 ### CR-004 — Enterprise coding standards and spec-driven development process
 - Status: Specs updated

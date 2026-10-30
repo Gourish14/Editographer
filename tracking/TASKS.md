@@ -8,9 +8,9 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | ID | Title | Status | Depends on |
 | --- | --- | --- | --- |
 | T-101 | Repository scaffold and conventions | Done | — |
-| T-102 | setup.bat and model download script | Todo | T-101 |
-| T-103 | Backend scaffold (Spring Boot 4, H2, Flyway, errors, logging, ArchUnit) | Todo | T-101 |
-| T-104 | Backend: projects feature | Todo | T-103 |
+| T-102 | setup.bat and model download script | In progress | T-101 |
+| T-103 | Backend scaffold (Spring Boot 4, H2, Flyway, errors, logging, ArchUnit) | Done | T-101 |
+| T-104 | Backend: projects feature | Done | T-103 |
 | T-105 | Backend: storage service and tus uploads, assets | Todo | T-104 |
 | T-106 | Backend: job queue, dispatcher, worker client, internal callbacks | Todo | T-105 |
 | T-107 | Backend: render API and SSE events | Todo | T-106 |
@@ -39,34 +39,37 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Added `.gitattributes` so `.bat` files stay CRLF. Empty folders are kept with `.gitkeep`.
 
 ### T-102 — setup.bat and model download script
-- Status: Todo
+- Status: In progress
 - Spec: 09-local-setup.md#setupbat-run-once, 03-tech-stack.md
 - Depends on: T-101
 - Acceptance criteria:
-  - [ ] Checks Java ≥ 17, Node ≥ 20.19, `nvidia-smi`; clear message on failure.
+  - [ ] Checks Java ≥ 25, Node ≥ 24.15, `nvidia-smi`; clear message on failure (CR-005).
   - [ ] Installs FFmpeg and Ollama via winget only if missing; verifies `hevc_nvenc`.
   - [ ] Installs uv, Python 3.12, `uv sync` in `worker/`.
   - [ ] `scripts/download_models.py` downloads Phase 1 weights with SHA-256 checks, idempotent.
   - [ ] Creates `config/local.env` with a random worker token; safe to re-run.
+- Notes: Written, but `setup.bat` has not completed a run yet (BUG-001). The downloader passes its 7 unit tests. `uv sync` can only be verified after T-108 creates `worker/pyproject.toml`.
 
 ### T-103 — Backend scaffold
-- Status: Todo
+- Status: Done
 - Spec: 11-coding-standards.md#3-backend--spring-boot-4-java-25, 07-api-and-data.md#database-h2-file-mode-flyway-migrations
 - Depends on: T-101
 - Acceptance criteria:
-  - [ ] Spring Boot 4 / Java 25 Maven project with wrapper; package layout from 11 §3.
-  - [ ] H2 file DB in `data/`, Flyway `V1__init.sql` with all tables from 07.
-  - [ ] `GlobalExceptionHandler` returns ProblemDetail with `errorCode`; `ErrorCode` enum.
-  - [ ] JSON logging to `logs/backend.log`, `RequestIdFilter` with MDC.
-  - [ ] ArchUnit test enforcing layer rules; JaCoCo, Spotless, Checkstyle configured.
+  - [x] Spring Boot 4 / Java 25 Maven project with wrapper; package layout from 11 §3.
+  - [x] H2 file DB in `data/`, Flyway `V1__init.sql` with all tables from 07.
+  - [x] `GlobalExceptionHandler` returns ProblemDetail with `errorCode`; `ErrorCode` enum.
+  - [x] JSON logging to `logs/backend.log`, `RequestIdFilter` with MDC.
+  - [x] ArchUnit test enforcing layer rules; JaCoCo, Spotless, Checkstyle configured.
+- Notes: Verified with `mvnw verify` under the test profile (in-memory H2, formatter unit tests). The packaged jar has not yet been started against the file database; that happens with T-117. `AppProperties` is added by the first task that needs a setting.
 
 ### T-104 — Backend: projects feature
-- Status: Todo
+- Status: Done
 - Spec: 07-api-and-data.md#backend-rest-api-spring-boot-port-8080
 - Depends on: T-103
 - Acceptance criteria:
-  - [ ] `GET/POST /api/projects`, `GET/DELETE /api/projects/{id}` across all four layers.
-  - [ ] Unit tests for service, `@WebMvcTest` for controller, `@DataJpaTest` for adapter.
+  - [x] `GET/POST /api/projects`, `GET/DELETE /api/projects/{id}` across all four layers.
+  - [x] Unit tests for service, `@WebMvcTest` for controller, `@DataJpaTest` for adapter.
+- Notes: Spec 07 says GET by id includes assets and renders, and DELETE removes media. T-105 adds assets and media deletion; T-107 adds renders. Until then GET returns the project only and DELETE removes database rows only.
 
 ### T-105 — Backend: storage and uploads
 - Status: Todo

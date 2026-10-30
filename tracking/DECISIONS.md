@@ -4,6 +4,8 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-009 | SpotBugs EI_EXPOSE_REP2 is off outside domain | Accepted |
+| ADR-008 | uv, its Python and its cache live in tools/ | Accepted |
 | ADR-007 | Hexagonal architecture, packaged by feature, in all three apps | Accepted |
 | ADR-006 | Brain = deterministic rules engine guided by an LLM | Accepted |
 | ADR-005 | Qwen3 4B and Qwen2.5-VL 3B via Ollama for the 6 GB GPU | Accepted |
@@ -11,6 +13,20 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-009 — SpotBugs EI_EXPOSE_REP2 is off outside domain
+- Date / Status: 2026-10-30 / Accepted
+- Context: Spec 11 requires constructor injection and a clean SpotBugs run. EI_EXPOSE_REP2 flags every injected collaborator as exposed mutable state, a false positive for Spring beans.
+- Options considered: annotate every class; drop to a High threshold, which hides real findings; exclude this one pattern in the layers that use injection.
+- Decision: Exclude EI_EXPOSE_REP2 in `api`, `application` and `infrastructure` packages through `backend/spotbugs-exclude.xml`. `domain` keeps the check.
+- Consequences: A real exposure of mutable state outside `domain` is not reported by this rule. Domain types are records, so the important boundary stays covered.
+
+### ADR-008 — uv, its Python and its cache live in tools/
+- Date / Status: 2026-10-30 / Accepted
+- Context: uv defaults to user-profile folders for its binary, Python builds and package cache, which breaks hard rule 3 (one project folder). ADR-004 did not say where the interpreter lives; a venv only links to it.
+- Options considered: uv defaults; a project-local install through `UV_UNMANAGED_INSTALL`, `UV_PYTHON_INSTALL_DIR` and `UV_CACHE_DIR`.
+- Decision: Install into `tools/uv`, `tools/python` and `tools/uv-cache`, set once in `scripts/env.bat`. The uv version is pinned in `setup.bat`.
+- Consequences: Deleting the project removes everything, and the user PATH is untouched. Every script must call `scripts/env.bat` first. PyTorch's cache lands in `tools/`, which is ignored by git.
 
 ### ADR-007 — Hexagonal architecture, packaged by feature
 - Date / Status: 2026-10-30 / Accepted
