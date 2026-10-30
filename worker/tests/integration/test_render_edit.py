@@ -174,7 +174,10 @@ def test_the_final_file_is_4k_hevc_10_bit_with_aac(media: Path, finished: Record
     assert (info.width, info.height) == (2160, 3840)
     assert info.bit_depth == 10
     assert info.fps == pytest.approx(30.0)
-    assert info.duration_sec == pytest.approx(8.0, abs=0.1)
+    plan = finished.done[0][1]
+    assert plan is not None
+    window = plan["music"]["end"] - plan["music"]["start"]
+    assert info.duration_sec == pytest.approx(window, abs=0.1)
 
 
 def test_the_preview_is_1080p_and_reported_before_the_final(
