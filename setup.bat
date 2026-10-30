@@ -90,6 +90,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Making free LUTs and SFX
+uv run --no-project python scripts\make_look_assets.py
+if errorlevel 1 (
+    call :fail "LUT and SFX generation failed. Run setup.bat again."
+    exit /b 1
+)
+
 echo [7/9] Building the web app
 if exist "frontend\package.json" (
     pushd frontend
