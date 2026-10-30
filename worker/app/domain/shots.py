@@ -40,3 +40,4 @@ class ShotMeasure(BaseModel):
     luma: float
     peak_time: float
     usable: tuple[TimeWindow, ...]
+    tags: tuple[str, ...] = ()
