@@ -40,12 +40,13 @@ nvidia-smi -L >nul 2>nul || call :fail "nvidia-smi could not reach a GPU. Check 
 if errorlevel 1 exit /b 1
 
 echo [2/7] Checking FFmpeg
-where ffmpeg >nul 2>nul
-if errorlevel 1 call :winget_install Gyan.FFmpeg
+call :ensure_tool ffmpeg Gyan.FFmpeg
 if errorlevel 1 exit /b 1
 ffmpeg -hide_banner -encoders 2>nul | findstr /c:"hevc_nvenc" >nul
-if errorlevel 1 call :winget_install Gyan.FFmpeg
-if errorlevel 1 exit /b 1
+if errorlevel 1 (
+    call :fail "This FFmpeg build has no hevc_nvenc. Remove it from PATH and run setup.bat again."
+    exit /b 1
+)
 ffmpeg -hide_banner -loglevel error -f lavfi -i color=black:s=1280x720:d=0.1 -pix_fmt p010le -c:v hevc_nvenc -f null - >nul 2>nul
 if errorlevel 1 (
     call :fail "FFmpeg cannot open hevc_nvenc in 10-bit. Update the NVIDIA driver."
@@ -53,8 +54,7 @@ if errorlevel 1 (
 )
 
 echo [3/7] Checking Ollama
-where ollama >nul 2>nul
-if errorlevel 1 call :winget_install Ollama.Ollama
+call :ensure_tool ollama Ollama.Ollama
 if errorlevel 1 exit /b 1
 
 echo [4/7] Installing uv and Python 3.12 into tools\
@@ -112,14 +112,17 @@ echo.
 echo Setup finished.
 exit /b 0
 
-:winget_install
-echo Installing %~1 with winget
-winget install --id %~1 --exact --silent --disable-interactivity --accept-package-agreements --accept-source-agreements
-if errorlevel 1 (
-    call :fail "winget could not install %~1."
-    exit /b 1
-)
-exit /b 0
+:ensure_tool
+rem Judged by finding the tool: winget's exit codes are negative, which errorlevel checks miss.
+where %~1 >nul 2>nul
+if not errorlevel 1 exit /b 0
+echo Installing %~2 with winget
+winget install --id %~2 --exact --silent --disable-interactivity --accept-package-agreements --accept-source-agreements
+call "%ROOT%\scripts\env.bat"
+where %~1 >nul 2>nul
+if not errorlevel 1 exit /b 0
+call :fail "%~2 was installed, but %~1 could not be found."
+exit /b 1
 
 :fail
 echo.
