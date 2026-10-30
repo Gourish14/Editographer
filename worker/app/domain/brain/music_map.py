@@ -25,6 +25,7 @@ DEFAULT_LENGTH_SEC = 60.0
 ONSET_SEARCH_SEC = 0.05
 BEATS_PER_BAR_WHEN_UNKNOWN = 4
 SECONDS_PER_MINUTE = 60.0
+BPM_SPAN_BEATS = 16
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,7 @@ def build_music_map(features: MusicFeatures, length_sec: float = DEFAULT_LENGTH_
     beats = _strengths(features.beats, features.onset_strength, features.hop_sec)
     sections = _sections(downbeats, energy, features.hop_sec, features.duration_sec)
     return MusicMap(
-        bpm=round(SECONDS_PER_MINUTE / median(_gaps(features.beats)), 2),
+        bpm=round(SECONDS_PER_MINUTE / _beat_period(features.beats), 2),
         duration_sec=features.duration_sec,
         beats=beats,
         downbeats=downbeats,
@@ -226,6 +227,18 @@ def _mean_between(values: Sequence[float], hop_sec: float, start: float, end: fl
     last = max(first + 1, round(end / hop_sec))
     window = values[first:last]
     return fmean(window) if window else 0.0
+
+
+def _beat_period(beats: Sequence[float]) -> float:
+    """Seconds per beat, measured over several beats.
+
+    Trackers report whole 20 ms frames, so one gap cannot tell 118 from 120 BPM. The median keeps
+    a stray beat from mattering.
+    """
+    span = min(BPM_SPAN_BEATS, len(beats) - 1)
+    return median(
+        (later - earlier) / span for earlier, later in zip(beats, beats[span:], strict=False)
+    )
 
 
 def _gaps(times: Sequence[float]) -> list[float]:
