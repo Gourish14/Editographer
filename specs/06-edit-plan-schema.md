@@ -31,7 +31,8 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
         { "type": "motionBlur", "amount": 0.6 }
       ],
       "transitionOut": { "type": "zoom_whip", "duration": 0.18 },
-      "source": { "cameraMode": "SINGLE_BOOST_4K", "logProfile": "DLOGM", "nativeFps": 120 }
+      "source": { "cameraMode": "SINGLE_BOOST_4K", "logProfile": "DLOGM", "nativeFps": 120 },
+      "keepAudio": false
     },
     {
       "id": "s2",
@@ -77,6 +78,8 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
 | `camera360.projection` | rectilinear, tinyplanet, rabbithole |
 | `ease` | linear, easeInOutCubic, easeOutExpo, easeInExpo, bezier(0.7,0,0.3,1) |
 | `source.cameraMode` | see `08-osmo360.md` |
+
+A `transitionOut` plays inside the last frames of its own segment and finishes on the segment's last frame, so the next segment still starts on its beat and frame counts never change. `planet_morph` renders as an FFmpeg circle wipe until a 360 shader exists. `keepAudio` keeps a segment's clip audio and ducks the music under it (B8); it defaults to false. When `sfx` is empty, a whoosh peaking on each transition's cut and an impact on each drop hit are derived from the plan.
 
 ## Prompt constraint JSON
 

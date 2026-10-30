@@ -123,7 +123,7 @@ def _style_grade(lut: Path, intensity: float) -> str:
     return (
         f"scale=flags=bicubic:in_color_matrix=bt709,format={RGB_FORMAT},"
         f"split[ungraded][graded];[graded]{_lut3d(lut)}[lut];"
-        f"[ungraded][lut]blend=all_mode=normal:all_opacity={intensity:.3f},{_back_to_work_format()}"
+        f"[lut][ungraded]blend=all_mode=normal:all_opacity={intensity:.3f},{_back_to_work_format()}"
     )
 
 
@@ -139,12 +139,14 @@ def _back_to_work_format() -> str:
 
 
 def _lut3d(lut: Path) -> str:
-    return f"lut3d=file='{escape_filter_path(lut)}'"
+    return f"lut3d=file={escape_filter_path(lut)}"
 
 
 def escape_filter_path(path: Path) -> str:
-    """Forward slashes, and the drive colon escaped so it does not end the option."""
-    return path.as_posix().replace(":", r"\:").replace("'", r"'\''")
+    """A path for a filter option. FFmpeg unescapes twice: once for the graph, once the option."""
+    option = path.as_posix().replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+    quoted = option.replace("'", "'\\''")
+    return f"'{quoted}'"
 
 
 def _grain(amount: float) -> str:
@@ -152,10 +154,17 @@ def _grain(amount: float) -> str:
 
 
 def _motion_blur(amount: float, windows: Sequence[tuple[float, float]]) -> str:
-    """Averages recent frames, like a longer shutter, only while something moves fast."""
+    """Averages recent frames, like a longer shutter, only while something moves fast.
+
+    tmix must keep running: its own enable option drops frames each time it switches on, so the
+    blurred copy is laid over the sharp one instead.
+    """
     frames = MOTION_BLUR_MIN_FRAMES + round(min(amount, 1.0) * MOTION_BLUR_EXTRA_FRAMES)
     moving = "+".join(f"between(t,{start:.4f},{end:.4f})" for start, end in windows)
-    return f"tmix=frames={frames}:enable='{moving}'"
+    return (
+        f"split[sharp][moving];[moving]tmix=frames={frames}[blurred];"
+        f"[sharp][blurred]overlay=format=yuv420p10:enable='{moving}'"
+    )
 
 
 def _motion_filters(effects: Sequence[Effect], width: int, height: int) -> list[str]:

@@ -73,7 +73,7 @@
 
 | Asset | Use |
 | --- | --- |
-| DJI official D-Log M to Rec.709 LUT | Normalize Osmo D-Log M footage |
+| DJI official Osmo 360 D-Log M to Rec.709 LUT V1 (free download from DJI, no license text published) | Normalize Osmo D-Log M footage |
 | DJI Studio / DJI Mimo | Optional stitched 360 export |
 
 ## License note

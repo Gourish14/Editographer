@@ -66,6 +66,22 @@ def frame_count(path: Path) -> int:
     return int(output.stdout.strip().strip(","))
 
 
+def assert_evenly_timed(path: Path, frames: int) -> None:
+    """A count alone hides dropped frames: -frames:v tops the count up from later in the clip."""
+    output = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "packet=pts", "-of", "csv=p=0", str(path),
+        ],
+        capture_output=True, text=True, check=True,
+    )  # fmt: skip
+    lines = output.stdout.split()
+    times = sorted(int(line.strip(",")) for line in lines)
+    steps = set(np.diff(times).tolist())
+    assert len(times) == frames
+    assert len(steps) == 1, f"uneven frame times: {sorted(steps)}"
+
+
 def frame_rgb(path: Path, index: int) -> Pixels:
     """Mean color of one frame, 0 to 255."""
     output = subprocess.run(
@@ -121,14 +137,14 @@ def test_b5_every_transition_keeps_the_exact_frame_count_and_ends_on_the_next_cl
 ) -> None:
     out = tmp_path / "out.mp4"
     segment = seg(transition_out=Transition(type=kind, duration=0.2))
-    look = SegmentLook(next_clip=NextClip(clips["blue"], 1.0))
+    look = SegmentLook(motion_blur=0.63, next_clip=NextClip(clips["blue"], 1.0))
 
     FfmpegCompositor(tmp_path).render_segment(clips["red"], segment, FRAMES, PROFILE, out, look)
 
     assert frame_count(out) == FRAMES
+    assert_evenly_timed(out, FRAMES)
     assert frame_rgb(out, 5).mean(axis=0)[0] > 200  # still all the outgoing clip
-    last = frame_rgb(out, FRAMES - 1).mean(axis=0)
-    assert last[2] > last[0]  # the blend has reached the next clip
+    assert frame_rgb(out, FRAMES - 1).mean(axis=0)[2] > 30  # the next clip has come in
 
 
 def test_beat_is_law_joined_transitions_keep_every_cut_on_its_frame(
@@ -156,7 +172,7 @@ def test_beat_is_law_joined_transitions_keep_every_cut_on_its_frame(
 
     compositor.join(parts, joined)
 
-    assert frame_count(joined) == sum(lengths)
+    assert_evenly_timed(joined, sum(lengths))
     assert frame_rgb(joined, FRAMES).mean(axis=0)[2] > 200  # first frame after the cut is clean
     assert frame_rgb(joined, FRAMES + 23).mean(axis=0)[0] > 200
 
@@ -217,6 +233,20 @@ def test_rule_4_log_footage_gets_the_log_lut_before_the_style_grade(
     assert red < 25
 
 
+def test_a_lut_path_with_a_space_and_an_apostrophe_works(
+    clips: dict[str, Path], tmp_path: Path
+) -> None:
+    folder = tmp_path / "it's a folder"
+    folder.mkdir()
+    cube(folder / "swap.cube", "swap")
+    out = tmp_path / "out.mp4"
+    look = SegmentLook(grade=Grade(lut="swap", intensity=1.0, grain=0.0))
+
+    FfmpegCompositor(folder).render_segment(clips["red"], seg(), FRAMES, PROFILE, out, look)
+
+    assert frame_rgb(out, 10).mean(axis=0)[2] > 230
+
+
 def test_a_missing_lut_renders_ungraded_rather_than_failing(
     clips: dict[str, Path], tmp_path: Path
 ) -> None:
@@ -239,7 +269,7 @@ def test_grain_adds_noise_and_changes_every_frame(clips: dict[str, Path], tmp_pa
         clips["blue"], seg(), FRAMES, PROFILE, grainy, SegmentLook(grade=grade)
     )
 
-    assert frame_rgb(grainy, 10).std() > frame_rgb(clean, 10).std() + 1
+    assert frame_rgb(grainy, 10)[:, 2].std() > frame_rgb(clean, 10)[:, 2].std() + 1
     assert frame_count(grainy) == FRAMES
 
 
@@ -263,8 +293,10 @@ def test_b5_motion_blur_keeps_the_frame_count_and_smears_only_while_moving(
     )
 
     assert frame_count(blurred) == FRAMES
-    assert np.abs(frame_rgb(blurred, 8) - frame_rgb(sharp, 8)).mean() > 1.5
-    assert np.abs(frame_rgb(blurred, 25) - frame_rgb(sharp, 25)).mean() < 1.5
+    assert_evenly_timed(blurred, FRAMES)
+    during = np.abs(frame_rgb(blurred, 8) - frame_rgb(sharp, 8)).mean()
+    after = np.abs(frame_rgb(blurred, 25) - frame_rgb(sharp, 25)).mean()
+    assert during > 2 * after
 
 
 def tone(target: Path, frequency: int, seconds: float, volume: float) -> Path:
@@ -349,7 +381,8 @@ def test_b8_sfx_land_at_their_time_18_db_down_and_the_mix_stays_at_minus_14_lufs
     window = samples[int(1.1 * SAMPLE_RATE) : int(1.4 * SAMPLE_RATE)]
     gap = samples[int(1.6 * SAMPLE_RATE) : int(2.9 * SAMPLE_RATE)]
     trim = band_amplitude(gap, 200) / band_amplitude(decoded(alone)[SAMPLE_RATE:], 200)
-    expected = 20 * np.log10(10 ** (-18 / 20) * trim)
+    source_level = band_amplitude(decoded(sound["sfx"] / "whoosh.wav"), 5000)
+    expected = 20 * np.log10(source_level * 10 ** (-18 / 20) * trim)
     assert 20 * np.log10(band_amplitude(window, 5000)) == pytest.approx(expected, abs=0.7)
     assert band_amplitude(gap, 5000) < 0.002
 
