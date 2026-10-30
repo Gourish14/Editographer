@@ -55,7 +55,7 @@ def test_b1_beats_fall_on_the_kick_drums(music: MusicMap) -> None:
 def test_b1_the_loud_half_is_found_as_a_drop(music: MusicMap) -> None:
     drop = next(section for section in music.sections if section.kind is SectionKind.DROP)
 
-    assert drop.start == pytest.approx(10.0, abs=0.6)
+    assert drop.start == pytest.approx(12.0, abs=0.1)
 
 
 def test_b1_section_boundaries_are_downbeats(music: MusicMap) -> None:

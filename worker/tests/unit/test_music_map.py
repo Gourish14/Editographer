@@ -170,8 +170,7 @@ def test_b1_a_song_with_no_drop_uses_its_loudest_stretch() -> None:
     music_without_drop = music.model_copy(
         update={
             "sections": tuple(
-                section.model_copy(update={"kind": SectionKind.VERSE})
-                for section in music.sections
+                section.model_copy(update={"kind": SectionKind.VERSE}) for section in music.sections
             )
         }
     )
