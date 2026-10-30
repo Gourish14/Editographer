@@ -30,12 +30,17 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-301 | Worker: RIFE and Real-ESRGAN adapters | Todo | T-117 |
 | T-302 | Worker: ramps, reframe and camera path rules, 360 projection (B6, B7, 08) | Todo | T-117 |
 | T-303 | Worker: LUTs, D-Log M, transitions, motion blur, SFX, ducking, cool mode | Todo | T-117 |
-| T-401 | Backend and frontend: render tonight, 360 preview, subject picker, live GPU status | Todo | T-117 |
+| T-401 | Backend and frontend: render tonight, 360 preview, subject picker, live GPU status | Done | T-117 |
 | T-402 | Worker: speech detection, text rules, text layers | Done | T-117 |
 | T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
 | T-404 | Wire photos, speech and text into analysis, planner and renderer | Todo | T-202, T-303, T-402, T-403 |
 
 ## Details
+
+### T-401 — Backend and frontend: render tonight, 360 preview, subject picker
+- Status: Done
+- Spec: 09-local-setup.md#cool-mode, 08-osmo360.md#ui-additions, 07-api-and-data.md#angular-screens
+- Notes: Migration V3. The three.js preview has not been seen in a real browser, because the tests have no WebGL. It assumes thumbnails of 360 clips are equirect frames, which is unchecked. The worker does not read `followPoint` yet. "Make another version" drops `startAt`. Skipped prompts are found by matching "skipped" in the plan log.
 
 ### T-404 — Wire photos, speech and text into the pipeline
 - Status: Todo

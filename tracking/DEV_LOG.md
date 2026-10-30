@@ -3,8 +3,8 @@
 Newest first. One entry per working session (template in `specs/12-spec-driven-development.md` §8).
 
 ## 2026-10-31 — Session 4 (overnight, multi-agent)
-- Done: T-402, T-403.
-- In progress: T-118, T-201, T-202, T-301, T-302, T-303, T-401.
+- Done: T-401, T-402, T-403.
+- In progress: T-118, T-201, T-202, T-301, T-302, T-303.
 - Found: ADR-014.
 - Next: merge the running agents, then T-404.
 - Needs user: real footage for the gate; push from GitHub Desktop.
