@@ -18,6 +18,7 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - Projects REST API [T-104].
 - Resumable tus uploads, local media storage, asset list and delete, thumbnail endpoint, ANALYZE jobs queued on upload [T-105].
 - Job queue, dispatcher, worker client, token-protected worker callbacks, restart recovery [T-106].
+- Angular app: projects, uploads, asset grid, waveform, render settings, live progress and result; `start.bat`, `stop.bat`, `scripts/check.bat`, browser error reporting [T-114] [T-115] [T-116] [T-117].
 - Video renderer: per-segment FFmpeg and NVENC, 1080p preview first, 10-bit HEVC final, all 6 ratios, zoom punch, shake, flash, -14 LUFS stereo music, `scripts/check_beats.py` [T-113].
 - Brain: pacing, shot assignment, beat effects, validation and the edit plan, for Velocity and Cinematic [T-112].
 - Shot detection, frame measurements, and scoring [T-111].

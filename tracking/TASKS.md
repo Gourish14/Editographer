@@ -20,13 +20,33 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-111 | Worker: shot detection and basic scoring (B2 partial) | Done | T-109 |
 | T-112 | Worker brain: pacing, assignment, basic effects, validation → edit plan | Done | T-110, T-111 |
 | T-113 | Worker render: compose, crop all ratios, effects, audio, NVENC encode, Preview + Fast | Done | T-112 |
-| T-114 | Frontend scaffold (Angular, structure, API clients, interceptors, lint, tests) | Todo | T-101 |
-| T-115 | Frontend: projects, upload, asset grid, music waveform | Todo | T-114, T-105 |
-| T-116 | Frontend: render settings, live progress, result player and download | Todo | T-115, T-107 |
-| T-117 | start.bat / stop.bat / scripts/check.bat, Angular build into backend | Todo | T-107, T-113, T-116 |
+| T-114 | Frontend scaffold (Angular, structure, API clients, interceptors, lint, tests) | Done | T-101 |
+| T-115 | Frontend: projects, upload, asset grid, music waveform | Done | T-114, T-105 |
+| T-116 | Frontend: render settings, live progress, result player and download | Done | T-115, T-107 |
+| T-117 | start.bat / stop.bat / scripts/check.bat, Angular build into backend | Done | T-107, T-113, T-116 |
 | T-118 | Phase 1 gate: end-to-end run, beat-accuracy check, timing | Todo | T-117 |
+| T-201 | Worker: full shot analysis (YOLO, OpenCLIP tags and aesthetics, full B2) | Todo | T-117 |
+| T-202 | Worker: prompt constraints, Ollama director, keyword fallback, 7 styles (B9, B10) | Todo | T-117 |
 
 ## Details
+
+### T-201 — Worker: full shot analysis
+- Status: Todo
+- Spec: 05-editing-brain.md#b2-shot-scoring-scoringpy, 09-local-setup.md#6-gb-vram-model-profile
+- Depends on: T-117
+- Acceptance criteria:
+  - [ ] YOLO nano objects and OpenCLIP ViT-B/32 tags and aesthetics on proxies, loaded through `GpuGuard`.
+  - [ ] Full B2 formula with A and Ae; rejects duplicates at CLIP cosine > 0.95.
+  - [ ] Tags, motion direction and dominant color stored per shot; weights added to `scripts/models.json` with real checksums.
+
+### T-202 — Worker: prompt constraints and director
+- Status: Todo
+- Spec: 05-editing-brain.md#b9-prompt-to-constraints-promptpy, #b10-llm-director-and-fallback-directorpy, 06-edit-plan-schema.md#prompt-constraint-json
+- Depends on: T-117
+- Acceptance criteria:
+  - [ ] Pydantic constraint model; Ollama adapter with `format: json`, `keep_alive: 0`, one retry; keyword fallback; the B10 style fallback.
+  - [ ] All 7 styles in `style_rules.py`; constraints change the plan: tags, `slowmoAt` recorded, `effectsOff`, `fxIntensity`, `durationSec`, order; unmapped requests in `plan.log`.
+  - [ ] With Ollama stopped an edit is still produced; `setup.bat` pulls both models.
 
 ### T-101 — Repository scaffold and conventions
 - Status: Done
@@ -168,7 +188,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: First real end-to-end edit through the live API: 44 cuts, worst 16.7 ms from the grid, 719 of 719 frames, 79 s render for 24 s of 4K on simple test clips. Compositor is FFmpeg filters (ADR-012), which encode as they compose, so progress groups compose and encode. Crop is center only: subject tracking is Phase 3 (B7), and spec 10 lists subject crop for Phase 1, recorded in CR-012.
 
 ### T-114 — Frontend scaffold
-- Status: Todo
+- Status: Done
 - Spec: 11-coding-standards.md#5-frontend--angular
 - Depends on: T-101
 - Acceptance criteria:
@@ -177,7 +197,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] ESLint, Prettier, Vitest configured; one passing test per service.
 
 ### T-115 — Frontend: projects and uploads
-- Status: Todo
+- Status: Done
 - Spec: 07-api-and-data.md#angular-screens
 - Depends on: T-114, T-105
 - Acceptance criteria:
@@ -185,7 +205,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] Asset grid with status and badges; music waveform with beats (wavesurfer.js).
 
 ### T-116 — Frontend: render flow
-- Status: Todo
+- Status: Done
 - Spec: 07-api-and-data.md#angular-screens, 00-overview.md#user-choices
 - Depends on: T-115, T-107
 - Acceptance criteria:
@@ -194,7 +214,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] Result page with player, download, "Make another version".
 
 ### T-117 — Scripts and build integration
-- Status: Todo
+- Status: Done
 - Spec: 09-local-setup.md#startbat, 11-coding-standards.md#11-review-checklist-run-before-marking-any-task-done
 - Depends on: T-107, T-113, T-116
 - Acceptance criteria:

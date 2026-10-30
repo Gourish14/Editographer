@@ -11,7 +11,7 @@ if errorlevel 1 set "FAILED=%FAILED% scripts"
 
 echo === Backend
 cd /d "%ROOT%\backend"
-call mvnw.cmd -B -ntp clean verify
+call .\mvnw.cmd -B -ntp clean verify
 if errorlevel 1 set "FAILED=%FAILED% backend"
 
 echo === Worker

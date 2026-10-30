@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-013 | Phase 2 starts before the real-footage Phase 1 gate | Accepted |
 | ADR-012 | Phase 1 composites with FFmpeg filters | Accepted |
 | ADR-011 | The beat grid includes midpoints, and energy is scaled against the peak | Accepted |
 | ADR-010 | Osmo camera modes are detected from width and DJI metadata | Accepted |
@@ -16,6 +17,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-013 — Phase 2 starts before the real-footage Phase 1 gate
+- Date / Status: 2026-10-31 / Accepted
+- Context: Spec 10 says not to start a phase until the previous gate passes, but the T-118 gate needs real footage the user has not supplied, and the user asked to finish development rapidly with multiple agents and without check-ins.
+- Options considered: stop at the gate; run the gate on generated media and continue.
+- Decision: Run T-118 on generated media, continue to Phase 2, and keep the real-footage run open as a named blocker.
+- Consequences: Later phases build on B1 and B2 thresholds not yet proven on real songs and clips, so they may need retuning at the real gate.
 
 ### ADR-012 — Phase 1 composites with FFmpeg filters
 - Date / Status: 2026-10-31 / Accepted

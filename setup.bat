@@ -110,7 +110,7 @@ if exist "frontend\package.json" (
 
 echo [8/9] Building the backend
 pushd backend
-call mvnw.cmd -B -ntp -q -DskipTests package
+call .\mvnw.cmd -B -ntp -q -DskipTests package
 set "BUILD_RESULT=!errorlevel!"
 popd
 if not "!BUILD_RESULT!"=="0" (

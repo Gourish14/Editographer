@@ -33,7 +33,7 @@ if %TRIES% GEQ 90 (
     echo Editographer did not start in time. See logs\backend.log and logs\worker.log.
     exit /b 1
 )
-timeout /t 1 /nobreak >nul
+ping -n 2 127.0.0.1 >nul
 goto wait
 
 :ready
