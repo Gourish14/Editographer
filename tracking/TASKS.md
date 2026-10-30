@@ -11,7 +11,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-102 | setup.bat and model download script | In progress | T-101 |
 | T-103 | Backend scaffold (Spring Boot 4, H2, Flyway, errors, logging, ArchUnit) | Done | T-101 |
 | T-104 | Backend: projects feature | Done | T-103 |
-| T-105 | Backend: storage service and tus uploads, assets | Todo | T-104 |
+| T-105 | Backend: storage service and tus uploads, assets | Done | T-104 |
 | T-106 | Backend: job queue, dispatcher, worker client, internal callbacks | Todo | T-105 |
 | T-107 | Backend: render API and SSE events | Todo | T-106 |
 | T-108 | Worker scaffold (uv, FastAPI, settings, logging, GPU guard, health) | Todo | T-101 |
@@ -72,14 +72,15 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Spec 07 says GET by id includes assets and renders, and DELETE removes media. T-105 adds assets and media deletion; T-107 adds renders. Until then GET returns the project only and DELETE removes database rows only.
 
 ### T-105 — Backend: storage and uploads
-- Status: Todo
+- Status: Done
 - Spec: 02-architecture.md#storage-replaces-minio, 07-api-and-data.md
 - Depends on: T-104
 - Acceptance criteria:
-  - [ ] `MediaReader/MediaWriter/MediaLocator` ports + `LocalStorageAdapter` with contract test.
-  - [ ] tus endpoint at `/api/uploads/**`, resumable, files land in `media/uploads/{projectId}/`.
-  - [ ] Upload complete → `asset` row (PENDING) + ANALYZE job queued.
-  - [ ] Asset list, thumbnail, delete endpoints.
+  - [x] `MediaReader/MediaWriter/MediaLocator` ports + `LocalStorageAdapter` with contract test.
+  - [x] tus endpoint at `/api/uploads/**`, resumable, files land in `media/uploads/{projectId}/`.
+  - [x] Upload complete → `asset` row (PENDING) + ANALYZE job queued.
+  - [x] Asset list, thumbnail, delete endpoints.
+- Notes: `UploadFlowIntegrationTest` runs a real tus conversation with a resume. Finished files are renamed, not copied. The thumbnail endpoint answers 404 until T-109 writes the file (CR-007). `GET /api/projects/{id}` now includes assets, and DELETE removes the project's upload folder. `JobQueue` only has `enqueue` so far; T-106 adds dispatching and must mark a job FAILED when its asset was deleted while it waited. Not yet tried with a real multi-GB file.
 
 ### T-106 — Backend: job queue and worker integration
 - Status: Todo

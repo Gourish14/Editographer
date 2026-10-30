@@ -2,6 +2,13 @@
 
 Newest first. One entry per working session (template in `specs/12-spec-driven-development.md` §8).
 
+## 2026-10-31 — Session 2
+- Done: T-105.
+- In progress: T-102 (BUG-001 fix committed, full `setup.bat` run under way).
+- Found: CR-007, CR-008.
+- Next: T-106.
+- Needs user: nothing.
+
 ## 2026-10-30 — Session 1
 - Done: T-101, T-103, T-104.
 - In progress: T-102 (scripts written, downloader tested; `setup.bat` stops after installing FFmpeg).

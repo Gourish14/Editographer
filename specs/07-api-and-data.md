@@ -8,7 +8,7 @@ Single-user local app: no login. The backend binds to `localhost` only.
 | --- | --- | --- |
 | GET | /api/projects | List projects |
 | POST | /api/projects | Create a project `{ name }` |
-| GET | /api/projects/{id} | Project with assets and renders |
+| GET | /api/projects/{id} | `{ project, assets[], renders[] }` (renders join in T-107) |
 | DELETE | /api/projects/{id} | Delete a project and its media |
 | POST/PATCH/HEAD | /api/uploads/** | tus resumable upload; metadata `{ projectId, filename }` |
 | GET | /api/projects/{id}/assets | Assets with analysis status, thumbnails, camera mode |

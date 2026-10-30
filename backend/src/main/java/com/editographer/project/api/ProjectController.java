@@ -1,6 +1,9 @@
 package com.editographer.project.api;
 
+import com.editographer.asset.api.dto.AssetResponse;
+import com.editographer.asset.application.AssetService;
 import com.editographer.project.api.dto.CreateProjectRequest;
+import com.editographer.project.api.dto.ProjectDetailResponse;
 import com.editographer.project.api.dto.ProjectResponse;
 import com.editographer.project.application.ProjectService;
 import com.editographer.project.domain.ProjectId;
@@ -27,9 +30,11 @@ public final class ProjectController {
   static final String BASE_PATH = "/api/projects";
 
   private final ProjectService service;
+  private final AssetService assets;
 
-  public ProjectController(ProjectService service) {
+  public ProjectController(ProjectService service, AssetService assets) {
     this.service = service;
+    this.assets = assets;
   }
 
   @GetMapping
@@ -44,8 +49,11 @@ public final class ProjectController {
   }
 
   @GetMapping("/{id}")
-  public ProjectResponse get(@PathVariable("id") UUID id) {
-    return ProjectResponse.from(service.getProject(new ProjectId(id)));
+  public ProjectDetailResponse get(@PathVariable("id") UUID id) {
+    ProjectId projectId = new ProjectId(id);
+    return new ProjectDetailResponse(
+        ProjectResponse.from(service.getProject(projectId)),
+        assets.listAssets(projectId).stream().map(AssetResponse::from).toList());
   }
 
   @DeleteMapping("/{id}")

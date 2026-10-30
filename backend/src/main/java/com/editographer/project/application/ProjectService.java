@@ -1,10 +1,14 @@
 package com.editographer.project.application;
 
+import com.editographer.asset.domain.Asset;
 import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
 import com.editographer.project.domain.Project;
 import com.editographer.project.domain.ProjectId;
 import com.editographer.project.domain.ProjectRepository;
+import com.editographer.storage.domain.MediaWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -15,10 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
 
   private final ProjectRepository projects;
+  private final MediaWriter mediaWriter;
   private final Clock clock;
 
-  public ProjectService(ProjectRepository projects, Clock clock) {
+  public ProjectService(ProjectRepository projects, MediaWriter mediaWriter, Clock clock) {
     this.projects = projects;
+    this.mediaWriter = mediaWriter;
     this.clock = clock;
   }
 
@@ -43,6 +49,11 @@ public class ProjectService {
       throw notFound(id);
     }
     projects.deleteById(id);
+    try {
+      mediaWriter.delete(Asset.projectFolder(id));
+    } catch (IOException exception) {
+      throw new UncheckedIOException("Could not delete media of project " + id.value(), exception);
+    }
   }
 
   private static ApiException notFound(ProjectId id) {

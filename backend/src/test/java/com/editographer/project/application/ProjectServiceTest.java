@@ -3,16 +3,21 @@ package com.editographer.project.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.editographer.asset.domain.Asset;
 import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
 import com.editographer.project.domain.Project;
 import com.editographer.project.domain.ProjectId;
 import com.editographer.project.domain.ProjectRepository;
+import com.editographer.storage.domain.MediaWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -25,8 +30,9 @@ class ProjectServiceTest {
   private static final Instant NOW = Instant.parse("2026-10-30T10:00:00Z");
 
   private final ProjectRepository repository = mock(ProjectRepository.class);
+  private final MediaWriter mediaWriter = mock(MediaWriter.class);
   private final ProjectService service =
-      new ProjectService(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+      new ProjectService(repository, mediaWriter, Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
   void createStampsTheProjectWithTheClockAndSavesIt() {
@@ -67,13 +73,23 @@ class ProjectServiceTest {
   }
 
   @Test
-  void deleteRemovesAnExistingProject() {
+  void deleteRemovesAnExistingProjectAndItsMedia() throws IOException {
     ProjectId id = ProjectId.newId();
     when(repository.existsById(id)).thenReturn(true);
 
     service.deleteProject(id);
 
     verify(repository).deleteById(id);
+    verify(mediaWriter).delete(Asset.projectFolder(id));
+  }
+
+  @Test
+  void mediaThatCannotBeDeletedFailsTheOperation() throws IOException {
+    ProjectId id = ProjectId.newId();
+    when(repository.existsById(id)).thenReturn(true);
+    doThrow(new IOException("locked")).when(mediaWriter).delete(any());
+
+    assertThatThrownBy(() -> service.deleteProject(id)).isInstanceOf(UncheckedIOException.class);
   }
 
   @Test

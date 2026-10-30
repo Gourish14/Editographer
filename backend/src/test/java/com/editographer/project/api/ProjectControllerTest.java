@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.editographer.asset.application.AssetService;
 import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
 import com.editographer.common.error.GlobalExceptionHandler;
@@ -36,6 +37,7 @@ class ProjectControllerTest {
 
   @Autowired private MockMvc mvc;
   @MockitoBean private ProjectService service;
+  @MockitoBean private AssetService assets;
 
   @Test
   void listReturnsProjects() throws Exception {
@@ -93,7 +95,8 @@ class ProjectControllerTest {
 
     mvc.perform(get("/api/projects/" + project.id().value()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.name").value("Goa trip"));
+        .andExpect(jsonPath("$.project.name").value("Goa trip"))
+        .andExpect(jsonPath("$.assets").isArray());
   }
 
   @Test

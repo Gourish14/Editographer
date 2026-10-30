@@ -10,8 +10,26 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-004 | Enterprise coding standards and spec-driven development process | Specs updated |
 | CR-005 | Raise setup version checks to what the stack needs | Implemented |
 | CR-006 | setup.bat installs models and assets per phase | Implemented |
+| CR-007 | Define where asset thumbnails come from | Proposed |
+| CR-008 | Define how .LRF proxies link to their .OSV, and which photo formats count | Proposed |
 
 ## Details
+
+### CR-008 — Define how .LRF proxies link to their .OSV, and which photo formats count
+- Status: Proposed
+- Requested: 2026-10-31, by Claude during T-105
+- Reason: Spec 04 matches an `.LRF` by name, but uploads are stored as `{assetId}.{ext}`, so the stored name no longer matches. An `.LRF` also should not appear as a separate clip in an edit. Separately, spec 00 lists "DJI panoramic photos" without a format.
+- Impact: specs `00`, `04`, `08`; T-109 ingest; asset model. Risk: duplicate shots if `.LRF` files are analyzed as clips.
+- Assumption meanwhile: `.lrf` is accepted as VIDEO and `.dng` as PHOTO; the original filename is kept on the asset, so T-109 can match by name within a project.
+- Decision: pending, to settle in T-109.
+
+### CR-007 — Define where asset thumbnails come from
+- Status: Proposed
+- Requested: 2026-10-31, by Claude during T-105
+- Reason: Spec 07 has `GET /api/assets/{id}/thumbnail`, but no spec or task says who creates the image.
+- Impact: specs `02`, `04`, `07`; T-109 must write it.
+- Assumption meanwhile: the worker writes `media/cache/{fileHash}/thumbnail.jpg` during ingest; the backend serves it and answers 404 until it exists.
+- Decision: pending, to settle in T-109.
 
 ### CR-006 — setup.bat installs models and assets per phase
 - Status: Implemented

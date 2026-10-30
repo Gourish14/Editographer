@@ -19,6 +19,7 @@
   <properties>
     <java.version>25</java.version>
     <archunit.version>1.5.1</archunit.version>
+    <tus-java-server.version>1.0.0-3.3</tus-java-server.version>
     <checkstyle.version>14.3.0</checkstyle.version>
     <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
     <jacoco-plugin.version>0.8.16</jacoco-plugin.version>
@@ -43,6 +44,11 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>me.desair.tus</groupId>
+      <artifactId>tus-java-server</artifactId>
+      <version>${tus-java-server.version}</version>
     </dependency>
     <dependency>
       <groupId>com.h2database</groupId>
