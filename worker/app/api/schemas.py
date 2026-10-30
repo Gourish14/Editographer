@@ -45,9 +45,10 @@ class AnalyzeRequest(ApiModel):
     asset_id: str
     path: str
     type: AssetType
+    proxy_source: str | None = None
 
     def to_job(self) -> AnalyzeJob:
-        return AnalyzeJob(self.job_id, self.asset_id, self.path, self.type)
+        return AnalyzeJob(self.job_id, self.asset_id, self.path, self.type, self.proxy_source)
 
 
 class RenderSettingsBody(ApiModel):

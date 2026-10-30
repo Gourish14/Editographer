@@ -5,7 +5,7 @@ The app turns raw clips, photos and a music track into a finished, beat-synced, 
 ## Inputs
 
 - Raw videos (built for DJI Osmo 360 single-lens and 360 footage; any MP4/MOV also works)
-- Raw photos (JPG, PNG, HEIC, DJI panoramic photos)
+- Raw photos (JPG, PNG, HEIC, DJI panoramic photos as DNG or JPG)
 - One or more music tracks (MP3, WAV, M4A, FLAC)
 - Optional text prompt
 

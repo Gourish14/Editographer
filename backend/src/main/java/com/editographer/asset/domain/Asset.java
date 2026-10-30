@@ -28,6 +28,8 @@ public record Asset(
     Instant createdAt) {
 
   private static final String UPLOADS_FOLDER = "uploads";
+  private static final String PROXIES_FOLDER = "proxies";
+  private static final String CAMERA_PROXY_EXTENSION = "lrf";
 
   public Asset {
     Objects.requireNonNull(id, "id");
@@ -107,6 +109,26 @@ public record Asset(
         result.logProfile(),
         result.analysisPath(),
         createdAt);
+  }
+
+  /** True for an Osmo .LRF: it speeds up analysis of its .OSV and is never a clip itself. */
+  public boolean isCameraProxy() {
+    return CAMERA_PROXY_EXTENSION.equals(AssetType.extensionOf(filename));
+  }
+
+  /** True when this file is the camera proxy made alongside the other asset. */
+  public boolean isCameraProxyOf(Asset other) {
+    return isCameraProxy() && !other.isCameraProxy() && stem().equalsIgnoreCase(other.stem());
+  }
+
+  /** The 720p proxy the worker makes for a video. */
+  public MediaPath workerProxyPath() {
+    return new MediaPath(PROXIES_FOLDER + "/" + id.value() + ".mp4");
+  }
+
+  private String stem() {
+    int dot = filename.lastIndexOf('.');
+    return dot < 0 ? filename : filename.substring(0, dot);
   }
 
   /** The folder that holds every upload of a project. */

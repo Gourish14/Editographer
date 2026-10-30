@@ -67,6 +67,7 @@ public class AssetService {
     assets.deleteById(id);
     try {
       mediaWriter.delete(asset.path());
+      mediaWriter.delete(asset.workerProxyPath());
     } catch (IOException exception) {
       throw new UncheckedIOException("Could not delete the file of asset " + id.value(), exception);
     }

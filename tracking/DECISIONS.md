@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-010 | Osmo camera modes are detected from width and DJI metadata | Accepted |
 | ADR-009 | SpotBugs EI_EXPOSE_REP2 is off outside domain | Accepted |
 | ADR-008 | uv, its Python and its cache live in tools/ | Accepted |
 | ADR-007 | Hexagonal architecture, packaged by feature, in all three apps | Accepted |
@@ -13,6 +14,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-010 — Osmo camera modes are detected from width and DJI metadata
+- Date / Status: 2026-10-31 / Accepted
+- Context: Spec 08 lists the modes but not how to tell them apart. Real Osmo 360 metadata has not been inspected yet, and Boost 4K frame sizes are unknown.
+- Options considered: wait for real footage; detect by frame width plus any tag containing "dji".
+- Decision: 2:1 frames or `.OSV` are 360, split at 7000 and 5000 px wide. A DJI tag means single-lens, split at 4800, 3800 and 2600 px wide.
+- Consequences: Thresholds live in `domain/media.py` and must be checked against real clips at the Phase 3 gate. A wrong guess only changes the badge and reframe defaults, and Phase 1 treats every mode the same.
 
 ### ADR-009 — SpotBugs EI_EXPOSE_REP2 is off outside domain
 - Date / Status: 2026-10-30 / Accepted

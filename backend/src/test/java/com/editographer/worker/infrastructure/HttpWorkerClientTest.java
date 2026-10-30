@@ -113,7 +113,8 @@ class HttpWorkerClientTest {
     UUID jobId = UUID.randomUUID();
 
     client()
-        .submitAnalyze(new AnalyzeJobRequest(jobId, UUID.randomUUID(), "uploads/a.mp4", "VIDEO"));
+        .submitAnalyze(
+            new AnalyzeJobRequest(jobId, UUID.randomUUID(), "uploads/a.mp4", "VIDEO", null));
 
     HttpExchange exchange = received.get("/jobs/analyze");
     assertThat(exchange.getRequestHeaders().getFirst("X-Worker-Token")).isEqualTo(TOKEN);
@@ -137,7 +138,7 @@ class HttpWorkerClientTest {
   void aRefusedJobBecomesWorkerUnavailable() {
     status = 409;
     AnalyzeJobRequest request =
-        new AnalyzeJobRequest(UUID.randomUUID(), UUID.randomUUID(), "a.mp4", "VIDEO");
+        new AnalyzeJobRequest(UUID.randomUUID(), UUID.randomUUID(), "a.mp4", "VIDEO", null);
 
     assertThatThrownBy(() -> client().submitAnalyze(request))
         .isInstanceOfSatisfying(

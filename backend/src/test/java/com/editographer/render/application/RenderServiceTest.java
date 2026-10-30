@@ -125,6 +125,14 @@ class RenderServiceTest {
   }
 
   @Test
+  void anLrfDoesNotCountAsAClip() {
+    Asset proxy = Asset.uploaded(projectId, AssetType.VIDEO, "PANO.LRF", 1L, NOW);
+    when(assets.findByProject(projectId)).thenReturn(List.of(asset(AssetType.MUSIC), proxy));
+
+    assertFailsWith(() -> service.startRender(projectId, SETTINGS), ErrorCode.VALIDATION_FAILED);
+  }
+
+  @Test
   void aProjectWithOnlyMusicIsRefused() {
     when(assets.findByProject(projectId)).thenReturn(List.of(asset(AssetType.MUSIC)));
 

@@ -135,7 +135,9 @@ public class RenderService {
   private void requireInputs(ProjectId projectId) {
     List<Asset> inputs = assets.findByProject(projectId);
     boolean hasMusic = inputs.stream().anyMatch(asset -> asset.type() == AssetType.MUSIC);
-    boolean hasFootage = inputs.stream().anyMatch(asset -> asset.type() != AssetType.MUSIC);
+    boolean hasFootage =
+        inputs.stream()
+            .anyMatch(asset -> asset.type() != AssetType.MUSIC && !asset.isCameraProxy());
     if (!hasMusic || !hasFootage) {
       throw new ApiException(
           ErrorCode.VALIDATION_FAILED, "A render needs at least one music track and one clip");

@@ -2,6 +2,13 @@
 
 Newest first. One entry per working session (template in `specs/12-spec-driven-development.md` §8).
 
+## 2026-10-31 — Session 3
+- Done: T-109.
+- In progress: —
+- Found: ADR-010.
+- Next: T-110.
+- Needs user: nothing.
+
 ## 2026-10-31 — Session 2
 - Done: BUG-001, BUG-002, T-102, T-105, T-106, T-107, T-108.
 - In progress: —

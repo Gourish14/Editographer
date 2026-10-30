@@ -33,6 +33,7 @@ class AnalyzeJob:
     asset_id: str
     path: str
     type: AssetType
+    proxy_source: str | None = None
 
 
 @dataclass(frozen=True)

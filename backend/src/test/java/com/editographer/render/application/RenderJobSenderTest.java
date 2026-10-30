@@ -53,8 +53,9 @@ class RenderJobSenderTest {
             .withAnalysis(
                 new AnalysisResult("cache/h/analysis.json", "h", "FLAT", null, 5.0, 1, 1, 30.0));
     Asset failed = asset("failed.mp4").withAnalysisStatus(AnalysisStatus.FAILED);
+    Asset proxy = asset("PANO.LRF").withAnalysisStatus(AnalysisStatus.DONE);
     when(renders.findById(render.id())).thenReturn(Optional.of(render));
-    when(assets.findByProject(projectId)).thenReturn(List.of(ready, failed));
+    when(assets.findByProject(projectId)).thenReturn(List.of(ready, failed, proxy));
 
     assertThat(sender.send(job)).isTrue();
 

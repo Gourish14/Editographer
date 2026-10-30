@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -104,6 +105,14 @@ class UploadCompletedHandlerTest {
     verify(assets).save(asset);
     verify(jobQueue).enqueue(JobKind.ANALYZE, asset.id().value());
     verify(mediaWriter).moveIn(Path.of("incoming"), asset.path());
+  }
+
+  @Test
+  void anLrfIsStoredAsReadyWithNoAnalysisJob() throws IOException {
+    handler.complete(upload("PANO_001.LRF"));
+
+    verify(assets).save(argThat(asset -> asset.analysisStatus() == AnalysisStatus.DONE));
+    verify(jobQueue, never()).enqueue(any(), any());
   }
 
   @Test

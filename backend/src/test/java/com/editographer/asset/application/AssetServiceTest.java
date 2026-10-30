@@ -123,6 +123,7 @@ class AssetServiceTest {
 
     verify(assets).deleteById(asset.id());
     verify(writer).delete(asset.path());
+    verify(writer).delete(asset.workerProxyPath());
   }
 
   @Test

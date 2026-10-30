@@ -22,6 +22,7 @@ import com.editographer.project.domain.ProjectId;
 import com.editographer.worker.domain.AnalyzeJobRequest;
 import com.editographer.worker.domain.WorkerClient;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -44,8 +45,34 @@ class AnalyzeJobSenderTest {
 
     verify(worker)
         .submitAnalyze(
-            new AnalyzeJobRequest(job.id(), asset.id().value(), asset.path().value(), "VIDEO"));
+            new AnalyzeJobRequest(
+                job.id(), asset.id().value(), asset.path().value(), "VIDEO", null));
     verify(assets).save(asset.withAnalysisStatus(AnalysisStatus.RUNNING));
+  }
+
+  @Test
+  void aMatchingLrfIsSentAsTheProxySource() {
+    Asset video =
+        Asset.uploaded(asset.projectId(), AssetType.VIDEO, "PANO_001.OSV", 1L, Instant.EPOCH);
+    Asset proxy =
+        Asset.uploaded(asset.projectId(), AssetType.VIDEO, "pano_001.LRF", 1L, Instant.EPOCH);
+    Asset unrelated =
+        Asset.uploaded(asset.projectId(), AssetType.VIDEO, "OTHER.LRF", 1L, Instant.EPOCH);
+    Job videoJob =
+        new Job(UUID.randomUUID(), JobKind.ANALYZE, video.id().value(), JobStatus.RUNNING, 1);
+    when(assets.findById(video.id())).thenReturn(Optional.of(video));
+    when(assets.findByProject(asset.projectId())).thenReturn(List.of(video, unrelated, proxy));
+
+    sender.send(videoJob);
+
+    verify(worker)
+        .submitAnalyze(
+            new AnalyzeJobRequest(
+                videoJob.id(),
+                video.id().value(),
+                video.path().value(),
+                "VIDEO",
+                proxy.path().value()));
   }
 
   @Test

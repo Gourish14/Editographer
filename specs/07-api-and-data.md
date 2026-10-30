@@ -12,7 +12,7 @@ Single-user local app: no login. The backend binds to `localhost` only.
 | DELETE | /api/projects/{id} | Delete a project and its media |
 | POST/PATCH/HEAD | /api/uploads/** | tus resumable upload; metadata `{ projectId, filename }` |
 | GET | /api/projects/{id}/assets | Assets with analysis status, thumbnails, camera mode |
-| GET | /api/assets/{id}/thumbnail | JPEG thumbnail |
+| GET | /api/assets/{id}/thumbnail | JPEG thumbnail, 404 until analysis has made one |
 | GET | /api/assets/{id}/waveform | Music: waveform peaks + beats + sections (for the UI) |
 | DELETE | /api/assets/{id} | Remove an asset |
 | POST | /api/projects/{id}/renders | Start a render `{ ratio, quality, fps, style, mode, lengthSec, prompt, coolMode, seed? }`. Omitted values take the defaults from spec 00. The project needs at least one music track and one clip. |
@@ -39,7 +39,7 @@ Single-user local app: no login. The backend binds to `localhost` only.
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | GET | /health | `{ busy, currentJobId, gpu: { name, vramFreeMb, tempC } }` |
-| POST | /jobs/analyze | `{ jobId, assetId, path, type }` → 202 |
+| POST | /jobs/analyze | `{ jobId, assetId, path, type, proxySource? }` → 202 |
 | POST | /jobs/render | `{ jobId, renderId, projectId, settings, assets[] }` → 202 |
 | POST | /jobs/{jobId}/cancel | Stop after the current stage |
 

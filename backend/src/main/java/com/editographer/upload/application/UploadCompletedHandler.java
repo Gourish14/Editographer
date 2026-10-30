@@ -1,5 +1,6 @@
 package com.editographer.upload.application;
 
+import com.editographer.asset.domain.AnalysisStatus;
 import com.editographer.asset.domain.Asset;
 import com.editographer.asset.domain.AssetRepository;
 import com.editographer.asset.domain.AssetType;
@@ -71,8 +72,12 @@ public class UploadCompletedHandler {
             metadata.filename(),
             upload.sizeBytes(),
             clock.instant());
-    assets.save(asset);
-    jobQueue.enqueue(JobKind.ANALYZE, asset.id().value());
+    if (asset.isCameraProxy()) {
+      assets.save(asset.withAnalysisStatus(AnalysisStatus.DONE));
+    } else {
+      assets.save(asset);
+      jobQueue.enqueue(JobKind.ANALYZE, asset.id().value());
+    }
     mediaWriter.moveIn(upload.file(), asset.path());
     return asset;
   }

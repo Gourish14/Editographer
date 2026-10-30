@@ -15,7 +15,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-106 | Backend: job queue, dispatcher, worker client, internal callbacks | Done | T-105 |
 | T-107 | Backend: render API and SSE events | Done | T-106 |
 | T-108 | Worker scaffold (uv, FastAPI, settings, logging, GPU guard, health) | Done | T-101 |
-| T-109 | Worker: ingest (probe, hash, proxy, camera mode, cache) | Todo | T-108 |
+| T-109 | Worker: ingest (probe, hash, proxy, camera mode, cache) | Done | T-108 |
 | T-110 | Worker: music analysis and music map (B1) | Todo | T-109 |
 | T-111 | Worker: shot detection and basic scoring (B2 partial) | Todo | T-109 |
 | T-112 | Worker brain: pacing, assignment, basic effects, validation → edit plan | Todo | T-110, T-111 |
@@ -114,14 +114,15 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Verified with the live worker and backend together on the RTX 3050: upload, dispatch, worker report, asset status. `/jobs/analyze` and `/jobs/render` are accepted but fail on purpose until T-109 and T-113 plug in the real work. A second job gets 409, which the backend treats as "stay queued". PyTorch is added by T-110, the first task that needs it. The `worker` ErrorCode test compares against the Java enum, so the two cannot drift.
 
 ### T-109 — Worker: ingest
-- Status: Todo
+- Status: Done
 - Spec: 04-pipeline.md#stages (1), 08-osmo360.md#handling-rules (1–2)
 - Depends on: T-108
 - Acceptance criteria:
-  - [ ] ffprobe adapter returns codec, fps, size, rotation, duration, transfer.
-  - [ ] Content hash and file cache at `media/cache/{hash}/`.
-  - [ ] 720p NVENC proxy, or `.LRF` reuse; `cameraMode` detection with unit tests per mode.
-  - [ ] `/internal/asset-analyzed` posted on success.
+  - [x] ffprobe adapter returns codec, fps, size, rotation, duration, transfer.
+  - [x] Content hash and file cache at `media/cache/{hash}/`.
+  - [x] 720p NVENC proxy, or `.LRF` reuse; `cameraMode` detection with unit tests per mode.
+  - [x] `/internal/asset-analyzed` posted on success.
+- Notes: Verified live: a generated 1080p clip went from upload to DONE with a real NVENC proxy and thumbnail. Osmo detection thresholds are unproven against real Osmo files (ADR-010). `GET /api/assets/{id}/waveform` from spec 07 belongs to no task yet, so T-110 adds it.
 
 ### T-110 — Worker: music map (B1)
 - Status: Todo

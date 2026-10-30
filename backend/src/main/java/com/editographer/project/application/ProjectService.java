@@ -1,6 +1,7 @@
 package com.editographer.project.application;
 
 import com.editographer.asset.domain.Asset;
+import com.editographer.asset.domain.AssetRepository;
 import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
 import com.editographer.project.domain.Project;
@@ -23,13 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
 
   private final ProjectRepository projects;
+  private final AssetRepository assets;
   private final RenderRepository renders;
   private final MediaWriter mediaWriter;
   private final Clock clock;
 
   public ProjectService(
-      ProjectRepository projects, RenderRepository renders, MediaWriter mediaWriter, Clock clock) {
+      ProjectRepository projects,
+      AssetRepository assets,
+      RenderRepository renders,
+      MediaWriter mediaWriter,
+      Clock clock) {
     this.projects = projects;
+    this.assets = assets;
     this.renders = renders;
     this.mediaWriter = mediaWriter;
     this.clock = clock;
@@ -57,6 +64,7 @@ public class ProjectService {
     }
     List<MediaPath> folders = new ArrayList<>();
     folders.add(Asset.projectFolder(id));
+    assets.findByProject(id).forEach(asset -> folders.add(asset.workerProxyPath()));
     renders.findByProject(id).forEach(render -> folders.add(Render.folder(render.id())));
     projects.deleteById(id);
     try {

@@ -8,8 +8,9 @@ Two job types run on the worker: **analyze** (per asset, right after upload) and
    - tus upload into `media/uploads/{projectId}/`.
    - Worker runs `ffprobe`: codec, fps, resolution, rotation, duration, color transfer (to detect D-Log M).
    - Content hash (xxhash of first/last 16 MB + size) → cache key.
-   - Proxy: if an Osmo `.LRF` with the same name exists, use it; otherwise create a 720p H.264 proxy with NVENC.
+   - Proxy: if an Osmo `.LRF` with the same file name was uploaded to the project, the backend sends it as `proxySource` and the worker copies it; otherwise create a 720p H.264 proxy with NVENC.
    - Detect `cameraMode` (see `08-osmo360.md`).
+   - Thumbnail: a JPEG at 10% of the clip, written to `media/cache/{fileHash}/thumbnail.jpg`. Music has none.
 2. **Music analysis** (CPU)
    - Beat This! → beats, downbeats, BPM.
    - librosa → onset strength, RMS energy curve.

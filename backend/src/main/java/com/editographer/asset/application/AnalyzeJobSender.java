@@ -38,8 +38,20 @@ public class AnalyzeJobSender implements JobSender {
     Asset asset = found.get();
     worker.submitAnalyze(
         new AnalyzeJobRequest(
-            job.id(), asset.id().value(), asset.path().value(), asset.type().name()));
+            job.id(),
+            asset.id().value(),
+            asset.path().value(),
+            asset.type().name(),
+            cameraProxyPath(asset)));
     assets.save(asset.withAnalysisStatus(AnalysisStatus.RUNNING));
     return true;
+  }
+
+  private String cameraProxyPath(Asset asset) {
+    return assets.findByProject(asset.projectId()).stream()
+        .filter(other -> other.isCameraProxyOf(asset))
+        .map(other -> other.path().value())
+        .findFirst()
+        .orElse(null);
   }
 }

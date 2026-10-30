@@ -48,6 +48,7 @@ public class RenderJobSender implements JobSender {
     List<RenderJobRequest.AssetInput> inputs =
         assets.findByProject(render.projectId()).stream()
             .filter(asset -> asset.analysisStatus() == AnalysisStatus.DONE)
+            .filter(asset -> !asset.isCameraProxy())
             .map(RenderJobRequest.AssetInput::from)
             .toList();
     worker.submitRender(

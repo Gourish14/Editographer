@@ -10,6 +10,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.editographer.asset.domain.Asset;
+import com.editographer.asset.domain.AssetRepository;
+import com.editographer.asset.domain.AssetType;
 import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
 import com.editographer.project.domain.Project;
@@ -33,10 +35,12 @@ class ProjectServiceTest {
   private static final Instant NOW = Instant.parse("2026-10-30T10:00:00Z");
 
   private final ProjectRepository repository = mock(ProjectRepository.class);
+  private final AssetRepository assets = mock(AssetRepository.class);
   private final RenderRepository renders = mock(RenderRepository.class);
   private final MediaWriter mediaWriter = mock(MediaWriter.class);
   private final ProjectService service =
-      new ProjectService(repository, renders, mediaWriter, Clock.fixed(NOW, ZoneOffset.UTC));
+      new ProjectService(
+          repository, assets, renders, mediaWriter, Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
   void createStampsTheProjectWithTheClockAndSavesIt() {
@@ -99,6 +103,18 @@ class ProjectServiceTest {
     service.deleteProject(id);
 
     verify(mediaWriter).delete(Render.folder(render.id()));
+  }
+
+  @Test
+  void deleteAlsoRemovesTheProxiesOfItsAssets() throws IOException {
+    ProjectId id = ProjectId.newId();
+    Asset asset = Asset.uploaded(id, AssetType.VIDEO, "a.mp4", 1L, NOW);
+    when(repository.existsById(id)).thenReturn(true);
+    when(assets.findByProject(id)).thenReturn(List.of(asset));
+
+    service.deleteProject(id);
+
+    verify(mediaWriter).delete(asset.workerProxyPath());
   }
 
   @Test
