@@ -4,14 +4,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from app.application.analyze_asset import AnalyzeAsset
+from app.application.analyze_music import AnalyzeMusic
+from app.application.analyze_shots import AnalyzeShots
 from app.application.job_runner import CancellationToken
 from app.domain.analysis import StoredAnalysis
 from app.domain.errors import AnalysisError, ErrorCode, JobCancelledError
 from app.domain.media import MediaInfo
 from app.domain.models import AnalyzeJob, AssetType
+from app.domain.music import MusicMap
+from app.domain.shots import FrameSample
+from app.ports.music import AudioCurves, AudioSamples, BeatGrid
 from tests.unit.test_job_runner import FakeNotifier
 
 HASH = "abc"
@@ -54,10 +60,42 @@ class Hasher:
         return HASH
 
 
+class Decoder:
+    def decode_mono(self, path: Path, sample_rate: int) -> AudioSamples:
+        return np.zeros(sample_rate * 8, dtype=np.float32)
+
+
+class Tracker:
+    def __init__(self, beats: tuple[float, ...] = (0.0, 0.5, 1.0, 1.5, 2.0, 2.5)) -> None:
+        self.beats = beats
+
+    def track(self, samples: AudioSamples, sample_rate: int) -> BeatGrid:
+        return BeatGrid(self.beats, self.beats[::4])
+
+
+class Curves:
+    def extract(self, samples: AudioSamples, sample_rate: int) -> AudioCurves:
+        return AudioCurves((0.1,) * 200, (0.1,) * 200, 0.05)
+
+
+class Scenes:
+    def __init__(self, spans: tuple[tuple[float, float], ...] = ()) -> None:
+        self.spans = spans
+
+    def detect(self, path: Path) -> tuple[tuple[float, float], ...]:
+        return self.spans
+
+
+class Frames:
+    def sample(self, path: Path) -> tuple[FrameSample, ...]:
+        return tuple(FrameSample(i * 0.25, 1.0, 1.0, 100.0, 0.5, 0.0) for i in range(80))
+
+
 class Cache:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.stored: StoredAnalysis | None = None
+        self.waveforms: list[str] = []
 
     def load(self, file_hash: str) -> StoredAnalysis | None:
         return self.stored
@@ -67,6 +105,9 @@ class Cache:
 
     def analysis_path(self, file_hash: str) -> str:
         return f"cache/{file_hash}/analysis.json"
+
+    def save_waveform(self, file_hash: str, music: MusicMap) -> None:
+        self.waveforms.append(file_hash)
 
     def thumbnail_file(self, file_hash: str) -> Path:
         return self.root / "cache" / file_hash / "thumbnail.jpg"
@@ -95,7 +136,15 @@ class Fixture:
         self.cache = Cache(root)
         self.notifier = Reporter()
         self.use_case = AnalyzeAsset(
-            root, self.probe, Hasher(), self.cache, self.tools, self.tools, self.notifier
+            root,
+            self.probe,
+            Hasher(),
+            self.cache,
+            self.tools,
+            self.tools,
+            self.notifier,
+            AnalyzeMusic(Decoder(), Tracker(), Curves()),
+            AnalyzeShots(Scenes(), Frames()),
         )
 
     def job(self, kind: AssetType = AssetType.VIDEO, proxy_source: str | None = None) -> AnalyzeJob:
@@ -131,12 +180,56 @@ def test_a_matching_lrf_is_used_instead_of_making_a_proxy(fx: Fixture) -> None:
     assert fx.tools.adopted == [fx.root / "uploads/b.lrf"]
 
 
-def test_music_gets_no_proxy_or_thumbnail(fx: Fixture) -> None:
+def test_music_gets_a_map_and_waveform_but_no_proxy_or_thumbnail(fx: Fixture) -> None:
     fx.use_case.run(fx.job(AssetType.MUSIC), CancellationToken())
 
     assert fx.tools.made == []
     assert fx.tools.thumbnails == []
+    assert fx.cache.stored is not None
+    assert fx.cache.stored.music is not None
+    assert fx.cache.stored.music.bpm == 120.0
+    assert fx.cache.waveforms == [HASH]
     assert fx.notifier.done == ["j1"]
+
+
+def test_a_video_gets_shots_and_no_music_map(fx: Fixture) -> None:
+    fx.use_case.run(fx.job(), CancellationToken())
+
+    assert fx.cache.stored is not None
+    assert fx.cache.stored.music is None
+    assert len(fx.cache.stored.shots) == 1
+    assert fx.cache.stored.shots[0].end == 20.0
+    assert fx.cache.stored.shots[0].usable[0].start == 0.0
+
+
+def test_detected_cuts_become_separate_shots(tmp_path: Path) -> None:
+    measures = AnalyzeShots(Scenes(((0.0, 5.0), (5.0, 20.0))), Frames()).run(tmp_path / "p", 20.0)
+
+    assert [(shot.start, shot.end) for shot in measures] == [(0.0, 5.0), (5.0, 20.0)]
+
+
+def test_a_cut_too_short_to_have_a_sample_is_skipped(tmp_path: Path) -> None:
+    spans = ((0.0, 5.0), (30.0, 30.1))
+
+    assert len(AnalyzeShots(Scenes(spans), Frames()).run(tmp_path / "p", 40.0)) == 1
+
+
+def test_a_clip_with_no_readable_frames_fails(tmp_path: Path) -> None:
+    class Empty:
+        def sample(self, path: Path) -> tuple[FrameSample, ...]:
+            return ()
+
+    with pytest.raises(AnalysisError):
+        AnalyzeShots(Scenes(), Empty()).run(tmp_path / "p", 5.0)
+
+
+def test_a_song_with_no_beats_fails_as_unsupported(tmp_path: Path) -> None:
+    music = AnalyzeMusic(Decoder(), Tracker(()), Curves())
+
+    with pytest.raises(AnalysisError) as failure:
+        music.run(tmp_path / "silence.wav")
+
+    assert failure.value.code is ErrorCode.ASSET_UNSUPPORTED
 
 
 def test_a_photo_gets_a_thumbnail_but_no_proxy(fx: Fixture) -> None:

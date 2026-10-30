@@ -17,13 +17,16 @@ class FfmpegError(Exception):
 
 def run_tool(arguments: Sequence[str]) -> str:
     """Runs a tool from an argument list, never a shell string, and returns its stdout."""
+    return run_tool_for_bytes(arguments).decode("utf-8", errors="replace")
+
+
+def run_tool_for_bytes(arguments: Sequence[str]) -> bytes:
+    """Like run_tool, for tools that write binary data to stdout."""
     log.info("ffmpeg.run", command=" ".join(arguments))
     try:
-        result = subprocess.run(
-            list(arguments), capture_output=True, text=True, encoding="utf-8", check=False
-        )
+        result = subprocess.run(list(arguments), capture_output=True, check=False)
     except OSError as error:
         raise FfmpegError(f"Could not start {arguments[0]}: {error}") from error
     if result.returncode != 0:
-        raise FfmpegError(result.stderr[-STDERR_TAIL_CHARS:])
+        raise FfmpegError(result.stderr.decode("utf-8", errors="replace")[-STDERR_TAIL_CHARS:])
     return result.stdout

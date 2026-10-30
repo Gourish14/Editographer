@@ -98,6 +98,24 @@ class AssetServiceTest {
   }
 
   @Test
+  void waveformComesFromTheAnalysisCache() {
+    Asset asset = analyzed();
+    MediaPath expected = new MediaPath("cache/" + HASH + "/waveform.json");
+    when(assets.findById(asset.id())).thenReturn(Optional.of(asset));
+    when(locator.exists(expected)).thenReturn(true);
+
+    assertThat(service.waveformOf(asset.id())).isEqualTo(expected);
+  }
+
+  @Test
+  void waveformIsNotFoundForAnAssetWithoutOne() {
+    Asset asset = uploaded();
+    when(assets.findById(asset.id())).thenReturn(Optional.of(asset));
+
+    assertFailsWith(() -> service.waveformOf(asset.id()), ErrorCode.ASSET_NOT_FOUND);
+  }
+
+  @Test
   void thumbnailIsNotFoundBeforeAnalysis() {
     Asset asset = uploaded();
     when(assets.findById(asset.id())).thenReturn(Optional.of(asset));

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssetService {
 
   private static final String THUMBNAIL_FILE = "thumbnail.jpg";
+  private static final String WAVEFORM_FILE = "waveform.json";
 
   private final AssetRepository assets;
   private final ProjectRepository projects;
@@ -50,15 +51,25 @@ public class AssetService {
   /** Where the worker put the asset's thumbnail. Fails until analysis has produced one. */
   @Transactional(readOnly = true)
   public MediaPath thumbnailOf(AssetId id) {
+    return cachedFile(id, THUMBNAIL_FILE, "thumbnail");
+  }
+
+  /** The worker's waveform document for a song. Fails until analysis has produced one. */
+  @Transactional(readOnly = true)
+  public MediaPath waveformOf(AssetId id) {
+    return cachedFile(id, WAVEFORM_FILE, "waveform");
+  }
+
+  private MediaPath cachedFile(AssetId id, String file, String description) {
     Asset asset = find(id);
     if (asset.fileHash() != null) {
-      MediaPath thumbnail = new MediaPath("cache/" + asset.fileHash() + "/" + THUMBNAIL_FILE);
-      if (mediaLocator.exists(thumbnail)) {
-        return thumbnail;
+      MediaPath path = new MediaPath("cache/" + asset.fileHash() + "/" + file);
+      if (mediaLocator.exists(path)) {
+        return path;
       }
     }
     throw new ApiException(
-        ErrorCode.ASSET_NOT_FOUND, "Asset " + id.value() + " has no thumbnail yet");
+        ErrorCode.ASSET_NOT_FOUND, "Asset " + id.value() + " has no " + description + " yet");
   }
 
   @Transactional

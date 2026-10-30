@@ -7,23 +7,27 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app.adapters.beat_this_tracker import BeatThisTracker
+from app.adapters.ffmpeg_audio import FfmpegAudioDecoder
+from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
+from app.adapters.ffmpeg_compositor import FfmpegCompositor
 from app.adapters.ffmpeg_media_tools import FfmpegMediaTools
 from app.adapters.ffmpeg_probe import FfmpegProbe
 from app.adapters.file_cache import FileCache
 from app.adapters.http_backend_notifier import HttpBackendNotifier
+from app.adapters.librosa_curves import LibrosaCurveExtractor
 from app.adapters.nvml_gpu_guard import NvmlGpuGuard
+from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
+from app.adapters.scenedetect_shots import SceneDetectShots
 from app.adapters.xxhash_hasher import XxhashHasher
 from app.api.routes import create_api
 from app.application.analyze_asset import AnalyzeAsset
-from app.application.job_runner import CancellationToken, JobRunner
+from app.application.analyze_music import AnalyzeMusic
+from app.application.analyze_shots import AnalyzeShots
+from app.application.job_runner import JobRunner
+from app.application.render_job import RenderEdit
 from app.config import Settings
-from app.domain.errors import RenderError
-from app.domain.models import RenderJob
 from app.logging_setup import configure_logging
-
-
-def _render_not_built(_: RenderJob, __: CancellationToken) -> None:
-    raise RenderError("Rendering arrives with T-113")
 
 
 def build_app() -> FastAPI:
@@ -32,14 +36,33 @@ def build_app() -> FastAPI:
     notifier = HttpBackendNotifier.create(settings.backend_url, settings.worker_token)
     media_root = settings.resolved(settings.media_dir)
     tools = FfmpegMediaTools()
+    models = settings.resolved(settings.models_dir)
+    checkpoint = models / "beat_this" / "small0.ckpt"
+    music = AnalyzeMusic(FfmpegAudioDecoder(), BeatThisTracker(checkpoint), LibrosaCurveExtractor())
+    shots = AnalyzeShots(
+        SceneDetectShots(),
+        OpenCvFrameSampler(models / "mediapipe" / "blaze_face_short_range.tflite"),
+    )
+    cache = FileCache(media_root)
+    render_edit = RenderEdit(
+        media_root, cache, cache, FfmpegCompositor(), FfmpegAudioFinisher(), notifier
+    )
     analyze_asset = AnalyzeAsset(
-        media_root, FfmpegProbe(), XxhashHasher(), FileCache(media_root), tools, tools, notifier
+        media_root,
+        FfmpegProbe(),
+        XxhashHasher(),
+        cache,
+        tools,
+        tools,
+        notifier,
+        music,
+        shots,
     )
     return create_api(
         runner=JobRunner(notifier),
         gpu=NvmlGpuGuard(),
         analyze=analyze_asset.run,
-        render=_render_not_built,
+        render=render_edit.run,
         token=settings.worker_token,
     )
 

@@ -34,7 +34,7 @@ class CameraMode(StrEnum):
 
 
 class LogProfile(StrEnum):
-    DLOG_M = "DLOG_M"
+    DLOG_M = "DLOGM"
 
 
 @dataclass(frozen=True)

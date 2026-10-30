@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-ANALYSIS_VERSION = 1
+from app.domain.music import MusicMap
+from app.domain.shots import ShotMeasure
+
+ANALYSIS_VERSION = 2
 
 
 class StoredAnalysis(BaseModel):
@@ -25,3 +28,5 @@ class StoredAnalysis(BaseModel):
     camera_mode: str | None
     log_profile: str | None
     native_slow_mo: bool
+    music: MusicMap | None = None
+    shots: tuple[ShotMeasure, ...] = ()

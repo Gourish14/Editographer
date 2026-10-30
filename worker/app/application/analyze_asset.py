@@ -6,6 +6,8 @@ from pathlib import Path
 
 import structlog
 
+from app.application.analyze_music import AnalyzeMusic
+from app.application.analyze_shots import AnalyzeShots
 from app.application.job_runner import CancellationToken
 from app.domain.analysis import StoredAnalysis
 from app.domain.errors import AnalysisError, ErrorCode
@@ -40,6 +42,8 @@ class AnalyzeAsset:
         proxies: ProxyMaker,
         thumbnails: ThumbnailMaker,
         notifier: BackendNotifier,
+        music: AnalyzeMusic,
+        shots: AnalyzeShots,
     ) -> None:
         self._media_root = media_root
         self._probe = probe
@@ -48,6 +52,8 @@ class AnalyzeAsset:
         self._proxies = proxies
         self._thumbnails = thumbnails
         self._notifier = notifier
+        self._music = music
+        self._shots = shots
 
     def run(self, job: AnalyzeJob, token: CancellationToken) -> None:
         source = self._media_root / job.path
@@ -56,17 +62,23 @@ class AnalyzeAsset:
 
         file_hash = self._hasher.hash_file(source)
         token.raise_if_cancelled()
+        proxy = self._ensure_proxy(source, job) if job.type is AssetType.VIDEO else None
+        token.raise_if_cancelled()
         analysis = self._cache.load(file_hash)
         if analysis is None:
             extension = source.suffix.removeprefix(".")
             analysis = self._document(self._probe.probe(source), file_hash, extension)
+            token.raise_if_cancelled()
+            if job.type is AssetType.MUSIC:
+                music = self._music.run(source)
+                analysis = analysis.model_copy(update={"music": music})
+                self._cache.save_waveform(file_hash, music)
+            if proxy is not None:
+                shots = self._shots.run(proxy, analysis.duration_sec or 0.0)
+                analysis = analysis.model_copy(update={"shots": shots})
             self._cache.save(analysis)
         else:
             log.info("analysis.cache_hit", fileHash=file_hash)
-        token.raise_if_cancelled()
-
-        if job.type is AssetType.VIDEO:
-            self._ensure_proxy(source, job)
         token.raise_if_cancelled()
         self._ensure_thumbnail(source, job, analysis)
 
@@ -92,14 +104,15 @@ class AnalyzeAsset:
             native_slow_mo=is_native_slow_mo(info),
         )
 
-    def _ensure_proxy(self, source: Path, job: AnalyzeJob) -> None:
+    def _ensure_proxy(self, source: Path, job: AnalyzeJob) -> Path:
         target = self._media_root / PROXIES_FOLDER / f"{job.asset_id}.mp4"
         if target.exists():
-            return
+            return target
         if job.proxy_source is not None:
             self._proxies.adopt_proxy(self._media_root / job.proxy_source, target)
         else:
             self._proxies.make_proxy(source, target)
+        return target
 
     def _ensure_thumbnail(self, source: Path, job: AnalyzeJob, analysis: StoredAnalysis) -> None:
         target = self._cache.thumbnail_file(analysis.file_hash)

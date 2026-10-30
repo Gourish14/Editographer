@@ -42,6 +42,13 @@ public final class AssetController {
     return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(image);
   }
 
+  @GetMapping("/api/assets/{id}/waveform")
+  public ResponseEntity<Resource> waveform(@PathVariable("id") UUID id) {
+    Resource document =
+        new FileSystemResource(mediaLocator.locate(service.waveformOf(new AssetId(id))));
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(document);
+  }
+
   @DeleteMapping("/api/assets/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@PathVariable("id") UUID id) {

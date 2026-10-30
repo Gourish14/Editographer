@@ -7,6 +7,7 @@ from typing import Protocol
 
 from app.domain.analysis import StoredAnalysis
 from app.domain.media import MediaInfo
+from app.domain.music import MusicMap
 
 
 class MediaProbe(Protocol):
@@ -47,3 +48,7 @@ class AnalysisCache(Protocol):
         ...
 
     def thumbnail_file(self, file_hash: str) -> Path: ...
+
+    def save_waveform(self, file_hash: str, music: MusicMap) -> None:
+        """Writes what the UI draws: loudness peaks, beats and sections."""
+        ...
