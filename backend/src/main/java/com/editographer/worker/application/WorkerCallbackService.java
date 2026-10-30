@@ -11,6 +11,9 @@ import com.editographer.job.domain.Job;
 import com.editographer.job.domain.JobKind;
 import com.editographer.job.domain.JobQueue;
 import com.editographer.job.domain.JobStatus;
+import com.editographer.render.application.RenderProgressService;
+import com.editographer.render.domain.RenderId;
+import com.editographer.storage.domain.MediaPath;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,12 +22,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class WorkerCallbackService {
 
+  private static final String NO_OUTPUT_ERROR = "The worker finished without an output file";
+
   private final AssetRepository assets;
   private final JobQueue queue;
+  private final RenderProgressService renders;
 
-  public WorkerCallbackService(AssetRepository assets, JobQueue queue) {
+  public WorkerCallbackService(
+      AssetRepository assets, JobQueue queue, RenderProgressService renders) {
     this.assets = assets;
     this.queue = queue;
+    this.renders = renders;
   }
 
   @Transactional
@@ -40,18 +48,48 @@ public class WorkerCallbackService {
   }
 
   @Transactional
-  public void jobCompleted(UUID jobId, JobStatus status) {
-    Job job =
-        queue
-            .findById(jobId)
-            .orElseThrow(
-                () -> new ApiException(ErrorCode.JOB_NOT_FOUND, "Job " + jobId + " not found"));
-    queue.finish(jobId, status);
-    if (job.kind() == JobKind.ANALYZE && status == JobStatus.FAILED) {
-      AssetId assetId = new AssetId(job.refId());
+  public void progress(UUID jobId, String stage, int percent, String message) {
+    Job job = find(jobId);
+    if (job.kind() == JobKind.RENDER) {
+      renders.progress(new RenderId(job.refId()), stage, percent, message);
+    }
+  }
+
+  @Transactional
+  public void previewReady(UUID jobId, MediaPath path) {
+    Job job = find(jobId);
+    if (job.kind() == JobKind.RENDER) {
+      renders.previewReady(new RenderId(job.refId()), path);
+    }
+  }
+
+  @Transactional
+  public void jobCompleted(JobCompletion completion) {
+    Job job = find(completion.jobId());
+    queue.finish(job.id(), completion.status());
+    if (job.kind() == JobKind.RENDER) {
+      completeRender(new RenderId(job.refId()), completion);
+    } else if (completion.status() == JobStatus.FAILED) {
       assets
-          .findById(assetId)
+          .findById(new AssetId(job.refId()))
           .ifPresent(asset -> assets.save(asset.withAnalysisStatus(AnalysisStatus.FAILED)));
     }
+  }
+
+  private void completeRender(RenderId id, JobCompletion completion) {
+    if (completion.status() == JobStatus.FAILED) {
+      renders.failed(id, completion.error());
+    } else if (completion.outputPath() == null) {
+      renders.failed(id, NO_OUTPUT_ERROR);
+    } else {
+      renders.completed(id, completion.outputPath(), completion.plan());
+    }
+  }
+
+  private Job find(UUID jobId) {
+    return queue
+        .findById(jobId)
+        .orElseThrow(
+            () -> new ApiException(ErrorCode.JOB_NOT_FOUND, "Job " + jobId + " not found"));
   }
 }

@@ -18,3 +18,4 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - Projects REST API [T-104].
 - Resumable tus uploads, local media storage, asset list and delete, thumbnail endpoint, ANALYZE jobs queued on upload [T-105].
 - Job queue, dispatcher, worker client, token-protected worker callbacks, restart recovery [T-106].
+- Render API with regenerate and cancel, live SSE events, video streaming with Range, style presets, system status [T-107].

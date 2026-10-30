@@ -8,14 +8,14 @@ Single-user local app: no login. The backend binds to `localhost` only.
 | --- | --- | --- |
 | GET | /api/projects | List projects |
 | POST | /api/projects | Create a project `{ name }` |
-| GET | /api/projects/{id} | `{ project, assets[], renders[] }` (renders join in T-107) |
+| GET | /api/projects/{id} | `{ project, assets[], renders[] }` |
 | DELETE | /api/projects/{id} | Delete a project and its media |
 | POST/PATCH/HEAD | /api/uploads/** | tus resumable upload; metadata `{ projectId, filename }` |
 | GET | /api/projects/{id}/assets | Assets with analysis status, thumbnails, camera mode |
 | GET | /api/assets/{id}/thumbnail | JPEG thumbnail |
 | GET | /api/assets/{id}/waveform | Music: waveform peaks + beats + sections (for the UI) |
 | DELETE | /api/assets/{id} | Remove an asset |
-| POST | /api/projects/{id}/renders | Start a render `{ ratio, quality, fps, style, mode, lengthSec, prompt, coolMode, seed? }` |
+| POST | /api/projects/{id}/renders | Start a render `{ ratio, quality, fps, style, mode, lengthSec, prompt, coolMode, seed? }`. Omitted values take the defaults from spec 00. The project needs at least one music track and one clip. |
 | GET | /api/renders/{id} | Status, progress, stage, log, edit plan |
 | GET | /api/renders/{id}/events | SSE stream: `progress`, `preview-ready`, `done`, `failed` |
 | POST | /api/renders/{id}/regenerate | New variation (new seed) with the same settings |

@@ -6,10 +6,14 @@ import com.editographer.common.error.ErrorCode;
 import com.editographer.project.domain.Project;
 import com.editographer.project.domain.ProjectId;
 import com.editographer.project.domain.ProjectRepository;
+import com.editographer.render.domain.Render;
+import com.editographer.render.domain.RenderRepository;
+import com.editographer.storage.domain.MediaPath;
 import com.editographer.storage.domain.MediaWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
 
   private final ProjectRepository projects;
+  private final RenderRepository renders;
   private final MediaWriter mediaWriter;
   private final Clock clock;
 
-  public ProjectService(ProjectRepository projects, MediaWriter mediaWriter, Clock clock) {
+  public ProjectService(
+      ProjectRepository projects, RenderRepository renders, MediaWriter mediaWriter, Clock clock) {
     this.projects = projects;
+    this.renders = renders;
     this.mediaWriter = mediaWriter;
     this.clock = clock;
   }
@@ -48,9 +55,14 @@ public class ProjectService {
     if (!projects.existsById(id)) {
       throw notFound(id);
     }
+    List<MediaPath> folders = new ArrayList<>();
+    folders.add(Asset.projectFolder(id));
+    renders.findByProject(id).forEach(render -> folders.add(Render.folder(render.id())));
     projects.deleteById(id);
     try {
-      mediaWriter.delete(Asset.projectFolder(id));
+      for (MediaPath folder : folders) {
+        mediaWriter.delete(folder);
+      }
     } catch (IOException exception) {
       throw new UncheckedIOException("Could not delete media of project " + id.value(), exception);
     }

@@ -14,6 +14,9 @@ public interface JobQueue {
 
   Optional<Job> findById(UUID id);
 
+  /** The queued or running job for an asset or render, if there is one. */
+  Optional<Job> findUnfinishedFor(UUID refId);
+
   /** Records that the job was handed to the worker. */
   void markRunning(UUID id);
 

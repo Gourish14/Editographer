@@ -10,4 +10,6 @@ interface JpaJobRepository extends JpaRepository<JpaJobEntity, UUID> {
   Optional<JpaJobEntity> findFirstByStatusOrderByPriorityAscCreatedAtAsc(String status);
 
   List<JpaJobEntity> findByStatus(String status);
+
+  Optional<JpaJobEntity> findFirstByRefIdAndStatusIn(UUID refId, List<String> statuses);
 }

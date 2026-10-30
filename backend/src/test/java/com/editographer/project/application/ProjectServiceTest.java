@@ -15,6 +15,9 @@ import com.editographer.common.error.ErrorCode;
 import com.editographer.project.domain.Project;
 import com.editographer.project.domain.ProjectId;
 import com.editographer.project.domain.ProjectRepository;
+import com.editographer.render.domain.Render;
+import com.editographer.render.domain.RenderRepository;
+import com.editographer.render.domain.RenderSettings;
 import com.editographer.storage.domain.MediaWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -30,9 +33,10 @@ class ProjectServiceTest {
   private static final Instant NOW = Instant.parse("2026-10-30T10:00:00Z");
 
   private final ProjectRepository repository = mock(ProjectRepository.class);
+  private final RenderRepository renders = mock(RenderRepository.class);
   private final MediaWriter mediaWriter = mock(MediaWriter.class);
   private final ProjectService service =
-      new ProjectService(repository, mediaWriter, Clock.fixed(NOW, ZoneOffset.UTC));
+      new ProjectService(repository, renders, mediaWriter, Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
   void createStampsTheProjectWithTheClockAndSavesIt() {
@@ -81,6 +85,20 @@ class ProjectServiceTest {
 
     verify(repository).deleteById(id);
     verify(mediaWriter).delete(Asset.projectFolder(id));
+  }
+
+  @Test
+  void deleteAlsoRemovesTheFoldersOfItsRenders() throws IOException {
+    ProjectId id = ProjectId.newId();
+    RenderSettings settings =
+        new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 1L);
+    Render render = Render.queued(id, settings, NOW);
+    when(repository.existsById(id)).thenReturn(true);
+    when(renders.findByProject(id)).thenReturn(List.of(render));
+
+    service.deleteProject(id);
+
+    verify(mediaWriter).delete(Render.folder(render.id()));
   }
 
   @Test

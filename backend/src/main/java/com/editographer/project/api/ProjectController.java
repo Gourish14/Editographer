@@ -7,6 +7,8 @@ import com.editographer.project.api.dto.ProjectDetailResponse;
 import com.editographer.project.api.dto.ProjectResponse;
 import com.editographer.project.application.ProjectService;
 import com.editographer.project.domain.ProjectId;
+import com.editographer.render.api.dto.RenderResponse;
+import com.editographer.render.application.RenderService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -31,10 +33,12 @@ public final class ProjectController {
 
   private final ProjectService service;
   private final AssetService assets;
+  private final RenderService renders;
 
-  public ProjectController(ProjectService service, AssetService assets) {
+  public ProjectController(ProjectService service, AssetService assets, RenderService renders) {
     this.service = service;
     this.assets = assets;
+    this.renders = renders;
   }
 
   @GetMapping
@@ -53,7 +57,8 @@ public final class ProjectController {
     ProjectId projectId = new ProjectId(id);
     return new ProjectDetailResponse(
         ProjectResponse.from(service.getProject(projectId)),
-        assets.listAssets(projectId).stream().map(AssetResponse::from).toList());
+        assets.listAssets(projectId).stream().map(AssetResponse::from).toList(),
+        renders.listRenders(projectId).stream().map(RenderResponse::from).toList());
   }
 
   @DeleteMapping("/{id}")

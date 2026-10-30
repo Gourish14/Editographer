@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.editographer.asset.domain.AssetId;
 import com.editographer.common.error.GlobalExceptionHandler;
 import com.editographer.job.domain.JobStatus;
+import com.editographer.storage.domain.MediaPath;
+import com.editographer.worker.application.JobCompletion;
 import com.editographer.worker.application.WorkerCallbackService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -65,7 +67,7 @@ class InternalCallbackControllerTest {
 
     mvc.perform(postJson("/internal/complete", body).header("X-Worker-Token", "test-token"))
         .andExpect(status().isNoContent());
-    verify(callbacks).jobCompleted(ID, JobStatus.FAILED);
+    verify(callbacks).jobCompleted(new JobCompletion(ID, JobStatus.FAILED, null, null, "boom"));
   }
 
   @Test
@@ -75,5 +77,47 @@ class InternalCallbackControllerTest {
     mvc.perform(postJson("/internal/complete", body).header("X-Worker-Token", "test-token"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  void completeStoresThePlanAsJsonText() throws Exception {
+    String body =
+        "{\"jobId\":\""
+            + ID
+            + "\",\"status\":\"DONE\",\"outputPath\":\"renders/r/final.mp4\","
+            + "\"plan\":{\"version\":1}}";
+
+    mvc.perform(postJson("/internal/complete", body).header("X-Worker-Token", "test-token"))
+        .andExpect(status().isNoContent());
+    verify(callbacks)
+        .jobCompleted(
+            new JobCompletion(
+                ID, JobStatus.DONE, new MediaPath("renders/r/final.mp4"), "{\"version\":1}", null));
+  }
+
+  @Test
+  void progressReachesTheService() throws Exception {
+    String body = "{\"jobId\":\"" + ID + "\",\"stage\":\"COMPOSING\",\"percent\":40}";
+
+    mvc.perform(postJson("/internal/progress", body).header("X-Worker-Token", "test-token"))
+        .andExpect(status().isNoContent());
+    verify(callbacks).progress(ID, "COMPOSING", 40, null);
+  }
+
+  @Test
+  void progressRefusesAPercentAboveAHundred() throws Exception {
+    String body = "{\"jobId\":\"" + ID + "\",\"stage\":\"COMPOSING\",\"percent\":101}";
+
+    mvc.perform(postJson("/internal/progress", body).header("X-Worker-Token", "test-token"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void previewReadyReachesTheService() throws Exception {
+    String body = "{\"jobId\":\"" + ID + "\",\"path\":\"renders/r/preview.mp4\"}";
+
+    mvc.perform(postJson("/internal/preview-ready", body).header("X-Worker-Token", "test-token"))
+        .andExpect(status().isNoContent());
+    verify(callbacks).previewReady(ID, new MediaPath("renders/r/preview.mp4"));
   }
 }

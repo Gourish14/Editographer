@@ -10,4 +10,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties("app")
 @Validated
 public record AppProperties(
-    @NotNull Path mediaDir, @NotBlank String workerUrl, @NotBlank String workerToken) {}
+    @NotNull Path mediaDir,
+    @NotBlank String workerUrl,
+    @NotBlank String workerToken,
+    @NotBlank String ollamaUrl) {}

@@ -40,6 +40,12 @@ final class JpaJobQueueAdapter implements JobQueue {
   }
 
   @Override
+  public Optional<Job> findUnfinishedFor(UUID refId) {
+    List<String> unfinished = List.of(JobStatus.QUEUED.name(), JobStatus.RUNNING.name());
+    return jobs.findFirstByRefIdAndStatusIn(refId, unfinished).map(JpaJobQueueAdapter::toDomain);
+  }
+
+  @Override
   public void markRunning(UUID id) {
     jobs.findById(id)
         .ifPresent(

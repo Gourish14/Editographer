@@ -18,6 +18,7 @@ import com.editographer.common.error.ErrorCode;
 import com.editographer.common.error.GlobalExceptionHandler;
 import com.editographer.project.application.ProjectService;
 import com.editographer.project.domain.Project;
+import com.editographer.render.application.RenderService;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ class ProjectControllerTest {
   @Autowired private MockMvc mvc;
   @MockitoBean private ProjectService service;
   @MockitoBean private AssetService assets;
+  @MockitoBean private RenderService renders;
 
   @Test
   void listReturnsProjects() throws Exception {
@@ -96,7 +98,8 @@ class ProjectControllerTest {
     mvc.perform(get("/api/projects/" + project.id().value()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.project.name").value("Goa trip"))
-        .andExpect(jsonPath("$.assets").isArray());
+        .andExpect(jsonPath("$.assets").isArray())
+        .andExpect(jsonPath("$.renders").isArray());
   }
 
   @Test

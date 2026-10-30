@@ -13,7 +13,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-104 | Backend: projects feature | Done | T-103 |
 | T-105 | Backend: storage service and tus uploads, assets | Done | T-104 |
 | T-106 | Backend: job queue, dispatcher, worker client, internal callbacks | Done | T-105 |
-| T-107 | Backend: render API and SSE events | Todo | T-106 |
+| T-107 | Backend: render API and SSE events | Done | T-106 |
 | T-108 | Worker scaffold (uv, FastAPI, settings, logging, GPU guard, health) | Todo | T-101 |
 | T-109 | Worker: ingest (probe, hash, proxy, camera mode, cache) | Todo | T-108 |
 | T-110 | Worker: music analysis and music map (B1) | Todo | T-109 |
@@ -93,13 +93,14 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Done with `asset-analyzed` and `complete`; `progress`, `preview-ready` and the RENDER sender come with T-107. A job whose asset was deleted is marked FAILED. Tested against mocks and with the real jar, not yet against the real worker, which T-108 builds. T-108's Python `ErrorCode` must also include `JOB_NOT_FOUND`, `WORKER_TOKEN_INVALID`, `ASSET_NOT_FOUND`, `RENDER_NOT_FOUND`, `VALIDATION_FAILED`, `REQUEST_INVALID` and `INTERNAL_ERROR`.
 
 ### T-107 — Backend: render API and SSE
-- Status: Todo
+- Status: Done
 - Spec: 07-api-and-data.md, 04-pipeline.md#preview-first-rule
 - Depends on: T-106
 - Acceptance criteria:
-  - [ ] Render create/get/regenerate/cancel, preview and download streaming with Range.
-  - [ ] SSE `progress`, `preview-ready`, `done`, `failed` events per render.
-  - [ ] `/api/system` and `/api/styles`.
+  - [x] Render create/get/regenerate/cancel, preview and download streaming with Range.
+  - [x] SSE `progress`, `preview-ready`, `done`, `failed` events per render.
+  - [x] `/api/system` and `/api/styles`.
+- Notes: `RenderFlowIntegrationTest` runs the whole flow over real HTTP with only the worker faked. Stage names the worker must send: PLANNING, COMPOSING, UPSCALING, ENCODING; any other stage keeps the status. A render needs at least one music track and one clip (CR-010). Spec 07 promises an SSE update when an asset finishes but has no endpoint for it, so T-115 polls assets (CR-011).
 
 ### T-108 — Worker scaffold
 - Status: Todo

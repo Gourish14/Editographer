@@ -13,8 +13,25 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-007 | Define where asset thumbnails come from | Proposed |
 | CR-008 | Define how .LRF proxies link to their .OSV, and which photo formats count | Proposed |
 | CR-009 | Add fileHash and logProfile to the asset-analyzed callback | Implemented |
+| CR-010 | A render needs at least one music track and one clip | Implemented |
+| CR-011 | Define how the UI learns that an asset finished analysis | Proposed |
 
 ## Details
+
+### CR-011 — Define how the UI learns that an asset finished analysis
+- Status: Proposed
+- Requested: 2026-10-31, by Claude during T-107
+- Reason: Spec 07 job flow step 3 says "SSE to the UI", but the only SSE endpoint is per render.
+- Impact: specs `07`; T-115.
+- Assumption meanwhile: the project page polls `GET /api/projects/{id}/assets`.
+- Decision: pending, to settle in T-115.
+
+### CR-010 — A render needs at least one music track and one clip
+- Status: Implemented
+- Requested: 2026-10-31, by Claude during T-107
+- Reason: Without this check a render on an empty project queues, then fails in the worker with a less useful message.
+- Impact: specs `07`; backend `RenderService`.
+- Decision: auto-approved, does not touch a hard rule or the architecture.
 
 ### CR-009 — Add fileHash and logProfile to the asset-analyzed callback
 - Status: Implemented
