@@ -35,7 +35,10 @@ export function skippedRequests(log: readonly string[] | undefined): readonly st
     @if (render(); as current) {
       <div class="stack">
         <div class="row spread">
-          <h1>{{ current.settings.ratio }} {{ current.settings.quality }} render</h1>
+          <h1>
+            {{ current.settings.ratio }} {{ current.settings.quality }}
+            {{ current.settings.mode }} render
+          </h1>
           <app-status-badge [label]="current.status.toLowerCase()" [tone]="tone()" />
         </div>
 
@@ -50,8 +53,11 @@ export function skippedRequests(log: readonly string[] | undefined): readonly st
           </section>
         }
 
-        @if (current.status === 'FAILED' || current.status === 'CANCELLED') {
-          <p class="panel problem">{{ current.error || 'This render stopped.' }}</p>
+        @if (current.status === 'FAILED') {
+          <p class="panel problem" role="alert">{{ current.error || 'This render failed.' }}</p>
+        }
+        @if (current.status === 'CANCELLED') {
+          <p class="panel muted">This render was cancelled.</p>
         }
 
         @if (videoUrl(); as url) {
@@ -144,7 +150,10 @@ export class RenderPage {
     if (status === 'DONE') {
       return 'good';
     }
-    return status === 'FAILED' ? 'bad' : 'active';
+    if (status === 'FAILED') {
+      return 'bad';
+    }
+    return status === 'CANCELLED' ? 'neutral' : 'active';
   });
   protected readonly videoUrl = computed(() => {
     const current = this.render();

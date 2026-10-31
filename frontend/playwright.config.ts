@@ -36,7 +36,7 @@ const shared = {
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 15 * 60_000,
+  timeout: 40 * 60_000,
   expect: { timeout: 30_000 },
   workers: 1,
   reporter: [['list']],

@@ -152,8 +152,8 @@ export class ProjectPage {
   }
 
   protected label(render: Render): string {
-    const { ratio, quality, style } = render.settings;
-    return `${ratio} ${quality} ${style} · ${render.status.toLowerCase()}`;
+    const { ratio, quality, mode, style } = render.settings;
+    return `${ratio} ${quality} ${mode} ${style} · ${render.status.toLowerCase()}`;
   }
 
   private isAnalyzing(): boolean {

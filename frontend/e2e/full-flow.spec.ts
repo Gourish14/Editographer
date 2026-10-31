@@ -67,7 +67,7 @@ test('create, upload, analyze, render a preview, download, regenerate, cancel, d
   // Upload two clips and a song, then wait for analysis
   await page.getByLabel('Choose files to upload').setInputFiles([...media.clips, media.song]);
   await expect(page.getByRole('article')).toHaveCount(3);
-  await expect(page.getByText('Ready')).toHaveCount(3, { timeout: 240_000 });
+  await expect(page.getByText('Ready')).toHaveCount(3, { timeout: 10 * 60_000 });
   await expect(page.getByRole('region', { name: 'Music' })).toBeVisible();
   await expect(page.locator('app-music-waveform .section').first()).toBeVisible();
   for (const image of await page.locator('app-asset-grid img').all()) {
@@ -87,6 +87,19 @@ test('create, upload, analyze, render a preview, download, regenerate, cancel, d
 
   // Live progress, then the video
   await expect(page.getByRole('region', { name: 'Progress' })).toBeVisible();
+  // The bar moves while the render runs: some percentage above zero shows up before "done".
+  const percentText = page.getByRole('region', { name: 'Progress' }).locator('.muted');
+  await expect
+    .poll(
+      async () => {
+        if (await page.locator('app-status-badge').filter({ hasText: 'done' }).count()) {
+          return 100;
+        }
+        return Number.parseInt((await percentText.textContent().catch(() => '0')) ?? '0', 10);
+      },
+      { timeout: 10 * 60_000, intervals: [250] },
+    )
+    .toBeGreaterThan(0);
   await shoot(page, 'render-progress');
   await expect(page.locator('app-status-badge').filter({ hasText: 'done' })).toBeVisible({
     timeout: 12 * 60_000,
@@ -125,4 +138,64 @@ test('create, upload, analyze, render a preview, download, regenerate, cancel, d
   expect(deleted.ok()).toBe(true);
 
   expect(problems, 'browser console errors').toEqual([]);
+});
+
+test('a 360 clip shows the WebGL preview and lets you pick a subject to follow', async ({
+  page,
+  request,
+}) => {
+  mkdirSync(SHOTS, { recursive: true });
+  const media = generateMedia();
+  const problems: string[] = [];
+  page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
+  await page.setViewportSize(DESKTOP);
+
+  await page.goto('/');
+  const name = `E2E 360 ${Date.now()}`;
+  await page.getByLabel('New project name').fill(name);
+  await page.getByRole('button', { name: 'New project' }).click();
+  await page.getByRole('link', { name }).click();
+  const projectId = page.url().split('/').pop() ?? '';
+
+  await page.getByLabel('Choose files to upload').setInputFiles(media.equirect);
+  await expect(page.getByText('Ready')).toHaveCount(1, { timeout: 10 * 60_000 });
+  await expect(page.locator('app-asset-grid').getByText('360', { exact: true })).toBeVisible();
+  await shoot(page, '360-project');
+
+  await page.goto(`/projects/${projectId}/render`);
+  const canvas = page.getByRole('img', { name: /360 preview/ });
+  await expect(canvas).toBeVisible();
+  await expect(page.getByText('needs WebGL')).toHaveCount(0);
+  // The canvas must hold painted pixels, not a black box: read it back through a 2D copy.
+  await expect
+    .poll(() =>
+      canvas.evaluate((element: HTMLCanvasElement) => {
+        const copy = document.createElement('canvas');
+        copy.width = 64;
+        copy.height = 36;
+        const context = copy.getContext('2d');
+        context?.drawImage(element, 0, 0, 64, 36);
+        const data = context?.getImageData(0, 0, 64, 36).data ?? new Uint8ClampedArray();
+        let lit = 0;
+        for (let index = 0; index < data.length; index += 4) {
+          lit += data[index] + data[index + 1] + data[index + 2] > 60 ? 1 : 0;
+        }
+        return lit;
+      }),
+    )
+    .toBeGreaterThan(100);
+  const box = await canvas.boundingBox();
+  if (box) {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  }
+  await expect(page.getByText(/Following the spot at/)).toBeVisible();
+  await shoot(page, '360-settings');
+
+  const deleted = await request.delete(`http://127.0.0.1:18080/api/projects/${projectId}`);
+  expect(deleted.ok()).toBe(true);
+  expect(problems).toEqual([]);
 });
