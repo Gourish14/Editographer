@@ -15,6 +15,7 @@ from app.domain.music import MusicMap
 from app.domain.plan import EditPlan
 
 ALLOWED_DRIFT_SEC = 0.002
+PHOTO_SEGMENT = "photo"
 
 
 def validate_plan(plan: EditPlan, music: MusicMap) -> None:
@@ -61,7 +62,8 @@ def _source_covers_timeline(plan: EditPlan) -> list[str]:
     return [
         f"{segment.id} has a source window shorter than its slot"
         for segment in plan.segments
-        if segment.src_out - segment.src_in < segment.duration - ALLOWED_DRIFT_SEC
+        if segment.type != PHOTO_SEGMENT
+        and segment.src_out - segment.src_in < segment.duration - ALLOWED_DRIFT_SEC
     ]
 
 

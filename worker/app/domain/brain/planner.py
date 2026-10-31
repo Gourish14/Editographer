@@ -20,9 +20,11 @@ from app.domain.brain.assign import (
 from app.domain.brain.effects import EFFECT_NAMES, plan_effects
 from app.domain.brain.music_map import DEFAULT_LENGTH_SEC, choose_edit_window
 from app.domain.brain.pacing import beat_grid, build_slots
+from app.domain.brain.photo_plan import photo_segment, photo_slots
 from app.domain.brain.prompt_rules import parse_prompt
 from app.domain.brain.scoring import score_shots
 from app.domain.brain.style_rules import AUTO, pick_style
+from app.domain.brain.text_plan import has_speech, plan_text
 from app.domain.brain.validate import validate_plan
 from app.domain.constraints import Constraints, Direction, DirectorDecision
 from app.domain.errors import ErrorCode, RenderError
@@ -58,14 +60,16 @@ def build_edit_plan(
     clips: Sequence[ClipInput],
     settings: RenderSettings,
     direction: Direction | None = None,
+    photos: Sequence[ClipInput] = (),
 ) -> EditPlan:
     """Without a direction the prompt goes through the keyword rules, so an edit always exists."""
     rng = random.Random(settings.seed)
     chosen = direction or rule_direction(settings.prompt)
     constraints = chosen.decision.constraints
     usable = usable_candidates(clips)
-    if not usable:
+    if not usable and not photos:
         raise RenderError("None of the clips has a usable shot", ErrorCode.PLAN_INVALID)
+    photos_only = not usable
 
     style, style_note = pick_style(
         _requested_style(settings, chosen.decision),
@@ -80,18 +84,25 @@ def build_edit_plan(
         music.duration_sec,
         constraints.duration_sec or float(settings.length_sec or DEFAULT_LENGTH_SEC),
     )
-    candidates, tag_notes = select_candidates(usable, constraints, window.end - window.start)
-    longest = max(
-        window_part.end - window_part.start
-        for candidate in candidates
-        for window_part in candidate.shot.measure.usable
-    )
-    slots = split_long_slots(build_slots(music, window, style), beat_grid(music), longest)
-    assignments = assign_shots(
-        slots, candidates, music, rng, constraints, constraints.order or style.order
-    )
-    effects = plan_effects(assignments, music, style, constraints)
-    analyses = {clip.asset_id: clip.analysis for clip in clips}
+    if photos_only:
+        slots = list(build_slots(music, window, style))
+        assignments: tuple[Assignment, ...] = ()
+        effects: Sequence[tuple[Effect, ...]] = ()
+        tag_notes: tuple[str, ...] = ()
+    else:
+        candidates, tag_notes = select_candidates(usable, constraints, window.end - window.start)
+        longest = max(
+            window_part.end - window_part.start
+            for candidate in candidates
+            for window_part in candidate.shot.measure.usable
+        )
+        slots = split_long_slots(build_slots(music, window, style), beat_grid(music), longest)
+        assignments = assign_shots(
+            slots, candidates, music, rng, constraints, constraints.order or style.order
+        )
+        effects = plan_effects(assignments, music, style, constraints)
+    analyses = {clip.asset_id: clip.analysis for clip in (*clips, *photos)}
+    by_slot = photo_slots(slots, len(photos), photos_only)
     width, height = output_size(settings.ratio, settings.quality)
 
     notes = (
@@ -99,6 +110,17 @@ def build_edit_plan(
         *(note for note in (style_note, _pano_note(clips)) if note),
         *_constraint_notes(constraints),
         *tag_notes,
+    )
+    segments = tuple(
+        photo_segment(f"s{i + 1}", photos[by_slot[i]].asset_id, slot, photos[by_slot[i]].analysis)
+        if i in by_slot
+        else _segment(
+            i + 1, assignments[i], effects[i], analyses[assignments[i].candidate.asset_id]
+        )
+        for i, slot in enumerate(slots)
+    )
+    text, text_notes = plan_text(
+        constraints.text, music.downbeats, window, style.id, segments, analyses
     )
     plan = EditPlan(
         seed=settings.seed,
@@ -115,13 +137,9 @@ def build_edit_plan(
             asset_id=music_asset_id, start=window.start, end=window.end, bpm=music.bpm
         ),
         grade=style.grade,
-        segments=tuple(
-            _segment(index, assignment, effect_list, analyses[assignment.candidate.asset_id])
-            for index, (assignment, effect_list) in enumerate(
-                zip(assignments, effects, strict=True), start=1
-            )
-        ),
-        log=notes,
+        segments=segments,
+        text=text,
+        log=(*notes, *text_notes),
     )
     validate_plan(plan, music)
     return plan
@@ -163,10 +181,6 @@ def _constraint_notes(constraints: Constraints) -> list[str]:
         sections = ", ".join(constraints.slowmo_at)
         notes.append(f"Slow motion requested on: {sections}; speed ramps arrive in Phase 3")
     notes.extend(
-        f"Text '{_short(text)}' requested; text overlays arrive in Phase 3"
-        for text in constraints.text
-    )
-    notes.extend(
         f"Effect '{_short(name)}' requested; not available yet"
         for name in constraints.effects_on
         if name not in EFFECT_NAMES
@@ -200,6 +214,7 @@ def _segment(
         at=slot.start,
         duration=round(slot.duration, 4),
         effects=effects,
+        keep_audio=has_speech(analysis, assignment.src_in, assignment.src_out),
         source=Source(
             camera_mode=analysis.camera_mode,
             log_profile=analysis.log_profile,

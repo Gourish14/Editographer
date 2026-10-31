@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from app.domain.brain.text_rules import TextItem
+from app.domain.photo import PhotoAnalysis
 from app.domain.plan import EditPlan, Grade, Segment
 
 
@@ -38,6 +40,7 @@ class SegmentLook:
     grade: Grade | None = None
     motion_blur: float = 0.0
     next_clip: NextClip | None = None
+    photo: PhotoAnalysis | None = None
 
 
 @dataclass(frozen=True)
@@ -90,6 +93,19 @@ class Compositor(Protocol):
 
     def join(self, parts: Sequence[Path], target: Path) -> None:
         """Puts segments together without re-encoding."""
+        ...
+
+
+class TextOverlay(Protocol):
+    def overlay_text(
+        self,
+        video: Path,
+        items: Sequence[TextItem],
+        profile: EncodeProfile,
+        frames: int,
+        target: Path,
+    ) -> None:
+        """Draws the items on the joined video, times from its first frame, same frame count."""
         ...
 
 

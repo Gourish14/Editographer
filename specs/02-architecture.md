@@ -50,7 +50,9 @@ All paths are relative to the project root and configured once in `config/local.
 media/
   uploads/{projectId}/{assetId}.{ext}     original files, never modified
   proxies/{assetId}.mp4                   720p proxy (or Osmo .LRF copy)
-  cache/{fileHash}/analysis.json          analysis results, keyed by content hash
+  cache/{fileHash}/analysis.json          analysis results, keyed by content hash (version 4 adds
+                                          `photo` for photos and `speech` spans and words for videos)
+  cache/{fileHash}/depth.png              photo depth map, near is bright
   cache/{fileHash}/frames/ depth/ masks/  intermediate data
   renders/{renderId}/preview.mp4
   renders/{renderId}/final.mp4

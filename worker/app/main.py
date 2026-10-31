@@ -9,6 +9,7 @@ from fastapi import FastAPI
 
 from app.adapters.beat_this_tracker import BeatThisTracker
 from app.adapters.clip_encoder import OpenClipEncoder
+from app.adapters.depth_anything import DepthAnythingEstimator
 from app.adapters.ffmpeg_audio import FfmpegAudioDecoder
 from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
 from app.adapters.ffmpeg_compositor import FfmpegCompositor
@@ -21,12 +22,16 @@ from app.adapters.nvml_gpu_guard import NvmlGpuGuard
 from app.adapters.nvml_thermal_guard import NvmlThermalGuard
 from app.adapters.ollama_llm import OllamaLlmClient
 from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
+from app.adapters.opencv_photo import OpenCvImageSizer, OpenCvSubjectLocator
 from app.adapters.scenedetect_shots import SceneDetectShots
+from app.adapters.skia_text_layer import SkiaTextLayer
+from app.adapters.whisper_speech_detector import WhisperSpeechDetector
 from app.adapters.xxhash_hasher import XxhashHasher
 from app.adapters.yolo_detector import YoloObjectDetector
 from app.api.routes import create_api
 from app.application.analyze_asset import AnalyzeAsset
 from app.application.analyze_music import AnalyzeMusic
+from app.application.analyze_photo import AnalyzePhoto
 from app.application.analyze_shots import AnalyzeShots
 from app.application.direct_edit import DirectEdit
 from app.application.job_runner import JobRunner
@@ -57,15 +62,17 @@ def build_app() -> FastAPI:
     )
     cache = FileCache(media_root)
     director = DirectEdit(OllamaLlmClient.create(settings.ollama_url), gpu)
+    compositor = FfmpegCompositor(text_layer=SkiaTextLayer())
     render_edit = RenderEdit(
         media_root,
         cache,
         cache,
-        FfmpegCompositor(),
+        compositor,
         FfmpegAudioFinisher(),
         notifier,
         director,
         thermal=NvmlThermalGuard(gpu),
+        text=compositor,
     )
     analyze_asset = AnalyzeAsset(
         media_root,
@@ -77,6 +84,12 @@ def build_app() -> FastAPI:
         notifier,
         music,
         shots,
+        AnalyzePhoto(
+            OpenCvImageSizer(),
+            OpenCvSubjectLocator(models / "mediapipe" / "blaze_face_short_range.tflite"),
+            DepthAnythingEstimator(models / "depth_anything_v2_small", gpu),
+        ),
+        WhisperSpeechDetector(models / "faster-whisper-small", gpu),
     )
     return create_api(
         runner=JobRunner(notifier),

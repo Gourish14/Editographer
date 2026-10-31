@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 
 import structlog
@@ -14,12 +15,21 @@ from app.application.job_runner import CancellationToken
 from app.application.look import audio_mix, segment_look
 from app.domain.analysis import StoredAnalysis
 from app.domain.brain.planner import ClipInput, build_edit_plan
+from app.domain.brain.text_rules import TextItem as OverlayItem
 from app.domain.errors import ErrorCode, RenderError
 from app.domain.models import AssetInput, AssetType, RenderJob
+from app.domain.photo import PhotoAnalysis
 from app.domain.plan import EditPlan
 from app.ports.backend_notifier import BackendNotifier
 from app.ports.media import AnalysisCache
-from app.ports.render import AudioFinisher, Compositor, EncodeProfile, PlanStore
+from app.ports.render import (
+    AudioFinisher,
+    Compositor,
+    EncodeProfile,
+    PlanStore,
+    SegmentLook,
+    TextOverlay,
+)
 from app.ports.thermal import ThermalGuard
 
 log = structlog.get_logger()
@@ -58,6 +68,7 @@ class RenderEdit:
         notifier: BackendNotifier,
         director: DirectEdit,
         thermal: ThermalGuard | None = None,
+        text: TextOverlay | None = None,
     ) -> None:
         self._media_root = media_root
         self._cache = cache
@@ -67,6 +78,7 @@ class RenderEdit:
         self._notifier = notifier
         self._director = director
         self._thermal = thermal
+        self._text = text
 
     def run(self, job: RenderJob, token: CancellationToken) -> None:
         self._notifier.progress(job.job_id, STAGE_PLANNING, 1)
@@ -105,8 +117,11 @@ class RenderEdit:
     def _plan(self, job: RenderJob, token: CancellationToken) -> EditPlan:
         tracks = [asset for asset in job.assets if asset.type is AssetType.MUSIC]
         clips = [asset for asset in job.assets if asset.type is AssetType.VIDEO]
-        if not tracks or not clips:
-            raise RenderError("A render needs an analyzed song and clip", ErrorCode.PLAN_INVALID)
+        photos = [asset for asset in job.assets if asset.type is AssetType.PHOTO]
+        if not tracks or not (clips or photos):
+            raise RenderError(
+                "A render needs an analyzed song and a clip or photo", ErrorCode.PLAN_INVALID
+            )
         song = max(tracks, key=lambda asset: asset.duration_sec or 0.0)
         music = self._analysis(song).music
         if music is None:
@@ -117,7 +132,8 @@ class RenderEdit:
             self._notifier.progress(job.job_id, STAGE_PLANNING, DIRECTOR_PERCENT, DIRECTOR_MESSAGE)
         direction = self._director.decide(music, inputs, job.settings)
         token.raise_if_cancelled()
-        return build_edit_plan(song.id, music, inputs, job.settings, direction)
+        photo_inputs = [ClipInput(photo.id, self._analysis(photo)) for photo in photos]
+        return build_edit_plan(song.id, music, inputs, job.settings, direction, photo_inputs)
 
     def _analysis(self, asset: AssetInput) -> StoredAnalysis:
         file_hash = PurePosixPath(asset.analysis_path or "").parent.name
@@ -142,6 +158,7 @@ class RenderEdit:
         work.mkdir(parents=True, exist_ok=True)
         report = _progress_reporter(self._notifier, job.job_id, first_percent, last_percent)
         compositor = cool_compositor(self._compositor, self._thermal, job.settings.cool_mode, token)
+        photos = self._photo_analyses(job)
         parts = []
         for index, segment in enumerate(plan.segments):
             token.raise_if_cancelled()
@@ -153,7 +170,7 @@ class RenderEdit:
                 frames,
                 profile,
                 part,
-                segment_look(plan, index, sources),
+                _with_photo(segment_look(plan, index, sources), photos.get(segment.asset_id)),
             )
             parts.append(part)
             report(index + 1, len(plan.segments))
@@ -162,8 +179,18 @@ class RenderEdit:
         self._notifier.progress(job.job_id, STAGE_ENCODING, last_percent)
         joined = work / "joined.mp4"
         self._compositor.join(parts, joined)
+        picture = joined
+        if plan.text and self._text is not None:
+            picture = work / "titled.mp4"
+            self._text.overlay_text(
+                joined,
+                _overlay_items(plan),
+                profile,
+                _frame_count(plan.music.start, plan.music.end - plan.music.start, plan),
+                picture,
+            )
         self._audio.add_music(
-            joined,
+            picture,
             music,
             plan.music.start,
             plan.music.end - plan.music.start,
@@ -171,8 +198,34 @@ class RenderEdit:
             audio_mix(plan, sources),
         )
 
+    def _photo_analyses(self, job: RenderJob) -> dict[str, PhotoAnalysis]:
+        found = {
+            asset.id: self._analysis(asset).photo
+            for asset in job.assets
+            if asset.type is AssetType.PHOTO
+        }
+        return {asset_id: photo for asset_id, photo in found.items() if photo is not None}
+
     def _relative(self, path: Path) -> str:
         return path.relative_to(self._media_root).as_posix()
+
+
+def _with_photo(look: SegmentLook, photo: PhotoAnalysis | None) -> SegmentLook:
+    return look if photo is None else replace(look, photo=photo)
+
+
+def _overlay_items(plan: EditPlan) -> list[OverlayItem]:
+    """Text times on the edit's own clock, from its first frame."""
+    return [
+        OverlayItem(
+            item.content,
+            round(item.at - plan.music.start, 4),
+            item.duration,
+            item.anim,
+            item.behind_subject,
+        )
+        for item in plan.text
+    ]
 
 
 def _frame_count(at: float, duration: float, plan: EditPlan) -> int:
