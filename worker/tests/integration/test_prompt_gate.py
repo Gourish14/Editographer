@@ -43,7 +43,10 @@ TAGS = {"c1": ("car",), "c2": ("car", "road"), "b1": ("beach",), "b2": ("beach",
 
 @pytest.fixture(scope="module")
 def media(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    root = tmp_path_factory.mktemp("media")
+    return build_media(tmp_path_factory.mktemp("media"))
+
+
+def build_media(root: Path) -> Path:
     cache = FileCache(root)
     for index, (name, source) in enumerate(SOURCES.items()):
         generate(
@@ -65,13 +68,15 @@ def media(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return root
 
 
-def render(media: Path, render_id: str, prompt: str | None) -> tuple[Recorder, dict[str, Any]]:
+def render(
+    media: Path, render_id: str, prompt: str | None, ollama_url: str = NOTHING_LISTENS_HERE
+) -> tuple[Recorder, dict[str, Any]]:
     settings = RenderSettings("16:9", "4K", 30, "auto", "preview", 8, prompt, False, 42)
     clips = tuple(asset(name, AssetType.VIDEO, f"uploads/{name}.mp4", name) for name in SOURCES)
     song = asset("m1", AssetType.MUSIC, "uploads/song.wav", "song")
     cache = FileCache(media)
     recorder = Recorder()
-    director = DirectEdit(OllamaLlmClient.create(NOTHING_LISTENS_HERE), NvmlGpuGuard())
+    director = DirectEdit(OllamaLlmClient.create(ollama_url), NvmlGpuGuard())
     RenderEdit(
         media, cache, cache, FfmpegCompositor(), FfmpegAudioFinisher(), recorder, director
     ).run(RenderJob("j1", render_id, "p1", settings, (*clips, song)), CancellationToken())
