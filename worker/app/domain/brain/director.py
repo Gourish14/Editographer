@@ -12,8 +12,9 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import get_args
+from typing import Any, get_args
 
+from app.domain.brain.assign import Candidate
 from app.domain.brain.planner import ClipInput, usable_candidates
 from app.domain.constraints import StyleId
 from app.domain.models import RenderSettings
@@ -22,6 +23,7 @@ from app.domain.music import MusicMap, SectionKind
 MAX_SHOTS = 40
 MAX_TAGS_PER_SHOT = 5
 MAX_TAG_CHARS = 24
+MAX_CAPTION_CHARS = 80
 MAX_PROMPT_CHARS = 1000
 MAX_SECTIONS = 24
 NO_PROMPT = "No prompt. Pick the style that suits this project."
@@ -98,15 +100,7 @@ def director_brief(music: MusicMap, clips: Sequence[ClipInput], settings: Render
             }
             for section in music.sections[:MAX_SECTIONS]
         ],
-        "shots": [
-            {
-                "id": position,
-                "tags": [tag[:MAX_TAG_CHARS] for tag in c.shot.measure.tags[:MAX_TAGS_PER_SHOT]],
-                "score": round(c.shot.score, 2),
-                "cameraMode": modes[c.asset_id],
-            }
-            for position, c in enumerate(top, start=1)
-        ],
+        "shots": [_shot_entry(position, c, modes[c.asset_id]) for position, c in enumerate(top, 1)],
         "settings": {
             "style": settings.style,
             "ratio": settings.ratio,
@@ -114,3 +108,16 @@ def director_brief(music: MusicMap, clips: Sequence[ClipInput], settings: Render
         },
     }
     return json.dumps(document, separators=(",", ":"), ensure_ascii=False)
+
+
+def _shot_entry(position: int, candidate: Candidate, camera_mode: str | None) -> dict[str, Any]:
+    entry: dict[str, Any] = {
+        "id": position,
+        "tags": [tag[:MAX_TAG_CHARS] for tag in candidate.shot.measure.tags[:MAX_TAGS_PER_SHOT]],
+        "score": round(candidate.shot.score, 2),
+        "cameraMode": camera_mode,
+    }
+    caption = candidate.shot.measure.caption.strip()
+    if caption:
+        entry["caption"] = caption[:MAX_CAPTION_CHARS]
+    return entry

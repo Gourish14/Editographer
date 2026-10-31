@@ -48,6 +48,13 @@ final class JpaJobQueueAdapter implements JobQueue {
   }
 
   @Override
+  public List<Job> findRunning() {
+    return jobs.findByStatus(JobStatus.RUNNING.name()).stream()
+        .map(JpaJobQueueAdapter::toDomain)
+        .toList();
+  }
+
+  @Override
   public void markRunning(UUID id) {
     jobs.findById(id)
         .ifPresent(
@@ -85,6 +92,7 @@ final class JpaJobQueueAdapter implements JobQueue {
         JobKind.valueOf(row.getKind()),
         row.getRefId(),
         JobStatus.valueOf(row.getStatus()),
-        row.getAttempts());
+        row.getAttempts(),
+        row.getStartedAt());
   }
 }

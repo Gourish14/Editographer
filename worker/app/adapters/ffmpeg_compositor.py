@@ -20,7 +20,7 @@ from app.adapters.ffmpeg_filters import (
 )
 from app.adapters.ffmpeg_photo import photo_command
 from app.adapters.ffmpeg_runner import FfmpegError, run_tool
-from app.adapters.ffmpeg_text_overlay import input_args, overlay_chain
+from app.adapters.ffmpeg_text_overlay import input_args, matte_input_args, overlay_chain
 from app.config import ROOT
 from app.domain.brain.ramps import retime_expression
 from app.domain.brain.text_rules import TextItem
@@ -29,6 +29,7 @@ from app.domain.look import BLURRED_TRANSITIONS, MOTION_BLUR, ZOOM_PUNCH, transi
 from app.domain.media import LogProfile
 from app.domain.plan import Camera360, Grade, Reframe, ReframePoint, Segment
 from app.ports.render import NO_LOOK, EncodeProfile, NextClip, SegmentLook
+from app.ports.segmenter import MatteMaker
 from app.ports.speech import TextLayerRenderer
 
 log = structlog.get_logger()
@@ -44,10 +45,14 @@ UNKNOWN_PANO_WIDTH = 3840
 
 class FfmpegCompositor:
     def __init__(
-        self, luts_dir: Path = ROOT / "luts", text_layer: TextLayerRenderer | None = None
+        self,
+        luts_dir: Path = ROOT / "luts",
+        text_layer: TextLayerRenderer | None = None,
+        matte: MatteMaker | None = None,
     ) -> None:
         self._luts_dir = luts_dir
         self._text_layer = text_layer
+        self._matte = matte
 
     def render_segment(
         self,
@@ -139,12 +144,18 @@ class FfmpegCompositor:
                 item, profile.width, profile.height, layers / f"t{index}.png"
             )
             inputs += input_args(png, item, profile.fps)
+        mattes: dict[int, int] = {}
+        for index, item in enumerate(items):
+            folder = self._matte_folder(video, item, profile, layers / f"m{index}")
+            if folder is not None:
+                mattes[index] = 1 + len(items) + len(mattes)
+                inputs += matte_input_args(folder, profile.fps)
         _run(
             [
                 *BASE_ARGUMENTS,
                 *inputs,
                 "-filter_complex",
-                overlay_chain("0:v", items, 1),
+                overlay_chain("0:v", items, 1, mattes=mattes, fps=profile.fps),
                 "-map",
                 "[vtext]",
                 "-frames:v",
@@ -153,6 +164,13 @@ class FfmpegCompositor:
                 str(target),
             ]
         )
+
+    def _matte_folder(
+        self, video: Path, item: TextItem, profile: EncodeProfile, folder: Path
+    ) -> Path | None:
+        if not item.behind_subject or self._matte is None:
+            return None
+        return self._matte.make(video, item, profile.fps, folder)
 
     def _clip_chain(
         self, segment: Segment, frames: int, profile: EncodeProfile, retimed: bool

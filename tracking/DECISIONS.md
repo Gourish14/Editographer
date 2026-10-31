@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-019 | Callback retry and stuck-job limits | Accepted |
 | ADR-018 | How the gate judges cuts | Accepted |
 | ADR-017 | Ramp eligibility, reframe path and transition mix | Accepted |
 | ADR-016 | Choices made in T-201, T-202, T-301 and T-303 | Accepted |
@@ -22,6 +23,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-019 — Callback retry and stuck-job limits
+- Date / Status: 2026-10-31 / Accepted
+- Context: A lost `/internal/complete` left a render unfinished forever, and a worker restart left jobs RUNNING.
+- Options considered: Retry only; retry plus recovery from `/health`.
+- Decision: Terminal callbacks retry 6 times over about 25 s, on connection errors and 5xx. A RUNNING job older than 30 s that the worker does not report is requeued, up to 3 attempts, then failed along with its render or asset. Repeat completions are ignored.
+- Consequences: If a job is requeued and runs a second time, a late callback from the first run marks it DONE and the second run's callback is ignored. A late DONE for a job already given up on is ignored, so the user sees a failure.
 
 ### ADR-018 — How the gate judges cuts
 - Date / Status: 2026-10-31 / Accepted

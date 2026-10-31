@@ -28,6 +28,9 @@ public interface JobQueue {
   /** The queued or running job for an asset or render, if there is one. */
   Optional<Job> findUnfinishedFor(UUID refId);
 
+  /** Every job handed to the worker and not yet reported as finished. */
+  java.util.List<Job> findRunning();
+
   /** Records that the job was handed to the worker. */
   void markRunning(UUID id);
 
