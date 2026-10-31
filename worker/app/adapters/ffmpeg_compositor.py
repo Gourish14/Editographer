@@ -229,11 +229,9 @@ class FfmpegCompositor:
             blur_windows=_blur_windows(segment, frames, blend_frames, fps),
         )
 
-    def join(self, parts: Sequence[Path], target: Path) -> None:
+    def join(self, parts: Sequence[Path], target: Path, frames: Sequence[int], fps: int) -> None:
         listing = target.with_suffix(".txt")
-        listing.write_text(
-            "".join(f"file '{part.as_posix()}'\n" for part in parts), encoding="utf-8"
-        )
+        listing.write_text(concat_listing(parts, frames, fps), encoding="utf-8")
         _run(
             [
                 *BASE_ARGUMENTS,
@@ -248,6 +246,14 @@ class FfmpegCompositor:
                 str(target),
             ]
         )
+
+
+def concat_listing(parts: Sequence[Path], frames: Sequence[int], fps: int) -> str:
+    """Stated lengths place each part by frame count, not by a file's own slightly short end."""
+    return "".join(
+        f"file '{part.as_posix()}'\nduration {count / fps:.6f}\n"
+        for part, count in zip(parts, frames, strict=True)
+    )
 
 
 def _hevc_args(profile: EncodeProfile) -> list[str]:

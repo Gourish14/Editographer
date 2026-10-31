@@ -42,6 +42,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-410 | Browser end-to-end test of the UI and UI polish | Done | T-118 |
 | T-411 | Phase 2 gate on real media: three prompts and Ollama stopped | Done | T-118 |
 | T-412 | Phase 4 gate: full-length Max render with cool mode, 8K 9:16 playback | In progress | T-411 |
+| T-413 | Check whether B1 section labels are too broad (135 s drop on the gate song) | In progress | T-118 |
 
 ## Details
 

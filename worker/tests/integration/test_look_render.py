@@ -170,7 +170,7 @@ def test_beat_is_law_joined_transitions_keep_every_cut_on_its_frame(
         parts.append(part)
     joined = tmp_path / "joined.mp4"
 
-    compositor.join(parts, joined)
+    compositor.join(parts, joined, lengths, PROFILE.fps)
 
     assert_evenly_timed(joined, sum(lengths))
     assert frame_rgb(joined, FRAMES).mean(axis=0)[2] > 200  # first frame after the cut is clean

@@ -235,7 +235,7 @@ class RenderEdit:
 
         self._notifier.progress(job.job_id, STAGE_ENCODING, compose_end)
         joined = work / "joined.mp4"
-        self._compositor.join(parts, joined)
+        self._compositor.join(parts, joined, counts, profile.fps)
         picture = joined
         if plan.text and self._text is not None:
             picture = work / "titled.mp4"

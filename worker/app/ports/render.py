@@ -94,8 +94,8 @@ class Compositor(Protocol):
         """
         ...
 
-    def join(self, parts: Sequence[Path], target: Path) -> None:
-        """Puts segments together without re-encoding."""
+    def join(self, parts: Sequence[Path], target: Path, frames: Sequence[int], fps: int) -> None:
+        """Puts segments together without re-encoding, each at its exact frame count."""
         ...
 
 

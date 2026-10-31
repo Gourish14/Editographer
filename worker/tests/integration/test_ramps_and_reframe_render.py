@@ -483,6 +483,6 @@ def test_a_photo_beside_a_ramp_and_a_360_clip_keeps_every_frame_count(
         parts.append(part)
 
     joined = tmp_path / "joined.mp4"
-    compositor.join(parts, joined)
+    compositor.join(parts, joined, [item[2] for item in plan], TALL.fps)
 
     assert len(frames_of(joined, TALL.width, TALL.height)) == 60 + 24 + 33 + 17

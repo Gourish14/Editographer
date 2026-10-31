@@ -6,7 +6,7 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
-| BUG-009 | A join can end a frame 0.33 ms early, so timestamps drift about 1.3 ms in a 24 s edit | Low | New | T-406 |
+| BUG-009 | A join can end a frame 0.33 ms early, so timestamps drift about 1.3 ms in a 24 s edit | Low | In review, needs a real render | T-406 |
 
 ## Closed
 

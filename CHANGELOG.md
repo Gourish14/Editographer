@@ -4,6 +4,9 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+- Segment joins are placed by exact frame count, to stop a small timestamp drift [BUG-009].
+
 ### Added
 - Phase 2 gate script run on real clips: prompts change the edit, and the fallback works with Ollama down [T-411].
 

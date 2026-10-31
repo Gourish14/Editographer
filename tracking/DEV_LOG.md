@@ -5,7 +5,7 @@ Newest first. One entry per working session (template in `specs/12-spec-driven-d
 ## 2026-10-31 — Session 4 (overnight, multi-agent)
 - Done: T-118, T-406, T-408, T-410, T-201, T-202, T-301, T-302, T-303, T-401, T-402, T-403, T-404, T-405.
 - Done since: T-411. All 4 lines passed on real clips, plans from the LLM: car shots 36% to 100%, 17 of 17 drop slots ramped, shakes 6 to 0, render DONE with Ollama on a closed port. The car numbers were re-scored from saved plans after a script fix, not re-rendered. The baseline already chose Cinematic, so that prompt changed shakes, not style. `qwen3:4b` was only in the user profile, so it was copied into `models/ollama`.
-- In progress: T-412. T-409 in review, needs a real `.OSV`. T-409 8K and 6K checks ran on a shared GPU, so times are upper bounds; 8K 16:9 Max reached 6.0 GB system-wide against the 6.1 GB limit. Cool mode was only tried on a 2 s render, peak 78 C, so the full-length claim is unproven.
+- In progress: T-412, T-413, BUG-009 render check. T-409 in review, needs a real `.OSV`. T-409 8K and 6K checks ran on a shared GPU, so times are upper bounds; 8K 16:9 Max reached 6.0 GB system-wide against the 6.1 GB limit. Cool mode was only tried on a 2 s render, peak 78 C, so the full-length claim is unproven.
 - Found: BUG-003, ADR-014, ADR-015, ADR-016, CR-013.
 - Next: T-412. Phase 1 gate passed on real media, slowest 11.5 min at 1:1, drop found. Phase 3 gate needs a real Osmo 360 clip.
 - Needs user: real footage for the gate; push from GitHub Desktop.

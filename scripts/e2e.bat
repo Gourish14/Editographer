@@ -7,7 +7,9 @@ setlocal EnableExtensions
 call "%~dp0env.bat"
 set "PLAYWRIGHT_BROWSERS_PATH=%ROOT%\tools\playwright"
 cd /d "%ROOT%\frontend"
-call npx playwright install chromium
-if errorlevel 1 exit /b 1
+if not defined E2E_BROWSER_CHANNEL (
+    call npx playwright install chromium
+    if errorlevel 1 exit /b 1
+)
 call npx playwright test %*
 exit /b %errorlevel%

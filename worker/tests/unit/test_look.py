@@ -217,7 +217,7 @@ class FakeCompositor:
     ) -> None:
         self.calls.append((segment.id, look))
 
-    def join(self, parts: object, target: Path) -> None:
+    def join(self, parts: object, target: Path, frames: object, fps: int) -> None:
         self.joined.append(target)
 
 
@@ -264,7 +264,7 @@ def test_cool_compositor_rests_once_then_checks_before_each_segment() -> None:
 
     for index in range(3):
         wrapped.render_segment(Path("a"), segment(index, 10.0), 30, PROFILE, Path("b"), look)
-    wrapped.join([], Path("joined"))
+    wrapped.join([], Path("joined"), [], 30)
 
     assert [call[0] for call in inner.calls] == ["s0", "s1", "s2"]
     assert inner.calls[0][1] is look

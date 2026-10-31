@@ -79,8 +79,8 @@ class CoolCompositor:
             self._cool_down.stage_pause()
         self._inner.render_segment(source, segment, frames, profile, target, look)
 
-    def join(self, parts: Sequence[Path], target: Path) -> None:
-        self._inner.join(parts, target)
+    def join(self, parts: Sequence[Path], target: Path, frames: Sequence[int], fps: int) -> None:
+        self._inner.join(parts, target, frames, fps)
 
 
 def cool_compositor(

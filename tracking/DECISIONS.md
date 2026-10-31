@@ -40,7 +40,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 - Context: The browser test runs the real apps and must not touch a running install.
 - Options considered: Reuse the normal ports; separate ports and data.
 - Decision: Ports 18080, 18090 and 4300, with data under `data/e2e`, `media/e2e` and `logs/e2e`. `E2E_BROWSER_CHANNEL=chrome` uses the installed Chrome.
-- Consequences: `scripts\e2e.bat` still runs `playwright install chromium` even with the channel set, and the bundled Chromium path has not been run here.
+- Consequences: With the channel set, `scripts\e2e.bat` skips `playwright install chromium`. The bundled Chromium path has not been run here.
 
 ### ADR-021 — Caption budget and SAM 2 memory
 - Date / Status: 2026-10-31 / Accepted
