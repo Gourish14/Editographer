@@ -1,6 +1,6 @@
 # Task board
 
-Current phase: **Phase 1 gate passed (0.1.0). Phases 2 to 4 are built, their gates are open** (`specs/10-roadmap.md`).
+Current phase: **Phase 1 and 2 gates passed. Phases 3 and 4 are built, their gates are open** (`specs/10-roadmap.md`).
 Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High bugs first. See `specs/12-spec-driven-development.md`.
 
 ## Summary
@@ -40,8 +40,8 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-408 | Qwen2.5-VL shot captions and SAM 2 text behind subject | Done | T-118 |
 | T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | In review | T-118 |
 | T-410 | Browser end-to-end test of the UI and UI polish | Done | T-118 |
-| T-411 | Phase 2 gate on real media: three prompts and Ollama stopped | In progress | T-118 |
-| T-412 | Phase 4 gate: full-length Max render with cool mode, 8K 9:16 playback | Todo | T-411 |
+| T-411 | Phase 2 gate on real media: three prompts and Ollama stopped | Done | T-118 |
+| T-412 | Phase 4 gate: full-length Max render with cool mode, 8K 9:16 playback | In progress | T-411 |
 
 ## Details
 

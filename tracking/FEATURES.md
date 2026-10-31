@@ -12,10 +12,10 @@ Status: Planned → In progress → Done → Verified (phase gate passed). Templ
 | FEAT-006 | Beat effects: zoom punch, shake, flash, transitions | 05#B5 | 1 (basic), 3 (full) | In progress |
 | FEAT-007 | Export to 6 ratios at 4K with HEVC NVENC | 00, 04 | 1 | Verified |
 | FEAT-008 | Preview-first rendering and live progress | 04, 07 | 1 | Verified |
-| FEAT-009 | AI director with local LLM and fallback | 05#B10 | 2 | Planned |
-| FEAT-010 | Prompt control (prompt → constraints) | 05#B9, 06 | 2 | Planned |
-| FEAT-011 | CLIP tagging, aesthetics, shot search | 05#B2 | 2 | Planned |
-| FEAT-012 | Variations ("Make another version") | 05#B10 | 2 | Planned |
+| FEAT-009 | AI director with local LLM and fallback | 05#B10 | 2 | Verified |
+| FEAT-010 | Prompt control (prompt → constraints) | 05#B9, 06 | 2 | Verified |
+| FEAT-011 | CLIP tagging, aesthetics, shot search | 05#B2 | 2 | Verified |
+| FEAT-012 | Variations ("Make another version") | 05#B10 | 2 | Verified |
 | FEAT-013 | Speed ramps with native high-fps and RIFE | 05#B6 | 3 | Planned |
 | FEAT-014 | Shader transitions, motion blur, LUTs, D-Log M | 05#B5, 08 | 3 | Planned |
 | FEAT-015 | Text behind subject (SAM 2) | 05#B8 | 3 | Planned |

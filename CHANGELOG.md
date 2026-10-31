@@ -4,6 +4,9 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- Phase 2 gate script run on real clips: prompts change the edit, and the fallback works with Ollama down [T-411].
+
 ## [0.1.0] - 2026-10-31
 
 ### Fixed
