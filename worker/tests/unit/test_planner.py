@@ -386,14 +386,6 @@ def test_a_project_of_only_rejected_shots_fails_clearly() -> None:
     assert failure.value.code is ErrorCode.PLAN_INVALID
 
 
-def test_a_360_clip_gets_a_note_about_phase_3() -> None:
-    pano = analysis(measure()).model_copy(update={"camera_mode": "OSMO360_PANO_8K"})
-
-    result = build_edit_plan("m1", music_map(), [ClipInput("v0", pano)], SETTINGS)
-
-    assert "360" in result.log[0]
-
-
 @pytest.mark.parametrize(
     ("ratio", "quality", "expected"),
     [
@@ -423,10 +415,17 @@ def test_every_size_in_the_overview_table(
     assert output_size(ratio, quality) == expected
 
 
-def test_style_requests_in_phase_1() -> None:
-    assert pick_style("cinematic", 128.0) == (CINEMATIC, None)
-    assert pick_style("auto", 128.0) == (VELOCITY, None)
-    assert pick_style("auto", 90.0) == (CINEMATIC, None)
-    preset, note = pick_style("hype", 128.0)
+def test_b3_every_style_can_be_requested_without_a_note() -> None:
+    music = music_map()
+
+    for style in ("velocity", "hype", "cinematic", "anime", "travel", "car", "sports"):
+        preset, note = pick_style(style, music, [])
+        assert preset.id == style
+        assert note is None
+
+
+def test_a_style_that_does_not_exist_is_noted() -> None:
+    preset, note = pick_style("disco", music_map(), [])
+
     assert preset is VELOCITY
-    assert note is not None
+    assert note == "Style 'disco' does not exist; used velocity"

@@ -6,6 +6,7 @@ Run with: python -m unittest discover -s scripts -p "test_*.py"
 from __future__ import annotations
 
 import base64
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -174,6 +175,34 @@ class StoredAssetTests(unittest.TestCase):
         self.assertEqual(stored[0]["path"], "uploads/p1/a1.mp4")
 
 
+class InputFolderTests(unittest.TestCase):
+    def test_real_inputs_are_sorted_clips_and_the_song(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name in ("b.mp4", "a.mp4", "song.wav", "notes.txt"):
+                (root / name).touch()
+
+            clips, song = gate.input_files(root)
+
+        self.assertEqual([clip.name for clip in clips], ["a.mp4", "b.mp4"])
+        self.assertEqual(song.name, "song.wav")
+
+    def test_a_folder_without_a_song_stops_the_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / "a.mp4").touch()
+
+            with self.assertRaises(gate.GateError):
+                gate.input_files(Path(folder))
+
+    def test_real_inputs_have_no_known_beats(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "a.mp4").touch()
+            (root / "song.wav").touch()
+
+            self.assertIsNone(gate.gate_media(root)[2])
+
+
 class VerdictTests(unittest.TestCase):
     def test_the_slowest_ratio_is_named(self) -> None:
         verdict = gate.judge([finished("16:9", 300), finished("1:1", 600)], 15, False)
@@ -209,6 +238,18 @@ class VerdictTests(unittest.TestCase):
         failed = gate.RenderResult("edit", "1:1", "FAILED", 10.0, error="RENDER_FAILED")
 
         self.assertFalse(gate.judge([finished("16:9", 10), failed], 15, True)["passed"])
+
+    def test_a_stress_render_needs_exact_frames_not_clean_scene_scores(self) -> None:
+        noisy = finished("1:1", 400, "stress")
+        noisy.share_within_one = 0.8
+
+        self.assertTrue(gate.judge([finished("1:1", 300), noisy], 15, False)["beatsPassed"])
+
+    def test_a_stress_render_that_loses_frames_fails(self) -> None:
+        short = finished("1:1", 400, "stress")
+        short.beat_check = gate.BeatCheck(10, 5.0, 33.3, 1800, 1799, False)
+
+        self.assertFalse(gate.judge([finished("1:1", 300), short], 15, False)["beatsPassed"])
 
     def test_no_renders_is_no_pass(self) -> None:
         self.assertFalse(gate.judge([], 15, True)["passed"])

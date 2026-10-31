@@ -31,7 +31,8 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
         { "type": "motionBlur", "amount": 0.6 }
       ],
       "transitionOut": { "type": "zoom_whip", "duration": 0.18 },
-      "source": { "cameraMode": "SINGLE_BOOST_4K", "logProfile": "DLOGM", "nativeFps": 120 }
+      "source": { "cameraMode": "SINGLE_BOOST_4K", "logProfile": "DLOGM", "nativeFps": 120 },
+      "keepAudio": false
     },
     {
       "id": "s2",
@@ -77,6 +78,10 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
 | `camera360.projection` | rectilinear, tinyplanet, rabbithole |
 | `ease` | linear, easeInOutCubic, easeOutExpo, easeInExpo, bezier(0.7,0,0.3,1) |
 | `source.cameraMode` | see `08-osmo360.md` |
+
+`reframe.path` (flat clips, mode `track`) is the crop window's center over the segment: `[{ "t": 0.0, "x": 0.41, "y": 0.5 }, ...]`, with `t` in segment seconds (after the speed curve) and `x`, `y` as shares of the source frame; the window is always the largest one at the output ratio, and the renderer moves in straight lines between points. With no path the crop is centered. `source.width` is the source frame width in pixels; 360 renders use it to size the view (spec 08 rule 8). A `speed.curve` is source-time ramped before any reframe: the segment's `srcOut - srcIn` must cover the curve's source length (B6). `interpolate: native` plays a 100/120 fps clip's own frames, `rife` makes the in-between frames with RIFE.
+
+A `transitionOut` plays inside the last frames of its own segment and finishes on the segment's last frame, so the next segment still starts on its beat and frame counts never change. `planet_morph` renders as an FFmpeg circle wipe until a 360 shader exists. `keepAudio` keeps a segment's clip audio and ducks the music under it (B8); it defaults to false. When `sfx` is empty, a whoosh peaking on each transition's cut and an impact on each drop hit are derived from the plan.
 
 `motion.focusX` and `motion.focusY` are the point a photo pushes toward, as shares of the frame (default 0.5, the center). In `camera360.keyframes`, `ease` shapes the span that starts at that keyframe, and a span uses the projection of its end keyframe, else of its start keyframe, else `camera360.projection`.
 

@@ -16,7 +16,7 @@ for /f "usebackq eol=# tokens=1,* delims==" %%A in ("config\local.env") do set "
 
 where ollama >nul 2>nul
 if not errorlevel 1 (
-    tasklist /fi "imagename eq ollama.exe" | findstr /i "ollama.exe" >nul
+    curl -s -o nul -m 2 %OLLAMA_URL%/api/version
     if errorlevel 1 start "Editographer Ollama" /min ollama serve
 )
 

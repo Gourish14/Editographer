@@ -7,17 +7,21 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 import pyloudnorm
 import pytest
+from pydantic import BaseModel
 
 from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
 from app.adapters.ffmpeg_compositor import FfmpegCompositor
 from app.adapters.ffmpeg_probe import FfmpegProbe
 from app.adapters.file_cache import FileCache
+from app.adapters.nvml_gpu_guard import NvmlGpuGuard
+from app.application.direct_edit import DirectEdit
 from app.application.job_runner import CancellationToken
 from app.application.render_job import RenderEdit
 from app.domain.analysis import StoredAnalysis
@@ -31,6 +35,8 @@ pytestmark = [
     pytest.mark.gpu,
     pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs FFmpeg"),
 ]
+
+M = TypeVar("M", bound=BaseModel)
 
 BEAT = 0.5
 HOP = 0.05
@@ -98,12 +104,15 @@ def clip_analysis(file_hash: str, motion: float) -> StoredAnalysis:
         luma=0.5,
         peak_time=1.0,
         usable=(TimeWindow(start=0.0, end=float(CLIP_SEC)),),
+        action=0.5,
+        aesthetics=0.6,
     )
     return base_analysis(file_hash, shots=(shot,))
 
 
-def music_analysis() -> StoredAnalysis:
-    rms = (0.2,) * 80 + (1.0,) * 80 + (0.25,) * 40
+def music_analysis(
+    rms: tuple[float, ...] = (0.2,) * 80 + (1.0,) * 80 + (0.25,) * 40,
+) -> StoredAnalysis:
     beats = tuple(i * BEAT for i in range(20))
     onset = [0.0] * len(rms)
     for index, beat in enumerate(beats):
@@ -157,9 +166,25 @@ def job(render_id: str, ratio: str = "9:16", mode: str = "fast") -> RenderJob:
     )
 
 
+class NoLlm:
+    """These tests choose their style, so the director must never be asked."""
+
+    def complete_json(
+        self,
+        system: str,
+        user: str,
+        schema: type[M],
+        examples: Sequence[tuple[str, str]] = (),
+    ) -> M:
+        raise AssertionError("The LLM was called")
+
+
 def renderer(root: Path, recorder: Recorder) -> RenderEdit:
     cache = FileCache(root)
-    return RenderEdit(root, cache, cache, FfmpegCompositor(), FfmpegAudioFinisher(), recorder)
+    director = DirectEdit(NoLlm(), NvmlGpuGuard())
+    return RenderEdit(
+        root, cache, cache, FfmpegCompositor(), FfmpegAudioFinisher(), recorder, director
+    )
 
 
 @pytest.fixture(scope="module")

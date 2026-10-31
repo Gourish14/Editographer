@@ -25,18 +25,23 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-116 | Frontend: render settings, live progress, result player and download | Done | T-115, T-107 |
 | T-117 | start.bat / stop.bat / scripts/check.bat, Angular build into backend | Done | T-107, T-113, T-116 |
 | T-118 | Phase 1 gate: end-to-end run, beat-accuracy check, timing | Todo | T-117 |
-| T-201 | Worker: full shot analysis (YOLO, OpenCLIP tags and aesthetics, full B2) | Todo | T-117 |
-| T-202 | Worker: prompt constraints, Ollama director, keyword fallback, 7 styles (B9, B10) | Todo | T-117 |
-| T-301 | Worker: RIFE and Real-ESRGAN adapters | Todo | T-117 |
+| T-201 | Worker: full shot analysis (YOLO, OpenCLIP tags and aesthetics, full B2) | Done | T-117 |
+| T-202 | Worker: prompt constraints, Ollama director, keyword fallback, 7 styles (B9, B10) | Done | T-117 |
+| T-301 | Worker: RIFE and Real-ESRGAN adapters | Done | T-117 |
 | T-302 | Worker: ramps, reframe and camera path rules, 360 projection (B6, B7, 08) | Done | T-117 |
-| T-303 | Worker: LUTs, D-Log M, transitions, motion blur, SFX, ducking, cool mode | Todo | T-117 |
+| T-303 | Worker: LUTs, D-Log M, transitions, motion blur, SFX, ducking, cool mode | Done | T-117 |
 | T-401 | Backend and frontend: render tonight, 360 preview, subject picker, live GPU status | Done | T-117 |
 | T-402 | Worker: speech detection, text rules, text layers | Done | T-117 |
 | T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
-| T-404 | Wire photos, speech and text into analysis, planner and renderer | Todo | T-202, T-303, T-402, T-403 |
-| T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Todo | T-202, T-301, T-302, T-303 |
+| T-404 | Wire photos, speech and text into analysis, planner and renderer | Done | T-202, T-303, T-402, T-403 |
+| T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Done | T-202, T-301, T-302, T-303 |
 
 ## Details
+
+### T-405 — Wire ramps, smart reframe, 360 and Max quality
+- Status: Done
+- Spec: 05-editing-brain.md#b5, #b6, #b7, 08-osmo360.md, 04-pipeline.md#stages (7)
+- Notes: Verified on generated media with native 120 fps, RIFE and equirect clips; Max quality in 9:16 and 16:9 took about 5 minutes per ratio with exact frame counts. Not run on real Osmo footage. RIFE and upscale frames are 8-bit, losing 10-bit precision on those segments. The upscale factor is chosen per plan, not per segment as spec 04 says. Transitions into ramped or 360 clips play the incoming clip at 1×. FEAT-021 60 fps interpolation is not built. A ramp needs a slot of at least 0.5 s with its middle on the grid, and a song with no drop section gets a log note, not a ramp.
 
 ### T-401 — Backend and frontend: render tonight, 360 preview, subject picker
 - Status: Done
@@ -44,13 +49,14 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Migration V3. The three.js preview has not been seen in a real browser, because the tests have no WebGL. It assumes thumbnails of 360 clips are equirect frames, which is unchecked. The worker does not read `followPoint` yet. "Make another version" drops `startAt`. Skipped prompts are found by matching "skipped" in the plan log.
 
 ### T-404 — Wire photos, speech and text into the pipeline
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b4, #b7, #b8, 06-edit-plan-schema.md
 - Depends on: T-202, T-303, T-402, T-403
 - Acceptance criteria:
-  - [ ] `analyze_asset.py` runs photo analysis and speech detection; the plan gains `text[]`; photo segments render.
-  - [ ] B4: photos fill at most 30% of slots and never a drop, unless the input is only photos.
-  - [ ] Clip audio is kept and music ducks 8 dB only where speech exists.
+  - [x] `analyze_asset.py` runs photo analysis and speech detection; the plan gains `text[]`; photo segments render.
+  - [x] B4: photos fill at most 30% of slots and never a drop, unless the input is only photos.
+  - [x] Clip audio is kept and music ducks 8 dB only where speech exists.
+- Notes: Preview-mode renders on generated media only. The real path through `AnalyzeAsset` and `main.py` has not run yet; the real-clip gate will cover it. Photos get no grade, effects or transitions. Depth maps are stored as absolute paths. A 4K final of a photo supersamples 3x and is untested. Silent videos skip speech detection, which fixed a faster-whisper crash.
 
 ### T-403 — Worker: photo analysis, Ken Burns, depth parallax
 - Status: Done
@@ -63,7 +69,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Merged but not wired in (T-404). Real Whisper found speech in a synthesized clip and none in the test song. The CUDA path is unverified. Text is drawn in front: SAM 2 text-behind-subject is still to do.
 
 ### T-303 — Worker: look, sound and cool mode
-- Status: Todo
+- Status: Done
 - Spec: 04-pipeline.md, 05-editing-brain.md#b5, #b8, 08-osmo360.md, 09-local-setup.md#cool-mode
 - Depends on: T-117
 - Acceptance criteria:
@@ -81,7 +87,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Modules only, not wired in (T-405). Generated media and CPU only, not real footage or NVENC. Call `limit_pitch` last on every 360 path. Ramps need B11 to use `curve_source_length` and a timeline-to-source mapping before `camera_filter`, or they play at 1×. `crop_path` has no plan field yet. FOV punch and the other spec 08 effects are not built.
 
 ### T-301 — Worker: frame interpolation and upscaling adapters
-- Status: Todo
+- Status: Done
 - Spec: 03-tech-stack.md, 04-pipeline.md#stages (6, 7), 09-local-setup.md
 - Depends on: T-117
 - Acceptance criteria:
@@ -89,7 +95,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] Weights in `scripts/models.json` at phase 3 and 4 with real checksums.
 
 ### T-201 — Worker: full shot analysis
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b2-shot-scoring-scoringpy, 09-local-setup.md#6-gb-vram-model-profile
 - Depends on: T-117
 - Acceptance criteria:
@@ -98,7 +104,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] Tags, motion direction and dominant color stored per shot; weights added to `scripts/models.json` with real checksums.
 
 ### T-202 — Worker: prompt constraints and director
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b9-prompt-to-constraints-promptpy, #b10-llm-director-and-fallback-directorpy, 06-edit-plan-schema.md#prompt-constraint-json
 - Depends on: T-117
 - Acceptance criteria:

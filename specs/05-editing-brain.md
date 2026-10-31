@@ -38,15 +38,24 @@ S = 0.25·M + 0.20·F + 0.15·Sh + 0.15·A + 0.15·Ae + 0.10·St
 | Term | Meaning | Measured by | Normalization |
 | --- | --- | --- | --- |
 | M | Motion | Mean optical-flow magnitude | Percentile rank within the project |
-| F | Subject | Face/person presence × box area | 0 none … 1 large subject |
+| F | Subject | Larger of the MediaPipe face box and the YOLO person box, as a share of the frame; a quarter of the frame is full marks | 0 none … 1 large subject |
 | Sh | Sharpness | Laplacian variance | Percentile rank |
-| A | Action | Pose keypoint and object velocity peaks | Percentile rank |
-| Ae | Aesthetics | CLIP aesthetic predictor | Model output scaled 0–1 |
+| A | Action | Object velocity peak: the 90th percentile of the fastest object's speed, in frame widths per second. Pose keypoints are not used yet. Object speed is measured in the frame, so a camera pan counts as speed | Percentile rank |
+| Ae | Aesthetics | LAION aesthetic predictor on CLIP embeddings | (output − 1) / 9, clamped to 0–1 |
 | St | Stability | 1 − camera shake (global flow variance) | 0–1 |
 
-Each shot also stores: peak moment (frame with the highest M × F), usable windows (sharp, not too dark), CLIP tags, caption, motion direction, dominant color, `cameraMode`, `nativeFps`.
+A shot's first sampled frame is left out of M, St, the peak moment and the motion direction, because its optical flow was measured across the cut.
 
-**Reject** when S < 0.2, mean luma < 0.08, or it duplicates a better shot (CLIP cosine similarity > 0.95).
+Each shot also stores: peak moment (frame with the highest M × F), usable windows (sharp, not too dark), tags, caption, motion direction, dominant color, CLIP embedding, `cameraMode`, `nativeFps`.
+
+- **Tags:** vocabulary words (`TAG_VOCABULARY` in `shot_tags.py`) with CLIP similarity > 0.25, at most 5, plus YOLO labels seen in at least 25% of the shot's frames. Tags are compared as the phrase "a photo of {tag}".
+- **Motion direction:** `left`, `right`, `up`, `down` or `none`, the way the picture moves, so a camera panning right gives `left`. It is `none` when the mean flow is under 0.2 px at 320 px width, or under 30% of the mean flow magnitude.
+- **Dominant color:** the most common per-frame color, where a frame's color is the fullest 32-level RGB bin, as `#rrggbb`.
+- **Embedding:** the normalized mean of the frames' unit CLIP vectors, stored as plain floats rounded to 5 decimals.
+
+**Reject** when S < 0.2, mean luma < 0.08, or it duplicates a better shot (CLIP cosine similarity > 0.95). Shots are compared best first, and only against shots that were kept.
+
+**CLIP shot search** (`application/search_shots.py`): ranks shots by similarity to a text, marking those above 0.25. It gives B4's prompt fit its data for included and excluded tags; it never picks shots.
 
 ## B3. Pacing and style presets (`pacing.py`)
 
@@ -78,7 +87,8 @@ Output: an ordered list of **slots** `{start, end, section, beatStrength, isDown
    - Photos fill at most 30% of slots and never a drop, unless the input is only photos.
    - At least 70% of drop slots get shots with M in the top half.
 4. **Window placement:** inside the chosen shot, the window is placed so the peak moment lands on the slot's beat.
-5. **Order:** chronological (by capture time) for Travel; energy-driven for every other style. Ties are broken by the seed.
+5. **Order:** chronological (by capture time) for Travel or when the prompt asks; energy-driven for every other style. Ties are broken by the seed. Chronological order walks the timeline and takes the least-used, earliest shot the constraints in step 3 allow. Capture time is not stored yet, so "by capture time" means asset order, then time inside the clip.
+6. **Too few matches:** `includeTags` drop every other shot, unless the matching shots hold less usable footage than the edit window. Then the best-scoring other shots top them up until it is covered, and the plan log says so. A tag no shot has is logged and ignored. If `excludeTags` would remove every shot, that request is ignored and logged.
 
 ## B5. Effect rules (`effects.py`)
 
@@ -86,13 +96,13 @@ Output: an ordered list of **slots** `{start, end, section, beatStrength, isDown
 | --- | --- |
 | First beat of a drop | Speed ramp, white flash (0.08 s), shake, zoom punch or FOV punch (360) |
 | Accent beat | Shake (strength = onset strength) or zoom punch 1.0 → 1.15, alternating |
-| Regular beat cut | Hard cut or whip transition, alternating |
+| Regular beat cut | Hard cut or whip transition, alternating (every other regular cut is a whip, left and right alternating) |
 | Section change | Signature transition: zoom-through, spin or glitch; tiny planet for 360 |
 | Build | Slow push-in, rising shake, speed rising 1.0× → 1.5× |
 | Break | Slow motion, grain, no shake |
 | Final downbeat | Freeze frame, then fade to black |
 
-**Caps:** shakes on at most 40% of beats; at most one flash per bar outside drops; transitions on at most half of all cuts. Every strength is multiplied by the style's FX intensity and any prompt override. Motion blur is applied to every segment with zoom, spin or whip, amount = style FX intensity × 0.7.
+**Caps:** shakes on at most 40% of beats; at most one flash per bar outside drops; transitions on at most half of all cuts. Every strength is multiplied by the style's FX intensity; a prompt's `fxIntensity` replaces the style's value, so it can raise effects as well as lower them, and 0 means no effects. Motion blur is applied to every segment with zoom, spin or whip, amount = style FX intensity × 0.7.
 
 ## B6. Speed ramp curve (`ramps.py`)
 
@@ -106,14 +116,15 @@ For a ramped slot of length D (timeline seconds):
 | Ease up | 0.8 D → D | 0.25× → 1× |
 
 - Easing: cubic-bezier(0.7, 0, 0.3, 1).
-- The start of the slow hold sits on the beat.
+- The start of the slow hold sits on the beat grid: a slot is ramped only when its middle is on a grid point (every beat and half beat) and it is at least 0.5 s long. `slowmoAt` sections and the first slot of each Velocity drop get ramps; a slot no window can hold with the curve's extra source (1.34 D) stays at 1x.
 - Slow frames come from native 100/120 fps footage when available, otherwise RIFE.
 - Source length needed = ∫ speed(τ) dτ over D; B4's length fit uses this.
 
 ## B7. Reframing rules (`reframe.py`)
 
 - **Flat clips:** crop window at the output ratio, as large as possible. Center = subject center smoothed with a 1€ filter; 10% dead zone; max pan 15% of frame width per second (unlimited across cuts). A single subject sits on a rule-of-thirds line in the direction of motion.
-- **360 clips:** yaw follows the subject at pitch −5°, FOV 100° (90° for 9:16 and 4:5). Drop → 360° yaw spin over one beat. Section change → tiny planet (pitch −90°, FOV 160°, stereographic). Pitch stays above −60° except during tiny planet, keeping the selfie stick out of frame.
+- **Flat clips, subject:** analysis stores the main subject (largest person, else largest object) per 4 fps sample as `subjectTrack`; the plan keeps the resulting crop path in `reframe.path`.
+- **360 clips:** `settings.followPoint` (a tap on the equirect frame) starts the camera on that subject; detections within 40 degrees of it are followed, otherwise the camera holds the point. Drop first beat: beat spin. Accents: FOV punch (140 to 70, spec 08) in place of the zoom punch. Last slot before a section change: tiny planet. Pitch limit last. Yaw follows the subject at pitch −5°, FOV 100° (90° for 9:16 and 4:5). Drop → 360° yaw spin over one beat. Section change → tiny planet (pitch −90°, FOV 160°, stereographic). Pitch stays above −60° except during tiny planet, keeping the selfie stick out of frame.
 - **Photos:** Ken Burns from 1.0 to 1.12 scale toward the subject, or depth parallax when depth contrast is high.
 
 ## B8. Text and audio (`effects.py`, `render/audio.py`)
@@ -127,10 +138,13 @@ For a ramped slot of length D (timeline seconds):
 
 The LLM turns the prompt into a constraint JSON (schema in `06-edit-plan-schema.md`) that the rules engine applies. A keyword fallback parser handles common phrases ("slow mo", "no shake", "cinematic", "only car") if the LLM fails. Any request that maps to nothing is skipped and listed in the job log shown to the user.
 
+Requests the current phase cannot carry out (`text` and `effectsOn` until their effects exist) are recorded in `plan.log` too, so nothing is dropped silently. `durationSec` beats the length setting. The style comes from the prompt first, then the user's style setting, then the director's own pick, then the B10 rules.
+
 ## B10. LLM director and fallback (`director.py`)
 
 - **Input to the LLM:** compact JSON with music sections (type, start, end, energy), the top 40 shots (id, tags, caption, score, cameraMode), user settings and the prompt. Max ~3,000 tokens.
-- **Output:** `{ style, storyHints[], constraints }`, requested with Ollama `format: json` and validated against the schema; one retry on invalid JSON.
+- **Message shape:** the project JSON goes in the system message, worked examples follow as user and assistant turns, and the prompt is the last user turn. Thinking is off. With the JSON and prompt in one user message, `qwen3:4b` echoes its input.
+- **Output:** `{ style, storyHints[], constraints }`, requested with Ollama `format: json` and validated against the schema; one retry on invalid JSON. Unknown fields are invalid, so an echo of the input cannot pass as an empty answer. `storyHints` are logged; no rule reads them yet.
 - **Fallback** (invalid output or Ollama not running): style picked by rule, in order:
   1. BPM ≥ 140 → Hype
   2. BPM ≥ 120 and drop energy ≥ 0.75 → Velocity

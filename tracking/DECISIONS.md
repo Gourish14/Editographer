@@ -4,6 +4,8 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-017 | Ramp eligibility, reframe path and transition mix | Accepted |
+| ADR-016 | Choices made in T-201, T-202, T-301 and T-303 | Accepted |
 | ADR-015 | 360 views render with FFmpeg v360 | Accepted |
 | ADR-014 | Photo parallax and speech defaults | Accepted |
 | ADR-013 | Phase 2 starts before the real-footage Phase 1 gate | Accepted |
@@ -19,6 +21,20 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-017 — Ramp eligibility, reframe path and transition mix
+- Date / Status: 2026-10-31 / Accepted
+- Context: T-405 needed choices the specs leave open.
+- Options considered: Spec 06 `keyframes` or a new `reframe.path`; requiring B6's hold on a whole beat or on the grid.
+- Decision: A slot ramps if it lasts at least 0.5 s and its middle is on the grid, half beats included. Flat tracking is stored as `reframe.path` crop centers. RIFE scale 0.5 starts at 4K. Section changes cycle zoom_through, spin and glitch; other cuts alternate hard cut and whip, capped at half of all cuts. 360 section changes use the tiny planet.
+- Consequences: Velocity drop slots are often too short, so ramps there are rare unless a prompt asks. `motionBlur` is emitted even when the prompt turns other effects off.
+
+### ADR-016 — Choices made in T-201, T-202, T-301 and T-303
+- Date / Status: 2026-10-31 / Accepted
+- Context: The agents made decisions the specs leave open.
+- Options considered: recorded per item below.
+- Decision: Scoring uses the full B2 formula with no renormalization. Ultralytics is forced offline, with telemetry and auto-install off. CLIP uses OpenAI weights, which the aesthetic head was trained on; YOLO is yolo11n; A uses object velocity only, no pose. `fxIntensity` replaces the style's value. Style precedence is prompt, UI setting, director, then B10 rules. Chronological order means asset order until capture time is stored. RIFE is 4.25 in fp16 with 24 px tile context. A transition plays inside the outgoing segment and ends on the beat, so join stays a copy. `tmix` was replaced because it silently dropped 2 frames. Ollama models live in `models/ollama`.
+- Consequences: Scores sit lower than in Phase 1, so more shots may fall under 0.2 on real footage. Camera pans count as object speed. Temperature is checked only between segments, because a running FFmpeg cannot pause. RIFE at 4K with scale 1.0 reaches 3.6 GB, so scale 0.5 should probably start at 4K, not above it. The qwen3:4b model downloaded earlier sits in the user profile and is unused now.
 
 ### ADR-015 — 360 views render with FFmpeg v360
 - Date / Status: 2026-10-31 / Accepted

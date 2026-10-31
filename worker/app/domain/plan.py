@@ -39,16 +39,26 @@ class Speed(_PlanModel):
     interpolate: str = "none"
 
 
+class ReframePoint(_PlanModel):
+    """Where the crop window's center sits `t` seconds into the segment, as shares of the frame."""
+
+    t: float
+    x: float
+    y: float
+
+
 class Reframe(_PlanModel):
     mode: str = "center"
     subject: str | None = None
+    path: tuple[ReframePoint, ...] = ()
 
 
 class Effect(_PlanModel):
     type: str
-    at: float
-    duration: float
+    at: float = 0.0
+    duration: float = 0.0
     strength: float | None = None
+    amount: float | None = None
 
 
 class Transition(_PlanModel):
@@ -60,6 +70,7 @@ class Source(_PlanModel):
     camera_mode: str | None
     log_profile: str | None
     native_fps: float | None
+    width: int | None = None
 
 
 class CameraKeyframe(_PlanModel):
@@ -105,6 +116,23 @@ class Segment(_PlanModel):
     source: Source = Source(camera_mode=None, log_profile=None, native_fps=None)
     camera360: Camera360 | None = None
     motion: Motion | None = None
+    keep_audio: bool = False
+
+
+class TextItem(_PlanModel):
+    """Text on the edit. `at` is on the music timeline, like a segment's `at`."""
+
+    content: str
+    at: float
+    duration: float
+    anim: str = "pop_on_beat"
+    behind_subject: bool = False
+
+
+class SfxCue(_PlanModel):
+    type: str
+    at: float
+    gain_db: float
 
 
 class EditPlan(_PlanModel):
@@ -115,4 +143,6 @@ class EditPlan(_PlanModel):
     music: MusicWindow
     grade: Grade
     segments: tuple[Segment, ...]
+    text: tuple[TextItem, ...] = ()
+    sfx: tuple[SfxCue, ...] = ()
     log: tuple[str, ...] = ()

@@ -10,6 +10,7 @@ set "UV_PYTHON_BIN_DIR=%ROOT%\tools\python\bin"
 set "UV_CACHE_DIR=%ROOT%\tools\uv-cache"
 set "UV_PROJECT_ENVIRONMENT=%ROOT%\worker\.venv"
 set "UV_PYTHON=3.12"
+set "OLLAMA_MODELS=%ROOT%\models\ollama"
 
 rem winget adds these folders to the user PATH only, which a running shell never sees.
 set "FFMPEG_DIR=%ROOT%\tools\ffmpeg\bin"

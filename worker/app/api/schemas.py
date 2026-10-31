@@ -12,6 +12,7 @@ from app.domain.models import (
     AnalyzeJob,
     AssetInput,
     AssetType,
+    FollowPoint,
     GpuStatus,
     RenderJob,
     RenderSettings,
@@ -51,6 +52,15 @@ class AnalyzeRequest(ApiModel):
         return AnalyzeJob(self.job_id, self.asset_id, self.path, self.type, self.proxy_source)
 
 
+class FollowPointBody(ApiModel):
+    x: float
+    y: float
+    time_sec: float = 0.0
+
+    def to_point(self) -> FollowPoint:
+        return FollowPoint(self.x, self.y, self.time_sec)
+
+
 class RenderSettingsBody(ApiModel):
     ratio: str
     quality: str
@@ -61,6 +71,7 @@ class RenderSettingsBody(ApiModel):
     prompt: str | None = None
     cool_mode: bool = False
     seed: int
+    follow_point: FollowPointBody | None = None
 
     def to_settings(self) -> RenderSettings:
         return RenderSettings(
@@ -73,6 +84,7 @@ class RenderSettingsBody(ApiModel):
             self.prompt,
             self.cool_mode,
             self.seed,
+            self.follow_point.to_point() if self.follow_point else None,
         )
 
 

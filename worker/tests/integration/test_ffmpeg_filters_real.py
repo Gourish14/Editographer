@@ -125,6 +125,47 @@ def test_gate_adding_music_keeps_every_video_frame(tmp_path: Path) -> None:
     assert count_frames(target) == frames
 
 
+def test_gate_music_shorter_than_the_edit_is_padded_to_its_length(tmp_path: Path) -> None:
+    """BUG-004: a window running past the end of the song still gives audio for the whole edit."""
+    frames = 90
+    video = tmp_path / "video.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+            "-i", f"testsrc2=s=320x180:r={FPS}", "-frames:v", str(frames),
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", str(video),
+        ],
+        check=True,
+    )  # fmt: skip
+    music = tmp_path / "music.wav"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+            "-i", "sine=frequency=330:duration=1.5", str(music),
+        ],
+        check=True,
+    )  # fmt: skip
+    target = tmp_path / "final.mp4"
+
+    FfmpegAudioFinisher().add_music(video, music, 0.0, frames / FPS, target)
+
+    assert count_frames(target) == frames
+    assert audio_seconds(target) == pytest.approx(frames / FPS, abs=0.03)
+
+
+def audio_seconds(video: Path) -> float:
+    output = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "a:0",
+            "-show_entries", "stream=duration", "-of", "csv=p=0", str(video),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout  # fmt: skip
+    return float(output.strip())
+
+
 def count_frames(video: Path) -> int:
     output = subprocess.run(
         [

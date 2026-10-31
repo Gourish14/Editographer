@@ -10,7 +10,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.domain.brain.pacing import MIN_SEGMENT_SEC, Slot
+from app.domain.brain.ramps import NATIVE_SLOWMO_MIN_FPS, source_length
 from app.domain.brain.scoring import ScoredShot
+from app.domain.brain.tags import tag_matches
+from app.domain.constraints import NO_CONSTRAINTS, Constraints, ShotOrder
 from app.domain.errors import ErrorCode, RenderError
 from app.domain.music import MusicMap, SectionKind
 from app.domain.shots import TimeWindow
@@ -24,6 +27,9 @@ SECTION_WEIGHTS = {
     SectionKind.BREAK: 0.4,
 }
 TIE_BREAK_SIZE = 1e-6
+SLOWMO_FIT = 1.3
+PROMPT_FIT_PER_TAG = 1.5
+CHRONOLOGICAL: ShotOrder = "chronological"
 
 
 @dataclass(frozen=True)
@@ -33,6 +39,7 @@ class Candidate:
     asset_id: str
     shot: ScoredShot
     motion_rank: float
+    native_fps: float | None = None
 
     @property
     def key(self) -> tuple[str, float]:
@@ -45,6 +52,75 @@ class Assignment:
     candidate: Candidate
     src_in: float
     src_out: float
+    ramped: bool = False
+
+
+@dataclass(frozen=True)
+class _Rules:
+    """What stays the same for every slot of one assignment."""
+
+    ramped: frozenset[float]
+
+    constraints: Constraints
+    order: ShotOrder
+    can_vary_clips: bool
+    positions: dict[tuple[str, float], int]
+
+
+def prompt_fit(tags: Sequence[str], include: Sequence[str], exclude: Sequence[str]) -> float:
+    """1.5 for each included tag matched, 0 if an excluded tag matches."""
+    if any(tag_matches(tags, word) for word in exclude):
+        return 0.0
+    matched = sum(1 for word in include if tag_matches(tags, word))
+    return float(PROMPT_FIT_PER_TAG**matched)
+
+
+def select_candidates(
+    candidates: Sequence[Candidate], constraints: Constraints, needed_sec: float
+) -> tuple[list[Candidate], tuple[str, ...]]:
+    """Shots the prompt allows, and notes for the plan log.
+
+    Other shots are excluded unless too few: when the matches hold less usable footage than the
+    edit needs, the best other shots top them up until it is covered.
+    """
+    include, exclude = constraints.include_tags, constraints.exclude_tags
+    notes = [
+        f"Prompt request '{word}' skipped: no matching footage"
+        for word in (*include, *exclude)
+        if not any(tag_matches(c.shot.measure.tags, word) for c in candidates)
+    ]
+    allowed = [c for c in candidates if prompt_fit(c.shot.measure.tags, (), exclude) > 0]
+    if not allowed:
+        notes.append(f"Every shot is excluded by {', '.join(exclude)}; ignored that request")
+        allowed = list(candidates)
+    matched = [c for c in allowed if _matches_any(c, include)]
+    if not matched:
+        return allowed, tuple(notes)
+
+    others = sorted(
+        (c for c in allowed if c not in matched), key=lambda c: c.shot.score, reverse=True
+    )
+    kept = list(matched)
+    covered = sum(_usable_sec(c) for c in kept)
+    added = 0
+    for other in others:
+        if covered >= needed_sec:
+            break
+        kept.append(other)
+        covered += _usable_sec(other)
+        added += 1
+    if added:
+        wanted = ", ".join(include)
+        notes.append(f"Too little '{wanted}' footage for this length; added {added} other shots")
+    return [c for c in allowed if c in kept], tuple(notes)
+
+
+def _matches_any(candidate: Candidate, words: Sequence[str]) -> bool:
+    return any(tag_matches(candidate.shot.measure.tags, word) for word in words)
+
+
+def _usable_sec(candidate: Candidate) -> float:
+    return sum(window.end - window.start for window in candidate.shot.measure.usable)
 
 
 def split_long_slots(slots: Sequence[Slot], grid: Sequence[float], longest: float) -> list[Slot]:
@@ -66,20 +142,40 @@ def split_long_slots(slots: Sequence[Slot], grid: Sequence[float], longest: floa
 
 
 def assign_shots(
-    slots: Sequence[Slot], candidates: Sequence[Candidate], music: MusicMap, rng: random.Random
+    slots: Sequence[Slot],
+    candidates: Sequence[Candidate],
+    music: MusicMap,
+    rng: random.Random,
+    constraints: Constraints = NO_CONSTRAINTS,
+    order: ShotOrder = "energy",
+    ramped: frozenset[float] = frozenset(),
 ) -> tuple[Assignment, ...]:
-    """Fills slots from the most important down, honoring the B4 constraints."""
+    """Fills slots, honoring the B4 constraints. `ramped` holds the starts of slots with a B6 ramp.
+
+    Energy order fills from the most important slot down and takes the best match. Chronological
+    order walks the timeline and takes the earliest allowed shot, with `candidates` in capture
+    order.
+    """
     if not candidates:
         raise RenderError("No usable shots to edit with", ErrorCode.PLAN_INVALID)
-    order = sorted(
-        range(len(slots)),
-        key=lambda i: (-_importance(slots[i]), slots[i].start, rng.random()),
-    )
+    if order == CHRONOLOGICAL:
+        turns = list(range(len(slots)))
+    else:
+        turns = sorted(
+            range(len(slots)),
+            key=lambda i: (-_importance(slots[i]), slots[i].start, rng.random()),
+        )
     filled: dict[int, Assignment] = {}
     used: dict[tuple[str, float], list[TimeWindow]] = {}
-    clips = {candidate.asset_id for candidate in candidates}
-    for index in order:
-        filled[index] = _fill(index, slots, candidates, music, rng, filled, used, len(clips) > 1)
+    rules = _Rules(
+        ramped,
+        constraints,
+        order,
+        len({candidate.asset_id for candidate in candidates}) > 1,
+        {candidate.key: position for position, candidate in enumerate(candidates)},
+    )
+    for index in turns:
+        filled[index] = _fill(index, slots, candidates, music, rng, filled, used, rules)
     return tuple(filled[index] for index in range(len(slots)))
 
 
@@ -95,19 +191,18 @@ def _fill(
     rng: random.Random,
     filled: dict[int, Assignment],
     used: dict[tuple[str, float], list[TimeWindow]],
-    can_vary_clips: bool,
+    rules: _Rules,
 ) -> Assignment:
     slot = slots[index]
     neighbours = {
         filled[other].candidate.asset_id for other in (index - 1, index + 1) if other in filled
     }
-    pool = [
-        candidate
-        for candidate in candidates
-        if _fits(candidate, slot) and not (can_vary_clips and candidate.asset_id in neighbours)
-    ]
-    if not pool:
-        pool = [candidate for candidate in candidates if _fits(candidate, slot)]
+    ramped = slot.start in rules.ramped
+    length = source_length(slot.duration) if ramped else slot.duration
+    pool = _pool(candidates, length, neighbours, rules)
+    if not pool and ramped:
+        ramped, length = False, slot.duration  # no window holds the curve's extra source
+        pool = _pool(candidates, length, neighbours, rules)
     if not pool:
         raise RenderError(f"No shot fits the {slot.duration:.2f} s slot", ErrorCode.PLAN_INVALID)
 
@@ -116,22 +211,39 @@ def _fill(
         energetic = [candidate for candidate in pool if candidate.motion_rank >= 0.5]
         pool = energetic or pool
 
-    energy = _slot_energy(slot, music)
-    best = max(pool, key=lambda c: (_match(c, energy), rng.random()))
-    src_in = _place(best, slot, used.get(best.key, []))
-    used.setdefault(best.key, []).append(TimeWindow(start=src_in, end=src_in + slot.duration))
-    return Assignment(slot, best, round(src_in, 4), round(src_in + slot.duration, 4))
+    if rules.order == CHRONOLOGICAL:
+        best = min(pool, key=lambda c: (len(used.get(c.key, ())), rules.positions[c.key]))
+    else:
+        energy = _slot_energy(slot, music)
+        best = max(pool, key=lambda c: (_match(c, energy, rules.constraints, ramped), rng.random()))
+    src_in = _place(best, length, used.get(best.key, []))
+    used.setdefault(best.key, []).append(TimeWindow(start=src_in, end=src_in + length))
+    return Assignment(slot, best, round(src_in, 4), round(src_in + length, 4), ramped)
 
 
-def _match(candidate: Candidate, energy: float) -> float:
-    """match = S × fit. Length fit is settled by the pool, slow-mo and prompt fit come later."""
-    return candidate.shot.score * (1.0 - abs(candidate.motion_rank - energy))
+def _pool(
+    candidates: Sequence[Candidate], length: float, neighbours: set[str], rules: _Rules
+) -> list[Candidate]:
+    """Shots with a window of this length, not from a neighbour's clip when others exist."""
+    fitting = [candidate for candidate in candidates if _fits(candidate, length)]
+    apart = [c for c in fitting if not (rules.can_vary_clips and c.asset_id in neighbours)]
+    return apart or fitting
 
 
-def _fits(candidate: Candidate, slot: Slot) -> bool:
-    return any(
-        window.end - window.start >= slot.duration for window in candidate.shot.measure.usable
+def _match(
+    candidate: Candidate, energy: float, constraints: Constraints, ramped: bool = False
+) -> float:
+    """match = S × fit. Length fit is settled by the pool; slow-mo fit is 1.3 on native fps."""
+    energy_fit = 1.0 - abs(candidate.motion_rank - energy)
+    fit = prompt_fit(
+        candidate.shot.measure.tags, constraints.include_tags, constraints.exclude_tags
     )
+    native = ramped and (candidate.native_fps or 0.0) >= NATIVE_SLOWMO_MIN_FPS
+    return candidate.shot.score * energy_fit * fit * (SLOWMO_FIT if native else 1.0)
+
+
+def _fits(candidate: Candidate, length: float) -> bool:
+    return any(window.end - window.start >= length for window in candidate.shot.measure.usable)
 
 
 def _slot_energy(slot: Slot, music: MusicMap) -> float:
@@ -141,21 +253,21 @@ def _slot_energy(slot: Slot, music: MusicMap) -> float:
     return sum(window) / len(window) if window else 0.0
 
 
-def _place(candidate: Candidate, slot: Slot, taken: Sequence[TimeWindow]) -> float:
+def _place(candidate: Candidate, length: float, taken: Sequence[TimeWindow]) -> float:
     """Puts the peak on the slot's beat, moving only as far as the usable window requires."""
     measure = candidate.shot.measure
-    windows = [w for w in measure.usable if w.end - w.start >= slot.duration]
+    windows = [w for w in measure.usable if w.end - w.start >= length]
     best_window = min(
         windows,
-        key=lambda w: abs(_clamped(measure.peak_time, w, slot.duration) - measure.peak_time),
+        key=lambda w: abs(_clamped(measure.peak_time, w, length) - measure.peak_time),
     )
-    start = _clamped(measure.peak_time, best_window, slot.duration)
-    if not _overlaps(start, slot.duration, taken):
+    start = _clamped(measure.peak_time, best_window, length)
+    if not _overlaps(start, length, taken):
         return start
     for window in windows:
         position = window.start
-        while position + slot.duration <= window.end:
-            if not _overlaps(position, slot.duration, taken):
+        while position + length <= window.end:
+            if not _overlaps(position, length, taken):
                 return position
             position += MIN_SEGMENT_SEC
     return start

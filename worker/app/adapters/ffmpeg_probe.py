@@ -56,6 +56,7 @@ def parse_probe_output(data: dict[str, Any]) -> MediaInfo:
         transfer=video.get("color_transfer") if video else None,
         bit_depth=_bit_depth(video) if video else None,
         tags=_tags(media_format, streams),
+        has_audio=audio is not None,
     )
 
 

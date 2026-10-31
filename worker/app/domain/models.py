@@ -37,6 +37,15 @@ class AnalyzeJob:
 
 
 @dataclass(frozen=True)
+class FollowPoint:
+    """The subject to follow in 360 clips: a tap on the equirect frame, as shares 0..1."""
+
+    x: float
+    y: float
+    time_sec: float
+
+
+@dataclass(frozen=True)
 class RenderSettings:
     ratio: str
     quality: str
@@ -47,6 +56,7 @@ class RenderSettings:
     prompt: str | None
     cool_mode: bool
     seed: int
+    follow_point: FollowPoint | None = None
 
 
 @dataclass(frozen=True)

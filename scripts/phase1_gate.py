@@ -34,6 +34,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -275,11 +276,17 @@ def beat_accuracy(found: Sequence[float], truth: Sequence[float]) -> dict[str, f
 def judge(
     results: Sequence[RenderResult], limit_minutes: float, shared_machine: bool
 ) -> dict[str, Any]:
-    """The verdict. Stress renders inform the limit but are no part of the spec's target."""
+    """The verdict. A stress render must only keep its frames.
+
+    Its shake and zoom cover every frame, so every frame looks like a scene change and measured
+    cut offsets say nothing there.
+    """
     edits = [result for result in results if result.label == "edit"]
+    stress = [result for result in results if result.label != "edit"]
     slowest = max(edits, key=lambda result: result.seconds, default=None)
     within_limit = slowest is not None and slowest.seconds <= limit_minutes * 60
-    beats_ok = bool(edits) and all(result.passed for result in results)
+    frames_kept = all(item.beat_check is not None and item.beat_check.passed for item in stress)
+    beats_ok = bool(edits) and all(result.passed for result in edits) and frames_kept
     return {
         "beatsPassed": beats_ok,
         "timePassed": within_limit,
@@ -659,15 +666,16 @@ def inspect_render(
     result: RenderResult,
     folder: Path,
     song_analysis: Path,
-    true_beats: Sequence[float],
+    true_beats: Sequence[float] | None,
     env: dict[str, str],
 ) -> None:
-    """Fills in everything measured from the finished files."""
+    """Fills in everything measured from the finished files. A real song has no true beats."""
     video = folder / "final.mp4"
     plan = json.loads((folder / "plan.json").read_text(encoding="utf-8"))
     music = json.loads(song_analysis.read_text(encoding="utf-8"))["music"]
     result.beat_check = run_beat_check(folder, song_analysis, env)
-    result.true_grid_worst_ms = round(check_beats.worst_offset(plan, true_beats) * 1000, 1)
+    if true_beats:
+        result.true_grid_worst_ms = round(check_beats.worst_offset(plan, true_beats) * 1000, 1)
     scores = scene_scores(video, env)
     offsets = cut_offsets(scores, planned_cut_frames(plan))
     result.cuts_measured = len(offsets)
@@ -765,7 +773,7 @@ def render_stress(
     slowest: RenderResult,
     media_root: Path,
     song_analysis: Path,
-    true_beats: Sequence[float],
+    true_beats: Sequence[float] | None,
     assets: Sequence[dict[str, Any]],
     env: dict[str, str],
 ) -> RenderResult:
@@ -787,6 +795,49 @@ def song_analysis_file(media_root: Path) -> Path:
     raise GateError("No analysis with a music map was found")
 
 
+def input_files(folder: Path) -> tuple[list[Path], Path]:
+    """The clips and song of a real input folder: every *.mp4 plus song.wav."""
+    clips = sorted(folder.glob("*.mp4"))
+    song = folder / phase1_media.SONG_FILE
+    if not clips or not song.is_file():
+        raise GateError(f"{folder} needs *.mp4 clips and {phase1_media.SONG_FILE}")
+    return clips, song
+
+
+def gate_media(inputs: Path | None) -> tuple[list[Path], Path, dict[str, Any] | None]:
+    """Clips, song and the song's known beats. Only generated songs have known beats."""
+    if inputs is not None:
+        clips, song = input_files(inputs)
+        return clips, song, None
+    source = ROOT / GATE_FOLDER / "source"
+    print("Generating media (kept between runs)", flush=True)
+    song = phase1_media.generate_song(source)
+    clips = phase1_media.generate_clips(source)
+    truth = json.loads((source / phase1_media.TRUTH_FILE).read_text(encoding="utf-8"))
+    return clips, song, truth
+
+
+def shot_report(media_root: Path) -> dict[str, Any]:
+    """Shots kept and rejected per reason, by the same scoring the planner runs over all clips."""
+    sys.path.insert(0, str(ROOT / "worker"))
+    from app.domain.analysis import StoredAnalysis
+    from app.domain.brain.scoring import score_shots
+
+    documents = [
+        StoredAnalysis.model_validate_json(path.read_text(encoding="utf-8"))
+        for path in sorted((media_root / "cache").glob("*/analysis.json"))
+    ]
+    shots = [shot for document in documents for shot in document.shots]
+    scored = score_shots(shots)
+    reasons = [item.reject_reason.value for item in scored if item.reject_reason is not None]
+    return {
+        "total": len(scored),
+        "usable": len(scored) - len(reasons),
+        "rejected": dict(Counter(reasons)),
+        "perClip": [len(document.shots) for document in documents if document.shots],
+    }
+
+
 def stored_assets(assets: Sequence[dict[str, Any]], project_id: str) -> list[dict[str, Any]]:
     """Ids and media paths for the stress render. The backend stores uploads under their id."""
     return [
@@ -800,11 +851,8 @@ def stored_assets(assets: Sequence[dict[str, Any]], project_id: str) -> list[dic
 
 
 def run_gate(args: argparse.Namespace, run_folder: Path, tools: dict[str, str]) -> dict[str, Any]:
-    source = ROOT / GATE_FOLDER / "source"
-    print("Generating media (kept between runs)", flush=True)
-    song = phase1_media.generate_song(source)
-    clips = phase1_media.generate_clips(source)
-    truth = json.loads((source / phase1_media.TRUTH_FILE).read_text(encoding="utf-8"))
+    clips, song, truth = gate_media(args.inputs)
+    true_beats = truth["beats"] if truth else None
 
     if not args.skip_build:
         build_backend(tools)
@@ -819,7 +867,11 @@ def run_gate(args: argparse.Namespace, run_folder: Path, tools: dict[str, str]) 
         folder.mkdir(parents=True, exist_ok=True)
 
     services = Services(run_folder / "logs")
-    report: dict[str, Any] = {"rehearsal": True, "started": datetime.now().isoformat()}
+    report: dict[str, Any] = {
+        "rehearsal": args.inputs is None,
+        "inputs": str(args.inputs) if args.inputs else "generated",
+        "started": datetime.now().isoformat(),
+    }
     results: list[RenderResult] = []
     try:
         start_services(services, env, args.backend_port)
@@ -840,15 +892,20 @@ def run_gate(args: argparse.Namespace, run_folder: Path, tools: dict[str, str]) 
         analysis = song_analysis_file(media_root)
         music = json.loads(analysis.read_text(encoding="utf-8"))["music"]
         found = [beat["time"] for beat in music["beats"]]
-        report["beatAccuracy"] = beat_accuracy(found, truth["beats"])
         report["bpmFound"] = music["bpm"]
-        report["bpmTrue"] = truth["bpm"]
+        report["beatsFound"] = len(found)
+        report["durationSec"] = music.get("duration_sec")
         report["sectionsFound"] = music["sections"]
-        report["sectionsTrue"] = truth["sections"]
+        report["editWindow"] = music.get("edit_window")
+        report["shots"] = shot_report(media_root)
+        if truth:
+            report["beatAccuracy"] = beat_accuracy(found, truth["beats"])
+            report["bpmTrue"] = truth["bpm"]
+            report["sectionsTrue"] = truth["sections"]
 
         def inspected(result: RenderResult) -> None:
             folder = media_root / "renders" / str(result.render_id)
-            inspect_render(result, folder, analysis, truth["beats"], env)
+            inspect_render(result, folder, analysis, true_beats, env)
 
         for ratio in args.ratios:
             print(f"Rendering {ratio}", flush=True)
@@ -863,7 +920,7 @@ def run_gate(args: argparse.Namespace, run_folder: Path, tools: dict[str, str]) 
             print(f"Stress render of {slowest.ratio}", flush=True)
             assets = stored_assets(api.get(f"/api/projects/{project_id}/assets"), project_id)
             results.append(
-                render_stress(slowest, media_root, analysis, truth["beats"], assets, env)
+                render_stress(slowest, media_root, analysis, true_beats, assets, env)
             )
             print(report_table(results[-1:]), flush=True)
     finally:
@@ -880,6 +937,7 @@ def run_gate(args: argparse.Namespace, run_folder: Path, tools: dict[str, str]) 
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ratios", nargs="+", default=list(RATIOS), choices=RATIOS)
+    parser.add_argument("--inputs", type=Path, help="Folder of real *.mp4 clips and song.wav")
     parser.add_argument("--skip-build", action="store_true")
     parser.add_argument("--skip-stress", action="store_true")
     parser.add_argument("--shared-gpu", action="store_true")
@@ -901,12 +959,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     os.environ.update(tools)
     run_folder = ROOT / GATE_FOLDER / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
     run_folder.mkdir(parents=True)
-    print("REHEARSAL on generated media: this is not the gate on real footage.", flush=True)
+    if args.inputs is None:
+        print("REHEARSAL on generated media: this is not the gate on real footage.", flush=True)
 
     report = run_gate(args, run_folder, tools)
 
     (run_folder / REPORT_FILE).write_text(json.dumps(report, indent=1), encoding="utf-8")
-    print(f"\nBeat accuracy against the song's real beats: {report.get('beatAccuracy')}")
+    print(f"\nBPM {report.get('bpmFound')}, window {report.get('editWindow')}")
+    print(f"Sections: {report.get('sectionsFound')}\nShots: {report.get('shots')}")
+    if "beatAccuracy" in report:
+        print(f"Beat accuracy against the song's real beats: {report['beatAccuracy']}")
     print(report_table([RenderResult(**_row(row)) for row in report["renders"]]))
     print(f"Verdict: {report['verdict']}\nReport: {run_folder / REPORT_FILE}")
     return 0 if report["verdict"]["passed"] else 1
