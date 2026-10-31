@@ -387,3 +387,40 @@ def test_b1_a_downbeat_right_after_another_is_dropped_as_spurious() -> None:
     )
 
     assert music.downbeats == base.downbeats
+
+
+def long_step_song(middle: int) -> MusicMap:
+    """Flat loudness; a bright middle whose second half is 17% less bright than its first."""
+    flat = song([(8 + 2 * middle + 8, 0.5)])
+    return build_music_map(
+        with_brightness(flat, [(8, 1000.0), (middle, 2400.0), (middle, 2000.0), (8, 1000.0)])
+    )
+
+
+def test_b1_a_part_longer_than_32_bars_is_split_at_a_change_over_015() -> None:
+    music = long_step_song(20)
+
+    assert [section.start for section in music.sections][2] == pytest.approx(28 * BAR)
+    assert all((s.end - s.start) / BAR <= 32 for s in music.sections)
+
+
+def test_b1_a_part_of_32_bars_or_less_is_not_split_by_a_small_change() -> None:
+    music = long_step_song(12)
+
+    assert len(music.sections) == 3
+
+
+def test_b1_a_long_drop_does_not_swallow_the_average_part_after_it() -> None:
+    music = long_step_song(20)
+
+    drops = [s for s in music.sections if s.kind is SectionKind.DROP]
+    assert [(s.start, s.end) for s in drops] == [(8 * BAR, 28 * BAR)]
+
+
+def test_b1_splitting_long_parts_keeps_boundaries_on_downbeats_and_the_window_valid() -> None:
+    music = long_step_song(20)
+
+    for section in music.sections[1:]:
+        assert section.start in music.downbeats
+    assert music.edit_window.start in music.downbeats
+    assert music.edit_window.end in music.downbeats
