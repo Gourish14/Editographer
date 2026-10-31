@@ -5,6 +5,7 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- Failed worker reports are retried, and jobs stuck after a worker restart recover or fail cleanly [BUG-008].
 - Database writes no longer fail after about 25 minutes [BUG-005].
 - Cuts stay on the beat through the whole edit and no frames are lost; the mix is exactly the edit's length [T-118] [BUG-004].
 - Zoom punches are centered, and BPM near 120 reads correctly [BUG-006] [BUG-007].
