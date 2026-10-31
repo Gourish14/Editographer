@@ -37,7 +37,7 @@ Two job types run on the worker: **analyze** (per asset, right after upload) and
 7. **Upscale** (GPU, Max quality only)
    - Real-ESRGAN realesr-general-x4v3, tiled 512 px, factor chosen per segment so each reaches the target size; final resize with Lanczos.
 8. **Audio and encode**
-   - Music cut to the edit window on downbeats, SFX at transitions (-18 dB) and drops, speech ducking, loudness to -14 LUFS (pyloudnorm).
+   - Music cut to the edit window on downbeats, SFX at transitions (-18 dB) and drops, speech ducking, loudness to -14 LUFS (pyloudnorm). Audio lasts exactly as long as the edit, padded with silence if the music runs out; video frames are never trimmed to fit the audio.
    - FFmpeg `hevc_nvenc`, 10-bit (`p010le`), preset p5, CQ 19, AAC 320 kbps.
 9. **Deliver**
    - `final.mp4` written to `media/renders/{renderId}/`, completion posted to the backend, SSE event to the browser.
