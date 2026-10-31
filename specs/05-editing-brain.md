@@ -96,7 +96,7 @@ Output: an ordered list of **slots** `{start, end, section, beatStrength, isDown
 | --- | --- |
 | First beat of a drop | Speed ramp, white flash (0.08 s), shake, zoom punch or FOV punch (360) |
 | Accent beat | Shake (strength = onset strength) or zoom punch 1.0 → 1.15, alternating |
-| Regular beat cut | Hard cut or whip transition, alternating |
+| Regular beat cut | Hard cut or whip transition, alternating (every other regular cut is a whip, left and right alternating) |
 | Section change | Signature transition: zoom-through, spin or glitch; tiny planet for 360 |
 | Build | Slow push-in, rising shake, speed rising 1.0× → 1.5× |
 | Break | Slow motion, grain, no shake |
@@ -116,14 +116,15 @@ For a ramped slot of length D (timeline seconds):
 | Ease up | 0.8 D → D | 0.25× → 1× |
 
 - Easing: cubic-bezier(0.7, 0, 0.3, 1).
-- The start of the slow hold sits on the beat.
+- The start of the slow hold sits on the beat grid: a slot is ramped only when its middle is on a grid point (every beat and half beat) and it is at least 0.5 s long. `slowmoAt` sections and the first slot of each Velocity drop get ramps; a slot no window can hold with the curve's extra source (1.34 D) stays at 1x.
 - Slow frames come from native 100/120 fps footage when available, otherwise RIFE.
 - Source length needed = ∫ speed(τ) dτ over D; B4's length fit uses this.
 
 ## B7. Reframing rules (`reframe.py`)
 
 - **Flat clips:** crop window at the output ratio, as large as possible. Center = subject center smoothed with a 1€ filter; 10% dead zone; max pan 15% of frame width per second (unlimited across cuts). A single subject sits on a rule-of-thirds line in the direction of motion.
-- **360 clips:** yaw follows the subject at pitch −5°, FOV 100° (90° for 9:16 and 4:5). Drop → 360° yaw spin over one beat. Section change → tiny planet (pitch −90°, FOV 160°, stereographic). Pitch stays above −60° except during tiny planet, keeping the selfie stick out of frame.
+- **Flat clips, subject:** analysis stores the main subject (largest person, else largest object) per 4 fps sample as `subjectTrack`; the plan keeps the resulting crop path in `reframe.path`.
+- **360 clips:** `settings.followPoint` (a tap on the equirect frame) starts the camera on that subject; detections within 40 degrees of it are followed, otherwise the camera holds the point. Drop first beat: beat spin. Accents: FOV punch (140 to 70, spec 08) in place of the zoom punch. Last slot before a section change: tiny planet. Pitch limit last. Yaw follows the subject at pitch −5°, FOV 100° (90° for 9:16 and 4:5). Drop → 360° yaw spin over one beat. Section change → tiny planet (pitch −90°, FOV 160°, stereographic). Pitch stays above −60° except during tiny planet, keeping the selfie stick out of frame.
 - **Photos:** Ken Burns from 1.0 to 1.12 scale toward the subject, or depth parallax when depth contrast is high.
 
 ## B8. Text and audio (`effects.py`, `render/audio.py`)
@@ -137,7 +138,7 @@ For a ramped slot of length D (timeline seconds):
 
 The LLM turns the prompt into a constraint JSON (schema in `06-edit-plan-schema.md`) that the rules engine applies. A keyword fallback parser handles common phrases ("slow mo", "no shake", "cinematic", "only car") if the LLM fails. Any request that maps to nothing is skipped and listed in the job log shown to the user.
 
-Requests the current phase cannot carry out (`slowmoAt` until B6 ramps, `text` and `effectsOn` until their effects exist) are recorded in `plan.log` too, so nothing is dropped silently. `durationSec` beats the length setting. The style comes from the prompt first, then the user's style setting, then the director's own pick, then the B10 rules.
+Requests the current phase cannot carry out (`text` and `effectsOn` until their effects exist) are recorded in `plan.log` too, so nothing is dropped silently. `durationSec` beats the length setting. The style comes from the prompt first, then the user's style setting, then the director's own pick, then the B10 rules.
 
 ## B10. LLM director and fallback (`director.py`)
 
