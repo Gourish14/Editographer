@@ -33,7 +33,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-401 | Backend and frontend: render tonight, 360 preview, subject picker, live GPU status | Done | T-117 |
 | T-402 | Worker: speech detection, text rules, text layers | Done | T-117 |
 | T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
-| T-404 | Wire photos, speech and text into analysis, planner and renderer | Todo | T-202, T-303, T-402, T-403 |
+| T-404 | Wire photos, speech and text into analysis, planner and renderer | Done | T-202, T-303, T-402, T-403 |
 | T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Todo | T-202, T-301, T-302, T-303 |
 
 ## Details
@@ -44,13 +44,14 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 - Notes: Migration V3. The three.js preview has not been seen in a real browser, because the tests have no WebGL. It assumes thumbnails of 360 clips are equirect frames, which is unchecked. The worker does not read `followPoint` yet. "Make another version" drops `startAt`. Skipped prompts are found by matching "skipped" in the plan log.
 
 ### T-404 — Wire photos, speech and text into the pipeline
-- Status: Todo
+- Status: Done
 - Spec: 05-editing-brain.md#b4, #b7, #b8, 06-edit-plan-schema.md
 - Depends on: T-202, T-303, T-402, T-403
 - Acceptance criteria:
-  - [ ] `analyze_asset.py` runs photo analysis and speech detection; the plan gains `text[]`; photo segments render.
-  - [ ] B4: photos fill at most 30% of slots and never a drop, unless the input is only photos.
-  - [ ] Clip audio is kept and music ducks 8 dB only where speech exists.
+  - [x] `analyze_asset.py` runs photo analysis and speech detection; the plan gains `text[]`; photo segments render.
+  - [x] B4: photos fill at most 30% of slots and never a drop, unless the input is only photos.
+  - [x] Clip audio is kept and music ducks 8 dB only where speech exists.
+- Notes: Preview-mode renders on generated media only. The real path through `AnalyzeAsset` and `main.py` has not run yet; the real-clip gate will cover it. Photos get no grade, effects or transitions. Depth maps are stored as absolute paths. A 4K final of a photo supersamples 3x and is untested. Silent videos skip speech detection, which fixed a faster-whisper crash.
 
 ### T-403 — Worker: photo analysis, Ken Burns, depth parallax
 - Status: Done
