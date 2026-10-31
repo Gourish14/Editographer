@@ -15,6 +15,7 @@ from app.application.enhance_stages import (
     RetimeStage,
     UpscaleStage,
     needs_rife,
+    raises_fps,
     working_size,
 )
 from app.application.job_runner import CancellationToken
@@ -259,7 +260,11 @@ class RenderEdit:
         pending = [
             (segment, sources[segment.asset_id], frames)
             for segment, frames in zip(plan.segments, frame_counts(plan), strict=True)
-            if needs_rife(segment) and segment.id not in retimed
+            if segment.id not in retimed
+            and (
+                needs_rife(segment)
+                or (plan.output.mode == MODE_MAX and raises_fps(segment, plan.output.fps))
+            )
         ]
         if not pending:
             return

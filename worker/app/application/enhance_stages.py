@@ -41,10 +41,25 @@ SLOW_BELOW = 0.99
 COOL_CHECK_EVERY_FRAMES = 10
 VIDEO_360 = "video360"
 MIN_UPSCALE_FACTOR = 1.15
+RAISE_FPS_RATIO = 1.5
+"""Spec 04 stage 6: interpolate when the output rate is at least this many times the source rate.
+Below it (50 to 60 fps, say) conforming with `fps` drops or repeats too few frames to matter."""
 
 
 def needs_rife(segment: Segment) -> bool:
     return segment.speed.interpolate == INTERPOLATE_RIFE and len(segment.speed.curve) > 2
+
+
+def raises_fps(segment: Segment, fps: int) -> bool:
+    """FEAT-021: a flat clip whose rate is far below the output rate gets RIFE frames in between.
+
+    A 360 clip is conformed instead: its equirect frames are 8K, so a PNG per frame would take
+    gigabytes, and the view it shows holds far fewer pixels than the frame.
+    """
+    native = segment.source.native_fps
+    if not native or segment.type == VIDEO_360:
+        return False
+    return fps / native >= RAISE_FPS_RATIO
 
 
 class RetimeStage:
@@ -93,6 +108,7 @@ class RetimeStage:
         token: CancellationToken,
     ) -> None:
         native = segment.source.native_fps or float(fps)
+        raise_fps = raises_fps(segment, fps)
         curve, duration = segment.speed.curve, segment.duration
         window = curve_source_length(curve, duration) + SOURCE_MARGIN_FRAMES / native
         shutil.rmtree(folder, ignore_errors=True)
@@ -103,12 +119,16 @@ class RetimeStage:
         for frame in range(frames):
             token.raise_if_cancelled()
             time = min(frame / fps, duration)
-            position = source_time_at(curve, duration, time) * native
+            position = round(source_time_at(curve, duration, time) * native, 6)
             index = min(int(position), available - 1)
             fraction = position - index
             target = folder / "out" / (FRAME_PATTERN % (frame + 1))
-            slow = speed_at(curve, time / duration) < SLOW_BELOW
-            if slow and fraction > WHOLE_FRAME_EPSILON and index + 1 < available:
+            slow = raise_fps or speed_at(curve, time / duration) < SLOW_BELOW
+            if (
+                slow
+                and WHOLE_FRAME_EPSILON < fraction < 1 - WHOLE_FRAME_EPSILON
+                and index + 1 < available
+            ):
                 session.between_files(
                     folder / "in" / (FRAME_PATTERN % (index + 1)),
                     folder / "in" / (FRAME_PATTERN % (index + 2)),
