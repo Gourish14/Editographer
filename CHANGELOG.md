@@ -19,6 +19,7 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - Projects REST API [T-104].
 - Resumable tus uploads, local media storage, asset list and delete, thumbnail endpoint, ANALYZE jobs queued on upload [T-105].
 - Job queue, dispatcher, worker client, token-protected worker callbacks, restart recovery [T-106].
+- Photos, speech ducking, captions and prompt text now reach real edits [T-404].
 - Grades, D-Log M, transitions, motion blur, SFX, ducking and cool mode [T-303].
 - RIFE and Real-ESRGAN adapters, not yet wired in [T-301].
 - Prompt constraints, Ollama director with fallback, all 7 styles [T-202].

@@ -18,19 +18,24 @@ from app.adapters.ffmpeg_filters import (
     segment_graph,
     transition_graph,
 )
+from app.adapters.ffmpeg_photo import photo_command
 from app.adapters.ffmpeg_runner import FfmpegError, run_tool
+from app.adapters.ffmpeg_text_overlay import input_args, overlay_chain
 from app.config import ROOT
 from app.domain.brain.ramps import retime_expression
+from app.domain.brain.text_rules import TextItem
 from app.domain.errors import ErrorCode, RenderError
 from app.domain.look import BLURRED_TRANSITIONS, MOTION_BLUR, ZOOM_PUNCH, transition_frames
 from app.domain.media import LogProfile
 from app.domain.plan import Camera360, Grade, Reframe, ReframePoint, Segment
 from app.ports.render import NO_LOOK, EncodeProfile, NextClip, SegmentLook
+from app.ports.speech import TextLayerRenderer
 
 log = structlog.get_logger()
 
 BASE_ARGUMENTS = ("ffmpeg", "-hide_banner", "-loglevel", "error", "-y")
 OUT_OF_MEMORY_MARKERS = ("out of memory", "cannot allocate")
+PHOTO_SEGMENT = "photo"
 DJI_LOG_LUT = "dji_osmo360_dlogm_to_rec709.cube"
 GENERIC_LOG_LUT = "generic_log_to_rec709.cube"
 VIDEO_360 = "video360"
@@ -38,8 +43,11 @@ UNKNOWN_PANO_WIDTH = 3840
 
 
 class FfmpegCompositor:
-    def __init__(self, luts_dir: Path = ROOT / "luts") -> None:
+    def __init__(
+        self, luts_dir: Path = ROOT / "luts", text_layer: TextLayerRenderer | None = None
+    ) -> None:
         self._luts_dir = luts_dir
+        self._text_layer = text_layer
 
     def render_segment(
         self,
@@ -50,6 +58,9 @@ class FfmpegCompositor:
         target: Path,
         look: SegmentLook = NO_LOOK,
     ) -> None:
+        if segment.type == PHOTO_SEGMENT:
+            self._render_photo(source, frames, profile, target, look)
+            return
         retimed = look.retimed is not None
         inputs = (
             _frames_input(look.retimed, profile.fps)
@@ -84,20 +95,61 @@ class FfmpegCompositor:
                 "-an",
                 "-frames:v",
                 str(frames),
-                "-c:v",
-                "hevc_nvenc",
-                "-preset",
-                profile.preset,
-                "-rc",
-                "vbr",
-                "-cq",
-                str(profile.quality),
-                "-b:v",
-                "0",
-                "-profile:v",
-                "main10",
-                "-pix_fmt",
-                "p010le",
+                *_hevc_args(profile),
+                str(target),
+            ]
+        )
+
+    def _render_photo(
+        self, source: Path, frames: int, profile: EncodeProfile, target: Path, look: SegmentLook
+    ) -> None:
+        """A photo clip with the same encoder settings as video, so the join stays a copy."""
+        if look.photo is None:
+            raise RenderError(f"No photo analysis for {source.name}", ErrorCode.RENDER_FAILED)
+        _run(
+            list(
+                photo_command(
+                    look.photo,
+                    source,
+                    target,
+                    profile.width,
+                    profile.height,
+                    profile.fps,
+                    frames,
+                    _hevc_args(profile),
+                )
+            )
+        )
+
+    def overlay_text(
+        self,
+        video: Path,
+        items: Sequence[TextItem],
+        profile: EncodeProfile,
+        frames: int,
+        target: Path,
+    ) -> None:
+        """Text spans cuts, so it goes on the joined video, keeping 10-bit HEVC and the count."""
+        if self._text_layer is None:
+            raise RenderError("No text renderer is set up", ErrorCode.RENDER_FAILED)
+        layers = target.parent / f"{target.stem}_text"
+        inputs = ["-i", str(video)]
+        for index, item in enumerate(items):
+            png = self._text_layer.render(
+                item, profile.width, profile.height, layers / f"t{index}.png"
+            )
+            inputs += input_args(png, item, profile.fps)
+        _run(
+            [
+                *BASE_ARGUMENTS,
+                *inputs,
+                "-filter_complex",
+                overlay_chain("0:v", items, 1),
+                "-map",
+                "[vtext]",
+                "-frames:v",
+                str(frames),
+                *_hevc_args(profile),
                 str(target),
             ]
         )
@@ -178,6 +230,26 @@ class FfmpegCompositor:
                 str(target),
             ]
         )
+
+
+def _hevc_args(profile: EncodeProfile) -> list[str]:
+    """The video segments' encoder settings, for anything that must join with them."""
+    return [
+        "-c:v",
+        "hevc_nvenc",
+        "-preset",
+        profile.preset,
+        "-rc",
+        "vbr",
+        "-cq",
+        str(profile.quality),
+        "-b:v",
+        "0",
+        "-profile:v",
+        "main10",
+        "-pix_fmt",
+        "p010le",
+    ]
 
 
 def _input(source: Path, start: float) -> list[str]:

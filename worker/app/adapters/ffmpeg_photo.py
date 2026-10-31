@@ -25,6 +25,7 @@ WORK_FORMAT = "yuv420p10le"
 SUPERSAMPLE = 3
 MASK_GAIN = 8
 MASK_BLUR = 6
+LIBX264 = ("-c:v", "libx264", "-pix_fmt", "yuv420p")
 
 
 def photo_filter(analysis: PhotoAnalysis, width: int, height: int, fps: int, frames: int) -> str:
@@ -47,6 +48,7 @@ def photo_command(
     height: int,
     fps: int,
     frames: int,
+    encode: Sequence[str] = LIBX264,
 ) -> Sequence[str]:
     """A full ffmpeg argument list that writes the clip to `target`."""
     inputs = ["-i", str(image)]
@@ -66,10 +68,7 @@ def photo_command(
         "-frames:v",
         str(frames),
         "-an",
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
+        *encode,
         str(target),
     ]
 

@@ -11,6 +11,7 @@ from app.domain.plan import EditPlan
 from app.ports.render import AudioMix, KeptClipAudio, NextClip, SegmentLook, SfxPlacement
 
 DEFAULT_FX_INTENSITY = 0.5
+PHOTO_SEGMENT = "photo"
 
 
 def segment_look(plan: EditPlan, index: int, sources: Mapping[str, Path]) -> SegmentLook:
@@ -20,7 +21,7 @@ def segment_look(plan: EditPlan, index: int, sources: Mapping[str, Path]) -> Seg
     fx_intensity = preset.fx_intensity if preset else DEFAULT_FX_INTENSITY
     following = plan.segments[index + 1] if index + 1 < len(plan.segments) else None
     next_clip = None
-    if following is not None:
+    if following is not None and PHOTO_SEGMENT not in (segment.type, following.type):
         next_clip = NextClip(
             sources[following.asset_id], following.src_in, following.source.log_profile, following
         )

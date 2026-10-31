@@ -6,7 +6,7 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
-| — | No open bugs | — | — | — |
+| BUG-004 | Final mix can end early when audio is shorter than the edit, and `-shortest` may cut video | High | New | T-404 |
 
 ## Closed
 
@@ -19,6 +19,16 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 ## Details
 
 <!-- Add one section per bug using the template, newest first. -->
+
+### BUG-004 — Final mix can end early when audio is shorter than the edit
+- Status: New
+- Severity: High
+- Found: 2026-10-31, by Claude during T-404
+- Spec: 04-pipeline.md#stages (8)
+- Steps to reproduce: Render an edit from a clip whose kept audio is shorter than the segment window.
+- Expected: Audio and video both last the whole edit.
+- Actual: About 4 s of audio in a 6 s edit, seen once. `ffmpeg_audio_finisher.py` uses `-shortest`, so it may also be the cause of the 3 frames lost in the T-118 rehearsal; unconfirmed.
+- Fix: pending.
 
 ### BUG-002 — createdAt differs between create and read-back
 - Status: Fixed
