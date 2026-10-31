@@ -19,13 +19,17 @@ from app.application.enhance_stages import (
     raises_fps,
     working_size,
 )
+from app.application.follow_subject import FollowSubject
 from app.application.job_runner import CancellationToken
 from app.application.look import audio_mix, segment_look
 from app.domain.analysis import StoredAnalysis
+from app.domain.brain.framing import is_panoramic
 from app.domain.brain.planner import ClipInput, build_edit_plan
 from app.domain.brain.text_rules import TextItem as OverlayItem
+from app.domain.constraints import Direction
 from app.domain.errors import ErrorCode, RenderError
 from app.domain.models import AssetInput, AssetType, RenderJob
+from app.domain.music import MusicMap
 from app.domain.photo import PhotoAnalysis
 from app.domain.plan import EditPlan
 from app.ports.backend_notifier import BackendNotifier
@@ -88,6 +92,7 @@ class RenderEdit:
         frames: FrameMedia | None = None,
         upscaler: VideoUpscaler | None = None,
         text: TextOverlay | None = None,
+        follow: FollowSubject | None = None,
     ) -> None:
         self._media_root = media_root
         self._cache = cache
@@ -101,6 +106,7 @@ class RenderEdit:
         self._frames = frames
         self._upscaler = upscaler
         self._text = text
+        self._follow = follow
 
     def run(self, job: RenderJob, token: CancellationToken) -> None:
         self._notifier.progress(job.job_id, STAGE_PLANNING, 1)
@@ -182,7 +188,51 @@ class RenderEdit:
         direction = self._director.decide(music, inputs, job.settings)
         token.raise_if_cancelled()
         photo_inputs = [ClipInput(photo.id, self._analysis(photo)) for photo in photos]
-        return build_edit_plan(song.id, music, inputs, job.settings, direction, photo_inputs)
+        plan = build_edit_plan(song.id, music, inputs, job.settings, direction, photo_inputs)
+        return self._followed(
+            job, plan, (song.id, music), clips, inputs, direction, photo_inputs, token
+        )
+
+    def _followed(
+        self,
+        job: RenderJob,
+        plan: EditPlan,
+        song: tuple[str, MusicMap],
+        clips: list[AssetInput],
+        inputs: list[ClipInput],
+        direction: Direction,
+        photos: list[ClipInput],
+        token: CancellationToken,
+    ) -> EditPlan:
+        """Spec 08 rule 5: with a picked subject, SAM 2 measures it and the plan is framed again.
+
+        The picked point belongs to the first 360 clip. The second pass only changes framing:
+        the seed and the direction are the same, so the segments are the same.
+        """
+        point = job.settings.follow_point
+        target = next(
+            (
+                clip
+                for clip, item in zip(clips, inputs, strict=True)
+                if is_panoramic(item.analysis.camera_mode)
+            ),
+            None,
+        )
+        if point is None or target is None or self._follow is None:
+            return plan
+        token.raise_if_cancelled()
+        folder = self._media_root / RENDERS_FOLDER / job.render_id / WORK_FOLDER / "follow"
+        track, notes = self._follow.measure(
+            plan, target.id, self._source_file(target), point, folder
+        )
+        token.raise_if_cancelled()
+        if track:
+            measured = [
+                replace(item, follow_track=track) if clip.id == target.id else item
+                for clip, item in zip(clips, inputs, strict=True)
+            ]
+            plan = build_edit_plan(song[0], song[1], measured, job.settings, direction, photos)
+        return plan.model_copy(update={"log": (*plan.log, *notes)}) if notes else plan
 
     def _analysis(self, asset: AssetInput) -> StoredAnalysis:
         file_hash = PurePosixPath(asset.analysis_path or "").parent.name

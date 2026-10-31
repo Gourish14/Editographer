@@ -32,9 +32,16 @@ STDERR_TAIL_CHARS = 500
 
 class FfmpegFrameMedia:
     def extract_frames(
-        self, source: Path, start: float, duration: float, fps: float, folder: Path
+        self,
+        source: Path,
+        start: float,
+        duration: float,
+        fps: float,
+        folder: Path,
+        width: int | None = None,
     ) -> int:
         folder.mkdir(parents=True, exist_ok=True)
+        video_filter = f"fps={fps}" if width is None else f"fps={fps},scale={width}:-2"
         try:
             run_tool(
                 [
@@ -46,7 +53,7 @@ class FfmpegFrameMedia:
                     "-i",
                     str(source),
                     "-vf",
-                    f"fps={fps}",
+                    video_filter,
                     "-start_number",
                     "1",
                     str(folder / "%06d.png"),

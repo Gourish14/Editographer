@@ -29,6 +29,7 @@ from app.adapters.opencv_photo import OpenCvImageSizer, OpenCvSubjectLocator
 from app.adapters.realesrgan_upscaler import RealEsrganUpscaler
 from app.adapters.rife_interpolator import RifeInterpolator
 from app.adapters.sam2_segmenter import Sam2Segmenter
+from app.adapters.sam2_subject_follower import Sam2SubjectFollower
 from app.adapters.scenedetect_shots import SceneDetectShots
 from app.adapters.skia_text_layer import SkiaTextLayer
 from app.adapters.whisper_speech_detector import WhisperSpeechDetector
@@ -40,6 +41,7 @@ from app.application.analyze_music import AnalyzeMusic
 from app.application.analyze_photo import AnalyzePhoto
 from app.application.analyze_shots import AnalyzeShots
 from app.application.direct_edit import DirectEdit
+from app.application.follow_subject import FollowSubject
 from app.application.job_runner import JobRunner
 from app.application.render_job import RenderEdit
 from app.application.subject_matte import SubjectMatte
@@ -71,11 +73,8 @@ def build_app() -> FastAPI:
     cache = FileCache(media_root)
     director = DirectEdit(OllamaLlmClient.create(settings.ollama_url), gpu)
     face_model = models / "mediapipe" / "blaze_face_short_range.tflite"
-    matte = SubjectMatte(
-        FfmpegFrameMedia(),
-        OpenCvSubjectLocator(face_model),
-        Sam2Segmenter(models / "sam2_1_small", gpu),
-    )
+    segmenter = Sam2Segmenter(models / "sam2_1_small", gpu)
+    matte = SubjectMatte(FfmpegFrameMedia(), OpenCvSubjectLocator(face_model), segmenter)
     compositor = FfmpegCompositor(text_layer=SkiaTextLayer(), matte=matte)
     render_edit = RenderEdit(
         media_root,
@@ -92,6 +91,7 @@ def build_app() -> FastAPI:
             RealEsrganUpscaler(gpu, models / "realesrgan" / "realesr-general-x4v3.pth")
         ),
         text=compositor,
+        follow=FollowSubject(Sam2SubjectFollower(FfmpegFrameMedia(), segmenter)),
     )
     analyze_asset = AnalyzeAsset(
         media_root,

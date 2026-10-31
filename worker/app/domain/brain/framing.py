@@ -3,6 +3,11 @@
 Flat clips get a subject-tracked crop path; 360 clips get a camera path with the B5 and B7 moves
 (follow, beat spin on drops, FOV punches, tiny planet at a section change), pitch limit last.
 Times in a path are segment time, so a ramped slot's source times go through its speed curve.
+
+A measured follow track (SAM 2 on the picked subject, specs/08-osmo360.md rule 5) beats the
+detection track: it is the subject itself. Where it ends (the subject was lost) the camera holds
+the last bearing it measured. Yaw is unwrapped before any smoothing or keyframing, so a subject
+crossing the 0/360 seam moves the camera by the real angle, never the long way round.
 """
 
 from __future__ import annotations
@@ -60,8 +65,12 @@ def frame_segment(
     drop_start: bool,
     ends_section: bool,
     follow: FollowPoint | None,
+    follow_track: Sequence[SubjectSample] = (),
 ) -> Framing:
-    """Everything about how one segment is framed. `size` is the source's, when known."""
+    """Everything about how one segment is framed. `size` is the source's, when known.
+
+    `follow_track` is the measured track of the picked subject in this clip, in source time.
+    """
     slot = assignment.slot
     offsets = [
         (sample, sample.time - assignment.src_in)
@@ -75,7 +84,8 @@ def frame_segment(
         return Framing(VIDEO, _flat(times, size, ratio), None, effects)
     inside = [round(beat - slot.start, 4) for beat in beats if slot.start < beat < slot.end]
     keys = [0.0, *inside, round(slot.duration, 4)]
-    camera, kept = _camera(times, effects, keys, ratio, drop_start, ends_section, follow)
+    measured = _measured(follow_track, assignment, speed, slot.duration) if follow else []
+    camera, kept = _camera(times, effects, keys, ratio, drop_start, ends_section, follow, measured)
     return Framing(VIDEO_360, Reframe(mode="track", subject=TRACK_SUBJECT), camera, kept)
 
 
@@ -97,10 +107,39 @@ def _flat(times: list[tuple[SubjectSample, float]], size: FrameSize | None, rati
     return Reframe(mode="track", subject=TRACK_SUBJECT, path=path)
 
 
+def _measured(
+    track: Sequence[SubjectSample], assignment: Assignment, speed: Speed, duration: float
+) -> list[SubjectBearing]:
+    """The picked subject's bearings over the segment, from the measured track.
+
+    Samples inside the source window are used. With none inside, the camera holds the sample
+    nearest the window start, preferring one before it: the subject was lost, or never reached.
+    """
+    if not track:
+        return []
+    start, end = assignment.src_in, assignment.src_out
+    inside = [sample for sample in track if start <= sample.time <= end]
+    if not inside:
+        before = [sample for sample in track if sample.time < start]
+        held = before[-1] if before else track[0]
+        return [SubjectBearing(0.0, (held.x - 0.5) * FULL_TURN)]
+    return [
+        SubjectBearing(
+            timeline_time_at(speed.curve, duration, sample.time - start),
+            (sample.x - 0.5) * FULL_TURN,
+        )
+        for sample in inside
+    ]
+
+
 def _bearings(
-    times: list[tuple[SubjectSample, float]], follow: FollowPoint | None
+    times: list[tuple[SubjectSample, float]],
+    follow: FollowPoint | None,
+    measured: list[SubjectBearing] | None = None,
 ) -> list[SubjectBearing]:
     """Yaw of the subject over the segment. A picked point starts the camera on it."""
+    if measured:
+        return measured
     track = [SubjectBearing(time, (sample.x - 0.5) * FULL_TURN) for sample, time in times]
     if follow is None:
         return track or [SubjectBearing(0.0, 0.0)]
@@ -119,9 +158,10 @@ def _camera(
     spins: bool,
     ends_section: bool,
     follow: FollowPoint | None,
+    measured: list[SubjectBearing],
 ) -> tuple[Camera360, tuple[Effect, ...]]:
     camera = follow_camera(
-        _bearings(times, follow), keys, ratio, FOLLOW_SUBJECT if follow else TRACK_SUBJECT
+        _bearings(times, follow, measured), keys, ratio, FOLLOW_SUBJECT if follow else TRACK_SUBJECT
     )
     spun_until = 0.0
     if spins and len(keys) >= 2:
