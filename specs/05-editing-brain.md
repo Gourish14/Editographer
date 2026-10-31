@@ -129,7 +129,7 @@ For a ramped slot of length D (timeline seconds):
 
 ## B8. Text and audio (`effects.py`, `render/audio.py`)
 
-- Text appears only when the prompt gives it, popping on the next downbeat, placed behind the subject when a SAM 2 mask exists.
+- Text appears only when the prompt gives it, popping on the next downbeat, placed behind the subject when a SAM 2 mask exists. The planner sets `behindSubject` when the shot under the text has a subject track. At render, a face found in the first frame of the text window (plus a torso point below it) prompts SAM 2.1 small, which follows the subject through the window; the mattes are exactly one per frame and the subject is composited over the text on the 10-bit pipeline. No face or no mask means the text stays in front, never a failed job. Shot captions (Qwen2.5-VL 3B via Ollama, `keep_alive` 0 on the last call of a clip) cover the 40 best shots of each clip; a failure means no caption.
 - Captions only when speech is detected (faster-whisper) and the style is not Cinematic.
 - Music normalized to −14 LUFS. Whoosh on transitions at −18 dB, impact on each drop.
 - Clip audio muted unless speech is detected; then kept, and music ducks 8 dB under it.

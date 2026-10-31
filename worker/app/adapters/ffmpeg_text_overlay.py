@@ -72,8 +72,8 @@ def _behind_subject(
     count = round(item.duration * fps)
     keep, titled, cut = f"keep{index}", f"ti{index}", f"cut{index}"
     return [
-        f"[{base}]split=2[{base}_a][{keep}]",
-        f"[{base}_a][{layer}]overlay=eof_action=pass:format=auto:{window}[{titled}]",
+        f"[{base}]split=2[sa{index}][{keep}]",
+        f"[sa{index}][{layer}]overlay=eof_action=pass:format=auto:{window}[{titled}]",
         f"[{keep}]trim=start_frame={first}:end_frame={first + count},setpts=PTS-STARTPTS,"
         f"format=yuva420p10le[{keep}s]",
         f"[{matte}:v]format=gray,trim=end_frame={count},setpts=PTS-STARTPTS[mk{index}]",

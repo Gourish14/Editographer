@@ -77,6 +77,7 @@ def _propagate(
     )
     masks: dict[int, Any] = {}
     with torch.inference_mode():
+        model(inference_session=session, frame_idx=0)  # the clicks are consumed by frame 0
         for output in model.propagate_in_video_iterator(session):
             resized = processor.post_process_masks(
                 [output.pred_masks], original_sizes=[[height, width]], binarize=False
