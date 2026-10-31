@@ -48,5 +48,6 @@ class MusicMap(_Frozen):
     accent_beats: tuple[float, ...]
     energy: tuple[float, ...]
     energy_hop_sec: float
+    intensity: tuple[float, ...] = ()
     sections: tuple[Section, ...]
     edit_window: EditWindow

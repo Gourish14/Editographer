@@ -8,7 +8,7 @@ from app.domain.music import MusicMap
 from app.domain.photo import PhotoAnalysis
 from app.domain.shots import ShotMeasure
 
-ANALYSIS_VERSION = 5
+ANALYSIS_VERSION = 6
 
 
 class StoredSpeech(BaseModel):

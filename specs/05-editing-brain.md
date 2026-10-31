@@ -17,15 +17,19 @@ prompt ────────────────────────�
 Output, used by every later step:
 
 - `beats[]` with time (s) and strength (0–1), `downbeats[]`, `bpm`.
-- Energy curve `E(t)`: RMS loudness, smoothed over 0.5 s, normalized 0–1.
+- Energy curve `E(t)`: RMS loudness, smoothed over 0.5 s, divided by its peak (0–1). Pacing and slot fit use it.
+- **Intensity curve `I(t)`:** how full the song sounds, as a **rank within the song itself** (0 = its quietest moment, 1 = its fullest). It is the percentile rank of smoothed loudness, averaged with the percentile rank of smoothed brightness (spectral centroid) and ranked again. Sections and the edit window use `I`, not `E`. Why: compressed electronic music is about as loud at its drop as everywhere else (a real 289 s track had one flat section at mean peak-relative energy 0.71, so no drop, build or break could be found), but its filter sweeps change the brightness. Ranking against the song's own moments makes the 0.75/0.4 style thresholds mean the same thing for every song. Section `mean_energy` is the mean of `I`.
 - **Accent beats:** beats whose onset strength is in the top 15%.
-- **Sections**, with boundaries only on downbeats where the 4-bar energy change is > 0.25:
-  - **Drop:** mean E ≥ 0.75 and preceded by a rise.
-  - **Build:** E rising across 4 or more bars.
-  - **Break:** E < 0.4 after a drop.
+- **Beat grid:** the tracker's beats, with two corrections. (1) **Half tempo:** if the tracked tempo is above 140 BPM and the onset curve repeats at least 2 times more strongly every 2 beats than every beat, the tracker locked onto the double of the pulse; every other beat is kept, on the phase that holds the most downbeats (else the stronger onsets). Every kept beat is a real tracked beat, so cuts stay on the beat. The real 170.21 BPM song has an onset autocorrelation of 0.18 at the beat but 0.57 at 2 beats, and reads as 84.96 BPM. (2) **Downbeats** that are not on a kept beat, or are less than 1.5 beats after the previous downbeat, are dropped (the tracker emitted 81 of 246 inside 0.8 s on that song).
+- **Sections**, with boundaries only on downbeats where the 4-bar change is large: loudness and brightness are each divided by their median over the song, and the distance between the 4-bar mean after and before a downbeat (the two changes combined as a Euclidean distance) must be over **0.3**. The biggest change wins and others within 4 bars are dropped. A steady song (all parts within 30% of its typical level) stays one section.
+  - **Drop:** mean `I` ≥ **0.6** and at least 0.1 above the section before. (It was E ≥ 0.75 "after a rise": on a rank scale a section that fills half the song cannot average 0.75, and a mean of 0.6 is "above the song's median".)
+  - **Build:** `I` rising across 4 or more bars (a rise of at least 0.1).
+  - **Break:** `I` < 0.4 after a drop.
   - **Intro / Outro:** first and last sections.
   - Anything else: **Verse** (treated like Build for pacing, weight 0.6).
-- **Edit window:** default up to 60 s (or user length). Starts on a downbeat 8 bars before the first drop and ends on a downbeat. If the song has no drop, the window is the highest-energy 60 s aligned to downbeats.
+- **Edit window:** default up to 60 s (or user length). Starts on a downbeat 8 bars before the first drop and ends on a downbeat. **If the song has no drop, the window is the 60 s (aligned to downbeats, full length) with the highest mean `I`, the most climactic stretch.**
+
+Measured on 5 real songs (T-406): sections found go from 3, 1, 3, 1 and 5 to 6, 4, 16, 1 and 8 (the CC0 electronic track, Aces High, Call to Adventure, the steady AcidJazz piece, Crunk Knight), with drops found in 3 of them where there were none; the two with no drop get the most-intense-stretch window.
 
 ## B2. Shot scoring (`scoring.py`)
 
@@ -53,7 +57,9 @@ Each shot also stores: peak moment (frame with the highest M × F), usable windo
 - **Dominant color:** the most common per-frame color, where a frame's color is the fullest 32-level RGB bin, as `#rrggbb`.
 - **Embedding:** the normalized mean of the frames' unit CLIP vectors, stored as plain floats rounded to 5 decimals.
 
-**Reject** when S < 0.2, mean luma < 0.08, or it duplicates a better shot (CLIP cosine similarity > 0.95). Shots are compared best first, and only against shots that were kept.
+**Reject** when S < 0.2, mean luma < 0.08, or it duplicates a better shot (CLIP cosine similarity > **0.98**). Shots are compared best first, and only against shots that were kept. Why 0.98, not 0.95: on the real 10-clip set 45 of 112 shots were rejected as duplicates at 0.95, 39 of them from one 171 s trail-run POV clip. Looking at the pairs, shots at 0.95 to 0.97 were different moments of the same kind of rock and arms (CLIP scores one clip's frames around 0.92 against each other); only pairs at 0.985 and above were visibly the same moment. At 0.98, 10 are rejected.
+
+**Shot detection** (`scenedetect_shots.py`): PySceneDetect `ContentDetector` at its default threshold 27, then a cut is kept only if its change is at least **2.5 times the clip's own median frame change** (never below 27). A steady clip has a median of 2 to 10 and is untouched. A shaky POV or handheld pan has a median near 20, so the fixed 27 fired on every shake: the same trail-run clip was cut into 57 shots (69 cuts before the rejection of tiny scenes), and frames on either side of those cuts show one continuous take.
 
 **CLIP shot search** (`application/search_shots.py`): ranks shots by similarity to a text, marking those above 0.25. It gives B4's prompt fit its data for included and excluded tags; it never picks shots.
 

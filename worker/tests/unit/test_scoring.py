@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 from app.domain.brain.scoring import (
+    DUPLICATE_SIMILARITY,
     MIN_LUMA,
     RejectReason,
     describe_shot,
@@ -219,8 +220,8 @@ def test_b2_a_near_copy_of_a_better_shot_is_rejected() -> None:
 
 
 def test_b2_similarity_of_exactly_the_limit_is_not_a_duplicate() -> None:
-    # cos = 0.95 exactly: the rule is strictly greater than.
-    near = (0.95, (1 - 0.95**2) ** 0.5)
+    # cos = the limit exactly: the rule is strictly greater than.
+    near = (DUPLICATE_SIMILARITY, (1 - DUPLICATE_SIMILARITY**2) ** 0.5)
 
     scored = score_shots([shot(1.0, embedding=(1.0, 0.0)), shot(9.0, embedding=near)])
 

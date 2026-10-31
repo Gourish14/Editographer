@@ -26,7 +26,7 @@ from app.adapters.scenedetect_shots import SceneDetectShots
 from app.adapters.yolo_detector import YoloObjectDetector
 from app.application.analyze_shots import AnalyzeShots
 from app.application.search_shots import SearchShots
-from app.domain.brain.scoring import score_shots
+from app.domain.brain.scoring import DUPLICATE_SIMILARITY, score_shots
 from app.domain.brain.shot_tags import tag_phrase
 from app.domain.errors import AnalysisError
 from app.domain.shots import MotionDirection, ShotMeasure, cosine_similarity
@@ -226,8 +226,8 @@ def test_b2_two_clips_of_one_photo_are_duplicates_and_a_different_clip_is_not(
     second = encoder.encode_shots(copy, [(0.0, 2.0)])[0].embedding
     third = encoder.encode_shots(other, [(0.0, 2.0)])[0].embedding
 
-    assert cosine_similarity(first, second) > 0.95
-    assert cosine_similarity(first, third) < 0.95
+    assert cosine_similarity(first, second) > DUPLICATE_SIMILARITY
+    assert cosine_similarity(first, third) < DUPLICATE_SIMILARITY
 
 
 def test_b4_text_search_separates_a_person_from_a_blank_frame(
