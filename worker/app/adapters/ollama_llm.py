@@ -6,6 +6,7 @@ invalid output. Spec: specs/05-editing-brain.md#b10-llm-director-and-fallback-di
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, TypeVar
 
 import httpx
@@ -37,7 +38,10 @@ class _ChatResponse(BaseModel):
 
 
 class OllamaLlmClient:
-    """Temperature 0 and a fixed seed keep the same prompt giving the same answer."""
+    """Temperature 0 and a fixed seed keep the same prompt giving the same answer.
+
+    Thinking is off: qwen3:4b gave the same answers in about 1 s instead of 30 to 100 s.
+    """
 
     def __init__(self, client: httpx.Client, model: str = DIRECTOR_MODEL) -> None:
         self._client = client
@@ -48,8 +52,19 @@ class OllamaLlmClient:
         timeout = httpx.Timeout(ANSWER_TIMEOUT_SEC, connect=CONNECT_TIMEOUT_SEC)
         return cls(httpx.Client(base_url=url, timeout=timeout), model)
 
-    def complete_json(self, system: str, user: str, schema: type[M]) -> M:
-        messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    def complete_json(
+        self,
+        system: str,
+        user: str,
+        schema: type[M],
+        examples: Sequence[tuple[str, str]] = (),
+    ) -> M:
+        messages = [{"role": "system", "content": system}]
+        for question, answer in examples:
+            messages.append({"role": "user", "content": question})
+            messages.append({"role": "assistant", "content": answer})
+        messages.append({"role": "user", "content": user})
+        request = list(messages)
         problem = ""
         for attempt in range(1, ATTEMPTS + 1):
             content = self._chat(messages)
@@ -59,7 +74,7 @@ class OllamaLlmClient:
                 problem = str(error)[:MAX_ERROR_CHARS]
                 log.warning("llm.invalid_output", attempt=attempt, message=problem)
                 messages = [
-                    *messages[:2],
+                    *request,
                     {"role": "assistant", "content": content},
                     {"role": "user", "content": RETRY_NOTE.format(error=problem)},
                 ]

@@ -15,7 +15,11 @@ ShotOrder = Literal["chronological", "energy"]
 
 
 class _Model(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, frozen=True)
+    """Unknown fields are refused: an LLM echoing its input must not pass as an empty answer."""
+
+    model_config = ConfigDict(
+        alias_generator=to_camel, populate_by_name=True, frozen=True, extra="forbid"
+    )
 
 
 class Constraints(_Model):

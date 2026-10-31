@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -165,7 +166,13 @@ def job(render_id: str, ratio: str = "9:16", mode: str = "fast") -> RenderJob:
 class NoLlm:
     """These tests choose their style, so the director must never be asked."""
 
-    def complete_json(self, system: str, user: str, schema: type[M]) -> M:
+    def complete_json(
+        self,
+        system: str,
+        user: str,
+        schema: type[M],
+        examples: Sequence[tuple[str, str]] = (),
+    ) -> M:
         raise AssertionError("The LLM was called")
 
 

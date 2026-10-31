@@ -68,6 +68,48 @@ def test_b10_ollama_is_asked_for_json_and_to_unload_afterwards() -> None:
     assert [message["role"] for message in body["messages"]] == ["system", "user"]
 
 
+def test_b10_examples_come_as_turns_before_the_question() -> None:
+    ollama = FakeOllama([GOOD])
+
+    ollama.client().complete_json("system", "user", DirectorDecision, (("q1", "a1"),))
+
+    assert [(m["role"], m["content"]) for m in ollama.bodies[0]["messages"]] == [
+        ("system", "system"),
+        ("user", "q1"),
+        ("assistant", "a1"),
+        ("user", "user"),
+    ]
+
+
+def test_b10_an_echo_of_the_input_is_invalid_not_an_empty_answer() -> None:
+    echo = '{"bpm":128,"sections":[],"shots":[],"settings":{}}'
+    ollama = FakeOllama([echo, GOOD])
+
+    assert ask(ollama).style == "hype"
+    assert len(ollama.bodies) == 2
+
+
+def test_b10_constraints_outside_their_object_are_invalid() -> None:
+    flat = '{"style":"cinematic","effectsOff":["shake"]}'
+    ollama = FakeOllama([flat, GOOD])
+
+    assert ask(ollama).style == "hype"
+    assert len(ollama.bodies) == 2
+
+
+def test_b10_the_retry_keeps_the_examples() -> None:
+    ollama = FakeOllama(["nope", GOOD])
+
+    ollama.client().complete_json("system", "user", DirectorDecision, (("q1", "a1"),))
+
+    assert [m["content"] for m in ollama.bodies[1]["messages"]][:4] == [
+        "system",
+        "q1",
+        "a1",
+        "user",
+    ]
+
+
 def test_b10_one_retry_on_invalid_json() -> None:
     ollama = FakeOllama(["not json at all", GOOD])
 

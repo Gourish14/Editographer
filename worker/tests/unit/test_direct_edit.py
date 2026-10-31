@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections.abc import Sequence
 from typing import TypeVar
 
 import pytest
@@ -14,7 +15,13 @@ from pydantic import BaseModel
 
 from app.adapters.nvml_gpu_guard import NvmlGpuGuard
 from app.application.direct_edit import FALLBACK_NOTE, DirectEdit
-from app.domain.brain.director import MAX_SHOTS, SYSTEM_PROMPT, director_brief
+from app.domain.brain.director import (
+    EXAMPLES,
+    MAX_SHOTS,
+    NO_PROMPT,
+    director_brief,
+    director_request,
+)
 from app.domain.brain.planner import ClipInput
 from app.domain.constraints import Constraints, DirectorDecision
 from app.domain.errors import LlmInvalidOutputError, LlmUnavailableError
@@ -32,11 +39,21 @@ class FakeLlm:
     def __init__(self, answer: DirectorDecision | Exception) -> None:
         self.answer = answer
         self.calls: list[str] = []
+        self.systems: list[str] = []
+        self.examples: tuple[tuple[str, str], ...] = ()
         self.guard: NvmlGpuGuard | None = None
         self.held_guard = False
 
-    def complete_json(self, system: str, user: str, schema: type[M]) -> M:
+    def complete_json(
+        self,
+        system: str,
+        user: str,
+        schema: type[M],
+        examples: Sequence[tuple[str, str]] = (),
+    ) -> M:
         self.calls.append(user)
+        self.systems.append(system)
+        self.examples = tuple(examples)
         if self.guard is not None:
             self.held_guard = self.guard._lock.locked()
         if isinstance(self.answer, Exception):
@@ -69,16 +86,32 @@ def director(llm: FakeLlm) -> DirectEdit:
     return DirectEdit(llm, guard)
 
 
-def test_b10_the_brief_has_sections_shots_settings_and_prompt() -> None:
-    settings = dataclasses.replace(AUTO, prompt="only car shots")
-
-    brief = json.loads(director_brief(music_map(), clips(), settings))
+def test_b10_the_brief_has_sections_shots_and_settings() -> None:
+    brief = json.loads(director_brief(music_map(), clips(), AUTO))
 
     assert {"type", "start", "end", "energy"} == set(brief["sections"][0])
     assert {"id", "tags", "score", "cameraMode"} == set(brief["shots"][0])
     assert brief["shots"][0]["tags"] == ["car"]
     assert brief["settings"]["ratio"] == "9:16"
-    assert brief["prompt"] == "only car shots"
+
+
+def test_b10_the_project_is_in_the_system_message_and_the_prompt_is_the_question() -> None:
+    settings = dataclasses.replace(AUTO, prompt="  only car shots ")
+
+    request = director_request(music_map(), clips(), settings)
+
+    assert director_brief(music_map(), clips(), settings) in request.system
+    assert request.user == "only car shots"
+    assert request.examples == EXAMPLES
+
+
+def test_b10_every_worked_example_is_a_valid_decision() -> None:
+    for _, answer in EXAMPLES:
+        DirectorDecision.model_validate_json(answer)
+
+
+def test_b10_an_empty_prompt_asks_only_for_a_style() -> None:
+    assert director_request(music_map(), clips(), AUTO).user == NO_PROMPT
 
 
 def test_b10_the_brief_has_only_the_top_40_shots_in_score_order() -> None:
@@ -95,9 +128,10 @@ def test_b10_the_brief_stays_inside_the_token_budget_at_its_largest() -> None:
     many = [ClipInput(f"asset-{i:032}", analysis(shot(*wordy))) for i in range(60)]
     settings = dataclasses.replace(AUTO, prompt="x" * 20000)
 
-    brief = director_brief(music_map(), many, settings)
+    request = director_request(music_map(), many, settings)
+    examples = sum(len(question) + len(answer) for question, answer in request.examples)
 
-    assert (len(brief) + len(SYSTEM_PROMPT)) / CHARS_PER_TOKEN <= TOKEN_BUDGET
+    assert (len(request.system) + len(request.user) + examples) / CHARS_PER_TOKEN <= TOKEN_BUDGET
 
 
 def test_b10_the_decision_is_followed() -> None:
@@ -160,6 +194,24 @@ def test_b10_with_auto_style_the_llm_picks_even_without_a_prompt() -> None:
 
     assert len(llm.calls) == 1
     assert direction.decision.style == "sports"
+
+
+def test_b10_a_style_the_prompt_names_counts_as_the_prompts_own() -> None:
+    llm = FakeLlm(DirectorDecision(style="cinematic"))
+    settings = dataclasses.replace(AUTO, style="velocity", prompt="cinematic no shakes")
+
+    direction = director(llm).decide(music_map(), clips(), settings)
+
+    assert direction.decision.constraints.style == "cinematic"
+
+
+def test_b10_the_directors_own_pick_is_not_mistaken_for_the_prompts() -> None:
+    llm = FakeLlm(DirectorDecision(style="hype"))
+    settings = dataclasses.replace(AUTO, style="velocity", prompt="only car shots")
+
+    direction = director(llm).decide(music_map(), clips(), settings)
+
+    assert direction.decision.constraints.style is None
 
 
 def test_b9_an_empty_prompt_never_gets_constraints_from_the_llm() -> None:

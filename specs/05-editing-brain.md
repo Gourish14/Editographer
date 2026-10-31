@@ -133,7 +133,8 @@ Requests the current phase cannot carry out (`slowmoAt` until B6 ramps, `text` a
 ## B10. LLM director and fallback (`director.py`)
 
 - **Input to the LLM:** compact JSON with music sections (type, start, end, energy), the top 40 shots (id, tags, caption, score, cameraMode), user settings and the prompt. Max ~3,000 tokens.
-- **Output:** `{ style, storyHints[], constraints }`, requested with Ollama `format: json` and validated against the schema; one retry on invalid JSON.
+- **Message shape:** the project JSON goes in the system message, worked examples follow as user and assistant turns, and the prompt is the last user turn. Thinking is off. With the JSON and prompt in one user message, `qwen3:4b` echoes its input.
+- **Output:** `{ style, storyHints[], constraints }`, requested with Ollama `format: json` and validated against the schema; one retry on invalid JSON. Unknown fields are invalid, so an echo of the input cannot pass as an empty answer. `storyHints` are logged; no rule reads them yet.
 - **Fallback** (invalid output or Ollama not running): style picked by rule, in order:
   1. BPM ≥ 140 → Hype
   2. BPM ≥ 120 and drop energy ≥ 0.75 → Velocity
