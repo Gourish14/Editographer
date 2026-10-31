@@ -15,6 +15,8 @@ from app.domain.music import Beat, EditWindow, MusicMap, Section, SectionKind
 ENERGY_SMOOTHING_SEC = 0.5
 ACCENT_SHARE = 0.15
 BOUNDARY_CHANGE = 0.3
+LONG_SECTION_BARS = 32
+LONG_SECTION_CHANGE = 0.15
 BARS_COMPARED = 4
 DROP_MIN_ENERGY = 0.6
 BREAK_MAX_ENERGY = 0.4
@@ -219,13 +221,18 @@ def _boundaries(
     scale, not by a fixed loudness, finds the filter sweeps and level steps of compressed music,
     and leaves a steady song whole. A change spreads over neighbouring downbeats, so the biggest
     one wins and the others within 4 bars of it are dropped.
+
+    A part longer than 32 bars is too long to be one part: its mean hides a step inside it (the
+    real 289 s song had one 135 s "drop" whose first half was bright and second half average).
+    Inside such a part the biggest change over 0.15 is a boundary too, repeated until no part is
+    longer than 32 bars or no such change is left.
     """
     scaled = [_relative_to_typical(curve) for curve in curves if curve]
-    scored: list[tuple[float, int]] = []
+    changes = [0.0] * len(downbeats)
     for bar in range(1, len(downbeats) - 1):
         first = downbeats[max(0, bar - BARS_COMPARED)]
         last = downbeats[min(len(downbeats) - 1, bar + BARS_COMPARED)]
-        change = math.sqrt(
+        changes[bar] = math.sqrt(
             sum(
                 (
                     _mean_between(curve, hop_sec, downbeats[bar], last)
@@ -235,13 +242,31 @@ def _boundaries(
                 for curve in scaled
             )
         )
-        if change > BOUNDARY_CHANGE:
-            scored.append((change, bar))
 
     chosen: list[int] = []
-    for _, bar in sorted(scored, key=lambda item: (-item[0], item[1])):
-        if all(abs(bar - other) >= BARS_COMPARED for other in chosen):
-            chosen.append(bar)
+
+    def add_biggest(low: int, high: int, minimum: float) -> bool:
+        candidates = [
+            bar
+            for bar in range(low + 1, high)
+            if changes[bar] > minimum and all(abs(bar - other) >= BARS_COMPARED for other in chosen)
+        ]
+        if not candidates:
+            return False
+        chosen.append(max(candidates, key=lambda bar: (changes[bar], -bar)))
+        return True
+
+    while add_biggest(0, len(downbeats), BOUNDARY_CHANGE):
+        pass
+    while True:
+        edges = [0, *sorted(chosen), len(downbeats) - 1]
+        long_spans = [
+            (low, high)
+            for low, high in zip(edges, edges[1:], strict=False)
+            if high - low > LONG_SECTION_BARS
+        ]
+        if not any(add_biggest(low, high, LONG_SECTION_CHANGE) for low, high in long_spans):
+            break
     return [downbeats[bar] for bar in sorted(chosen)]
 
 
