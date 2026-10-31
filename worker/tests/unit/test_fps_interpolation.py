@@ -55,7 +55,13 @@ class Media:
         self.count = count
 
     def extract_frames(
-        self, source: Path, start: float, duration: float, fps: float, folder: Path
+        self,
+        source: Path,
+        start: float,
+        duration: float,
+        fps: float,
+        folder: Path,
+        width: int | None = None,
     ) -> int:
         folder.mkdir(parents=True, exist_ok=True)
         for index in range(self.count):

@@ -49,7 +49,7 @@ from app.domain.plan import (
     Speed,
     Transition,
 )
-from app.domain.shots import ShotMeasure
+from app.domain.shots import ShotMeasure, SubjectSample
 
 LONG_EDGES = {"4K": 3840, "6K": 6144, "8K": 7680}
 RAMPED_DROP_STYLE = "velocity"
@@ -60,6 +60,8 @@ MAX_NOTE_CHARS = 120
 class ClipInput:
     asset_id: str
     analysis: StoredAnalysis
+    follow_track: tuple[SubjectSample, ...] = ()
+    """The picked subject's measured track in this clip (source time), empty when none."""
 
 
 def output_size(ratio: str, quality: str) -> tuple[int, int]:
@@ -136,6 +138,7 @@ def build_edit_plan(
         intensity,
         [beat.time for beat in music.beats],
         first_beats_of_drops(assignments),
+        {clip.asset_id: clip.follow_track for clip in clips},
     )
     analyses = {clip.asset_id: clip.analysis for clip in (*clips, *photos)}
     by_slot = photo_slots(slots, len(photos), photos_only)
@@ -255,6 +258,7 @@ class _Framing:
     fx_intensity: float
     beats: list[float]
     drop_starts: set[float]
+    follow_tracks: dict[str, tuple[SubjectSample, ...]]
 
 
 def _segment(
@@ -282,6 +286,7 @@ def _segment(
         slot.start in framing.drop_starts,
         ends_section,
         framing.settings.follow_point,
+        framing.follow_tracks.get(assignment.candidate.asset_id, ()),
     )
     return Segment(
         id=f"s{index}",

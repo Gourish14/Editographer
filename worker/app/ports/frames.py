@@ -27,9 +27,18 @@ class UpscaleSpec:
 
 class FrameMedia(Protocol):
     def extract_frames(
-        self, source: Path, start: float, duration: float, fps: float, folder: Path
+        self,
+        source: Path,
+        start: float,
+        duration: float,
+        fps: float,
+        folder: Path,
+        width: int | None = None,
     ) -> int:
-        """Writes the window as 1-based `%06d.png` at this frame rate and returns how many."""
+        """Writes the window as 1-based `%06d.png` at this frame rate and returns how many.
+
+        With `width` the frames are scaled to it (aspect kept), which keeps 8K sources cheap.
+        """
         ...
 
 

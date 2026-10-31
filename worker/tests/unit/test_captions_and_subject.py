@@ -157,7 +157,13 @@ class Media:
         self.frames = frames
 
     def extract_frames(
-        self, source: Path, start: float, duration: float, fps: float, folder: Path
+        self,
+        source: Path,
+        start: float,
+        duration: float,
+        fps: float,
+        folder: Path,
+        width: int | None = None,
     ) -> int:
         folder.mkdir(parents=True)
         for number in range(1, self.frames + 1):
