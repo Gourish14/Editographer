@@ -50,6 +50,7 @@ class MediaInfo:
     transfer: str | None
     bit_depth: int | None
     tags: tuple[str, ...] = field(default=())
+    has_audio: bool = True
 
 
 def detect_camera_mode(info: MediaInfo, extension: str) -> CameraMode:

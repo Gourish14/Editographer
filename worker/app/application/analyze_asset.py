@@ -74,7 +74,8 @@ class AnalyzeAsset:
         analysis = self._cache.load(file_hash)
         if analysis is None:
             extension = source.suffix.removeprefix(".")
-            analysis = self._document(self._probe.probe(source), file_hash, extension)
+            info = self._probe.probe(source)
+            analysis = self._document(info, file_hash, extension)
             token.raise_if_cancelled()
             if job.type is AssetType.MUSIC:
                 music = self._music.run(source)
@@ -88,7 +89,7 @@ class AnalyzeAsset:
                 analysis = analysis.model_copy(
                     update={"photo": self._photos.run(source, depth_map)}
                 )
-            if job.type is AssetType.VIDEO and self._speech is not None:
+            if job.type is AssetType.VIDEO and self._speech is not None and info.has_audio:
                 token.raise_if_cancelled()
                 analysis = analysis.model_copy(
                     update={"speech": _stored_speech(self._speech.detect(source))}
