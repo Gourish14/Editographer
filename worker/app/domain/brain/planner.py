@@ -96,7 +96,7 @@ def build_edit_plan(
     window = choose_edit_window(
         music.downbeats,
         music.sections,
-        music.energy,
+        music.intensity or music.energy,
         music.energy_hop_sec,
         music.duration_sec,
         constraints.duration_sec or float(settings.length_sec or DEFAULT_LENGTH_SEC),

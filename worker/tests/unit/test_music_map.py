@@ -70,6 +70,22 @@ def test_b1_bpm_works_with_very_few_beats() -> None:
     assert build_music_map(features).bpm == 120.0
 
 
+def with_brightness(base: MusicFeatures, steps: list[tuple[int, float]]) -> MusicFeatures:
+    """The same song with a brightness (spectral centroid) curve made of (bars, hertz) parts."""
+    brightness: list[float] = []
+    for bars, hertz in steps:
+        brightness.extend([hertz] * round(bars * BAR / HOP))
+    return MusicFeatures(
+        base.duration_sec,
+        base.beats,
+        base.downbeats,
+        base.rms,
+        base.onset_strength,
+        HOP,
+        tuple(brightness),
+    )
+
+
 def test_b1_energy_is_relative_to_the_loudest_moment() -> None:
     energy = build_music_map(song(TYPICAL)).energy
 
@@ -148,7 +164,7 @@ def test_b1_small_energy_changes_make_no_boundary() -> None:
 
 
 def test_b1_rising_energy_over_four_bars_is_a_build() -> None:
-    parts = [(8, 0.1), (2, 0.35), (2, 0.45), (2, 0.55), (2, 0.65), (8, 0.15), (8, 0.1)]
+    parts = [(16, 0.8), (3, 0.3), (3, 0.36), (3, 0.42), (3, 0.48), (8, 0.8), (8, 0.8)]
 
     assert SectionKind.BUILD in kinds(build_music_map(song(parts)))
 
@@ -160,7 +176,7 @@ def test_b1_a_quiet_part_with_no_drop_before_it_is_not_a_break() -> None:
 
 
 def test_b1_a_middle_part_that_fits_nothing_is_a_verse() -> None:
-    parts = [(8, 0.1), (8, 0.55), (8, 0.1), (8, 1.0), (8, 0.1)]
+    parts = [(8, 1.0), (8, 0.6), (8, 1.0), (8, 0.1), (8, 0.1)]
 
     assert SectionKind.VERSE in kinds(build_music_map(song(parts)))
 
@@ -282,3 +298,92 @@ def test_b1_a_user_length_can_recompute_the_window() -> None:
     )
 
     assert window.end - window.start == pytest.approx(16.0)
+
+
+def test_b1_a_song_as_loud_everywhere_gets_its_drop_from_brightness() -> None:
+    """Compressed electronic music keeps its level; the filter opening is the drop."""
+    flat = song([(64, 0.5)])
+
+    music = build_music_map(with_brightness(flat, [(16, 1000.0), (32, 4000.0), (16, 1000.0)]))
+
+    assert kinds(music) == [SectionKind.INTRO, SectionKind.DROP, SectionKind.OUTRO]
+    assert music.sections[1].start == pytest.approx(16 * BAR)
+    assert music.edit_window.start == 8 * BAR
+
+
+def test_b1_intensity_is_a_rank_within_the_song_and_energy_stays_peak_relative() -> None:
+    music = build_music_map(song([(16, 0.5), (16, 0.55), (16, 0.6)]))
+
+    assert max(music.intensity) - min(music.intensity) > 0.6
+    assert max(music.energy) == 1.0
+    assert min(music.energy) > 0.8
+
+
+def test_b1_a_song_with_no_drop_takes_its_most_intense_stretch_by_brightness() -> None:
+    base = song([(64, 0.5)])
+    rising = [(8, 1000.0 + 250 * step) for step in range(8)]
+
+    music = build_music_map(with_brightness(base, rising), length_sec=16.0)
+
+    assert SectionKind.DROP not in kinds(music)
+    assert music.edit_window.end == pytest.approx(music.downbeats[-1])
+    assert music.edit_window.start in music.downbeats
+
+
+def doubled(base: MusicFeatures, onset_every: int) -> MusicFeatures:
+    """A 200 BPM grid (a beat every 0.3 s) whose onsets fall on every onset_every-th beat."""
+    beats = tuple(i * 0.3 for i in range(int(base.duration_sec / 0.3)))
+    strength = [0.0] * len(base.rms)
+    for index, beat in enumerate(beats):
+        if index % onset_every == 0:
+            strength[round(beat / HOP)] = 1.0
+    return MusicFeatures(
+        base.duration_sec, beats, beats[::4], base.rms, tuple(strength), HOP, base.brightness
+    )
+
+
+def test_b1_a_fast_grid_that_pulses_at_half_the_rate_is_read_at_half_tempo() -> None:
+    base = song([(32, 0.5)])
+    features = doubled(base, 2)
+
+    music = build_music_map(features)
+
+    assert music.bpm == pytest.approx(100.0, abs=0.1)
+    assert abs(len(music.beats) - len(features.beats) / 2) <= 1
+    assert {beat.time for beat in music.beats} <= set(features.beats)
+    assert set(music.downbeats) <= {beat.time for beat in music.beats}
+
+
+def test_b1_a_fast_grid_that_pulses_on_every_beat_stays_fast() -> None:
+    music = build_music_map(doubled(song([(32, 0.5)]), 1))
+
+    assert music.bpm == pytest.approx(200.0, abs=0.1)
+
+
+def test_b1_half_tempo_keeps_the_phase_that_holds_the_downbeats() -> None:
+    base = song([(32, 0.5)])
+    features = doubled(base, 2)
+    off_phase = MusicFeatures(
+        features.duration_sec,
+        features.beats,
+        features.beats[1::4],
+        features.rms,
+        features.onset_strength,
+        HOP,
+    )
+
+    music = build_music_map(off_phase)
+
+    assert len(music.downbeats) > 0
+    assert set(music.downbeats) <= {beat.time for beat in music.beats}
+
+
+def test_b1_a_downbeat_right_after_another_is_dropped_as_spurious() -> None:
+    base = song(TYPICAL)
+    stray = tuple(sorted({*base.downbeats, base.downbeats[3] + BEAT}))
+
+    music = build_music_map(
+        MusicFeatures(base.duration_sec, base.beats, stray, base.rms, base.onset_strength, HOP)
+    )
+
+    assert music.downbeats == base.downbeats

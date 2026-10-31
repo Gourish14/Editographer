@@ -14,8 +14,12 @@ class LibrosaCurveExtractor:
     def extract(self, samples: AudioSamples, sample_rate: int) -> AudioCurves:
         rms = librosa.feature.rms(y=samples, frame_length=FRAME_LENGTH, hop_length=HOP_LENGTH)[0]
         onset = librosa.onset.onset_strength(y=samples, sr=sample_rate, hop_length=HOP_LENGTH)
+        centroid = librosa.feature.spectral_centroid(
+            y=samples, sr=sample_rate, n_fft=FRAME_LENGTH, hop_length=HOP_LENGTH
+        )[0]
         return AudioCurves(
             rms=tuple(float(value) for value in rms),
             onset_strength=tuple(float(value) for value in onset),
             hop_sec=HOP_LENGTH / sample_rate,
+            brightness=tuple(float(value) for value in centroid),
         )

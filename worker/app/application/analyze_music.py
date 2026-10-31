@@ -33,6 +33,7 @@ class AnalyzeMusic:
                     rms=measured.rms,
                     onset_strength=measured.onset_strength,
                     hop_sec=measured.hop_sec,
+                    brightness=measured.brightness,
                 )
             )
         except ValueError as error:

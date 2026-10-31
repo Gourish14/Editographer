@@ -23,6 +23,7 @@ class AudioCurves:
     rms: tuple[float, ...]
     onset_strength: tuple[float, ...]
     hop_sec: float
+    brightness: tuple[float, ...] = ()
 
 
 class AudioDecoder(Protocol):
