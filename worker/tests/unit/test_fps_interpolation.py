@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from app.application.enhance_stages import RetimeStage, raises_fps
+from app.application.job_runner import CancellationToken
 from app.domain.errors import JobCancelledError
 from app.domain.plan import Segment, Source
 
@@ -25,17 +26,8 @@ def segment(native: float | None, kind: str = "video") -> Segment:
     )
 
 
-class Token:
-    def __init__(self) -> None:
-        self.stop = False
-
-    def raise_if_cancelled(self) -> None:
-        if self.stop:
-            raise JobCancelledError()
-
-
 class Session:
-    def __init__(self, token: Token | None = None, cancel_after: int = 0) -> None:
+    def __init__(self, token: CancellationToken | None = None, cancel_after: int = 0) -> None:
         self.fractions: list[float] = []
         self.cancel_after = cancel_after
         self.token = token
@@ -44,7 +36,7 @@ class Session:
         self.fractions.append(round(time, 3))
         target.write_bytes(b"x")
         if self.token and len(self.fractions) >= self.cancel_after:
-            self.token.stop = True
+            self.token.cancel()
 
 
 class Interpolator:
@@ -88,7 +80,7 @@ def test_feat_021_30_to_60_makes_every_other_frame_with_one_session_and_exact_co
     interpolator = Interpolator(session)
 
     patterns = RetimeStage(interpolator, Media(40)).run(  # type: ignore[arg-type]
-        [(segment(30.0), tmp_path / "a.mp4", 60)], 60, tmp_path, Token()
+        [(segment(30.0), tmp_path / "a.mp4", 60)], 60, tmp_path, CancellationToken()
     )
 
     assert interpolator.sessions == 1
@@ -98,7 +90,7 @@ def test_feat_021_30_to_60_makes_every_other_frame_with_one_session_and_exact_co
 
 
 def test_feat_021_cancellation_is_checked_between_frames(tmp_path: Path) -> None:
-    token = Token()
+    token = CancellationToken()
     session = Session(token, cancel_after=3)
 
     with pytest.raises(JobCancelledError):
