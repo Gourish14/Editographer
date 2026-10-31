@@ -5,6 +5,8 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- Drops are found in real songs, and double-time BPM is corrected [T-406].
+- The render page follows live progress after "Make another version", shows a calm message on cancel, and fits phones. Labels no longer render in a serif font [T-410].
 - Failed worker reports are retried, and jobs stuck after a worker restart recover or fail cleanly [BUG-008].
 - Database writes no longer fail after about 25 minutes [BUG-005].
 - Cuts stay on the beat through the whole edit and no frames are lost; the mix is exactly the edit's length [T-118] [BUG-004].
@@ -14,6 +16,8 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - A project's `createdAt` is the same on create and read-back [BUG-002].
 
 ### Added
+- Shot captions from Qwen2.5-VL and text behind the subject with SAM 2 [T-408].
+- A real browser test of the whole flow, including the 360 preview [T-410].
 - Specs 00–12: overview, features, architecture, stack, pipeline, editing brain, edit plan schema, API and data, Osmo 360, local setup, roadmap, coding standards, spec-driven development process.
 - `CLAUDE.md` with the development command protocol.
 - Tracking files: tasks, features, bugs, change requests, decisions, dev log.

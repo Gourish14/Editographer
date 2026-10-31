@@ -4,6 +4,9 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-022 | End-to-end test ports, folders and browser | Accepted |
+| ADR-021 | Caption budget and SAM 2 memory | Accepted |
+| ADR-020 | Sections use a rank-scaled intensity, and half-tempo correction | Accepted |
 | ADR-019 | Callback retry and stuck-job limits | Accepted |
 | ADR-018 | How the gate judges cuts | Accepted |
 | ADR-017 | Ramp eligibility, reframe path and transition mix | Accepted |
@@ -23,6 +26,27 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-022 — End-to-end test ports, folders and browser
+- Date / Status: 2026-10-31 / Accepted
+- Context: The browser test runs the real apps and must not touch a running install.
+- Options considered: Reuse the normal ports; separate ports and data.
+- Decision: Ports 18080, 18090 and 4300, with data under `data/e2e`, `media/e2e` and `logs/e2e`. `E2E_BROWSER_CHANNEL=chrome` uses the installed Chrome.
+- Consequences: `scripts\e2e.bat` still runs `playwright install chromium` even with the channel set, and the bundled Chromium path has not been run here.
+
+### ADR-021 — Caption budget and SAM 2 memory
+- Date / Status: 2026-10-31 / Accepted
+- Context: Captions are slow and spec 05 sends only the top 40 shots to the director. SAM 2.1 small measured about 2.5 GB, above the 1 to 2 GB the spec planned.
+- Options considered: Caption every shot; caption the top 40 per clip.
+- Decision: Caption the top 40 shots per clip. Accept SAM 2.1 small at about 2.5 GB, since one model at a time still fits in 6 GB.
+- Consequences: Lower-ranked shots have no caption.
+
+### ADR-020 — Sections use a rank-scaled intensity, and half-tempo correction
+- Date / Status: 2026-10-31 / Accepted
+- Context: Real songs never reached the old drop threshold, so no drop was found, and a fast song could be read at double time (170 for 84.96 BPM).
+- Options considered: Lower the raw threshold; a new rank-scaled curve.
+- Decision: Add an `intensity` curve and make section `mean_energy` rank-scaled. A drop needs mean intensity of at least 0.6 and 0.1 above the section before. B10's drop test moves to 0.6 on the same scale. Apply the half-tempo rule.
+- Consequences: Drops were found in 3 of 5 test songs. Cached analyses rerun (`ANALYSIS_VERSION` 6). B10's second rule now fires for almost any song at 120 BPM or more with a drop.
 
 ### ADR-019 — Callback retry and stuck-job limits
 - Date / Status: 2026-10-31 / Accepted
