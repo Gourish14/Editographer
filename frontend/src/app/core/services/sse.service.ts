@@ -24,6 +24,9 @@ export class SseService {
         subscriber.complete();
       });
 
+      // EventSource would otherwise reconnect forever after the server closes the stream.
+      source.addEventListener('error', () => subscriber.complete());
+
       return () => source.close();
     });
   }

@@ -1,4 +1,5 @@
 @use '@angular/material' as mat;
+@use 'sass:string';
 
 html {
   color-scheme: dark;
@@ -8,7 +9,12 @@ html {
         primary: mat.$cyan-palette,
         tertiary: mat.$orange-palette,
       ),
-      typography: Roboto,
+      // No web font is bundled (local only), so name a full stack: a bare "Roboto" falls back
+      // to a serif face on machines without it.
+      typography: (
+          plain-family: string.unquote("Roboto, 'Segoe UI', system-ui, sans-serif"),
+          brand-family: string.unquote("Roboto, 'Segoe UI', system-ui, sans-serif"),
+        ),
       density: 0,
     )
   );
@@ -77,6 +83,7 @@ h2 {
 }
 
 .spread {
+  flex-wrap: wrap;
   justify-content: space-between;
 }
 

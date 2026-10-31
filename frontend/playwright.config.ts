@@ -45,7 +45,13 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${UI_PORT}`,
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // E2E_BROWSER_CHANNEL=chrome uses an installed Chrome instead of the downloaded Chromium.
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], channel: process.env['E2E_BROWSER_CHANNEL'] },
+    },
+  ],
   webServer: [
     {
       command: `cmd /c "cd /d worker && uv run uvicorn app.main:app --host 127.0.0.1 --port ${WORKER_PORT}"`,
@@ -62,7 +68,7 @@ export default defineConfig({
       timeout: 180_000,
     },
     {
-      command: `npx ng serve --port ${UI_PORT} --proxy-config e2e/proxy.e2e.json`,
+      command: `npx ng serve --host 127.0.0.1 --port ${UI_PORT} --proxy-config e2e/proxy.e2e.json`,
       cwd: __dirname,
       url: `http://127.0.0.1:${UI_PORT}`,
       timeout: 240_000,

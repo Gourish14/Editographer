@@ -31,7 +31,14 @@ const POLL_MS = 2000;
       <div class="stack">
         <div class="row spread">
           <h1>{{ project.project.name }}</h1>
-          <a matButton="filled" [routerLink]="['render']" [class.blocked]="!canRender()">Render</a>
+          <a
+            matButton="filled"
+            [routerLink]="['render']"
+            [class.blocked]="!canRender()"
+            [attr.aria-disabled]="!canRender()"
+            [attr.tabindex]="canRender() ? null : -1"
+            >Render</a
+          >
         </div>
         @if (!canRender()) {
           <p class="muted">Add at least one clip and one song, and wait for analysis to finish.</p>

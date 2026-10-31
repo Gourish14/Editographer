@@ -1,0 +1,26 @@
+[WebServer] INFO:     Started server process [23512]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:18090 (Press CTRL+C to quit)
+[WebServer] (node:26996) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:25848) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:25848) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:26328) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] INFO: [environment.cc:36] Creating LiteRT environment with options
+[WebServer] INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=000001D0B860F950, name=GPU WebGPU
+[WebServer] INFO: [gpu_registry.cc:136] Statically linked GPU accelerator registered.
+[WebServer] INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=000001D0B8610E50, name=CpuAccelerator
+[WebServer] INFO: [cpu_registry.cc:73] XNNPACK CPU accelerator registered.
+[WebServer] INFO: [compiled_model.cc:953] Flatbuffer model initialized directly from incoming litert model.
+[WebServer] INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+[WebServer] WARNING: Logging before InitGoogle() is written to STDERR
+[WebServer] W0000 00:00:1793447627.439878   25108 inference_runner_litert.cc:1137] Input tensor memory is not aligned according to LiteRt's memory alignment requirements. Reallocating memory and copying data.
+[WebServer] INFO: [accelerator_registry.cc:43] DestroyAccelerator: ptr=000001D0B860F950, name=GPU WebGPU
+[WebServer] INFO: [accelerator_registry.cc:43] DestroyAccelerator: ptr=000001D0B8610E50, name=CpuAccelerator
