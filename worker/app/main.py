@@ -18,6 +18,7 @@ from app.adapters.file_cache import FileCache
 from app.adapters.http_backend_notifier import HttpBackendNotifier
 from app.adapters.librosa_curves import LibrosaCurveExtractor
 from app.adapters.nvml_gpu_guard import NvmlGpuGuard
+from app.adapters.nvml_thermal_guard import NvmlThermalGuard
 from app.adapters.ollama_llm import OllamaLlmClient
 from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
 from app.adapters.scenedetect_shots import SceneDetectShots
@@ -55,10 +56,16 @@ def build_app() -> FastAPI:
         ),
     )
     cache = FileCache(media_root)
-    gpu = NvmlGpuGuard()
     director = DirectEdit(OllamaLlmClient.create(settings.ollama_url), gpu)
     render_edit = RenderEdit(
-        media_root, cache, cache, FfmpegCompositor(), FfmpegAudioFinisher(), notifier, director
+        media_root,
+        cache,
+        cache,
+        FfmpegCompositor(),
+        FfmpegAudioFinisher(),
+        notifier,
+        director,
+        thermal=NvmlThermalGuard(gpu),
     )
     analyze_asset = AnalyzeAsset(
         media_root,

@@ -8,8 +8,10 @@ from pathlib import Path, PurePosixPath
 
 import structlog
 
+from app.application.cool_mode import cool_compositor
 from app.application.direct_edit import DirectEdit
 from app.application.job_runner import CancellationToken
+from app.application.look import audio_mix, segment_look
 from app.domain.analysis import StoredAnalysis
 from app.domain.brain.planner import ClipInput, build_edit_plan
 from app.domain.errors import ErrorCode, RenderError
@@ -18,6 +20,7 @@ from app.domain.plan import EditPlan
 from app.ports.backend_notifier import BackendNotifier
 from app.ports.media import AnalysisCache
 from app.ports.render import AudioFinisher, Compositor, EncodeProfile, PlanStore
+from app.ports.thermal import ThermalGuard
 
 log = structlog.get_logger()
 
@@ -54,6 +57,7 @@ class RenderEdit:
         audio: AudioFinisher,
         notifier: BackendNotifier,
         director: DirectEdit,
+        thermal: ThermalGuard | None = None,
     ) -> None:
         self._media_root = media_root
         self._cache = cache
@@ -62,6 +66,7 @@ class RenderEdit:
         self._audio = audio
         self._notifier = notifier
         self._director = director
+        self._thermal = thermal
 
     def run(self, job: RenderJob, token: CancellationToken) -> None:
         self._notifier.progress(job.job_id, STAGE_PLANNING, 1)
@@ -136,13 +141,19 @@ class RenderEdit:
         work = target.parent / WORK_FOLDER / target.stem
         work.mkdir(parents=True, exist_ok=True)
         report = _progress_reporter(self._notifier, job.job_id, first_percent, last_percent)
+        compositor = cool_compositor(self._compositor, self._thermal, job.settings.cool_mode, token)
         parts = []
         for index, segment in enumerate(plan.segments):
             token.raise_if_cancelled()
             part = work / f"{segment.id}.mp4"
             frames = _frame_count(segment.at, segment.duration, plan)
-            self._compositor.render_segment(
-                sources[segment.asset_id], segment, frames, profile, part
+            compositor.render_segment(
+                sources[segment.asset_id],
+                segment,
+                frames,
+                profile,
+                part,
+                segment_look(plan, index, sources),
             )
             parts.append(part)
             report(index + 1, len(plan.segments))
@@ -152,7 +163,12 @@ class RenderEdit:
         joined = work / "joined.mp4"
         self._compositor.join(parts, joined)
         self._audio.add_music(
-            joined, music, plan.music.start, plan.music.end - plan.music.start, target
+            joined,
+            music,
+            plan.music.start,
+            plan.music.end - plan.music.start,
+            target,
+            audio_mix(plan, sources),
         )
 
     def _relative(self, path: Path) -> str:

@@ -84,7 +84,7 @@ if exist "worker\pyproject.toml" (
 )
 
 echo [6/9] Downloading model weights
-uv run --no-project python scripts\download_models.py --phase 2
+uv run --no-project python scripts\download_models.py --phase 4
 if errorlevel 1 (
     call :fail "Model download failed. Run setup.bat again to resume."
     exit /b 1
@@ -96,6 +96,15 @@ if errorlevel 1 (
     call :fail "LUT and SFX generation failed. Run setup.bat again."
     exit /b 1
 )
+
+echo Pulling the local AI models
+start "Editographer setup Ollama" /min ollama serve
+ping -n 4 127.0.0.1 >nul
+ollama pull qwen3:4b
+if errorlevel 1 echo Could not pull qwen3:4b. Edits still work with the rule-based director.
+ollama pull qwen2.5vl:3b
+if errorlevel 1 echo Could not pull qwen2.5vl:3b. Shot captions will be skipped.
+taskkill /f /fi "windowtitle eq Editographer setup Ollama*" >nul 2>nul
 
 echo [7/9] Building the web app
 if exist "frontend\package.json" (

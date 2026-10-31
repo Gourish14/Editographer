@@ -104,6 +104,8 @@ def clip_analysis(file_hash: str, motion: float) -> StoredAnalysis:
         luma=0.5,
         peak_time=1.0,
         usable=(TimeWindow(start=0.0, end=float(CLIP_SEC)),),
+        action=0.5,
+        aesthetics=0.6,
     )
     return base_analysis(file_hash, shots=(shot,))
 
