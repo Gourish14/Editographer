@@ -272,3 +272,37 @@ def test_a_cancelled_job_stops_before_any_report(fx: Fixture) -> None:
 
     assert fx.notifier.analyses == []
     assert fx.notifier.done == []
+
+
+class Stitcher:
+    def __init__(self) -> None:
+        self.stitched: list[Path] = []
+
+    def stitch(self, source: Path, target: Path) -> None:
+        self.stitched.append(source)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("equirect")
+
+
+def test_rule_3_a_raw_osv_is_stitched_once_and_the_stitched_file_is_what_gets_read(
+    fx: Fixture,
+) -> None:
+    stitcher = Stitcher()
+    fx.use_case._stitcher = stitcher
+    (fx.root / "uploads/CAM_1.OSV").write_text("osv")
+    job = AnalyzeJob("j1", "a9", "uploads/CAM_1.OSV", AssetType.VIDEO, None)
+
+    fx.use_case.run(job, CancellationToken())
+    fx.use_case.run(job, CancellationToken())
+
+    assert stitcher.stitched == [fx.root / "uploads/CAM_1.OSV"]  # the second run reuses the file
+    assert (fx.root / "stitched/a9.mp4").exists()
+    assert fx.tools.made == [fx.root / "stitched/a9.mp4"]  # the proxy is made from the stitch
+
+
+def test_rule_3_an_osv_without_a_stitcher_is_refused(fx: Fixture) -> None:
+    (fx.root / "uploads/CAM_1.osv").write_text("osv")
+    job = AnalyzeJob("j1", "a9", "uploads/CAM_1.osv", AssetType.VIDEO, None)
+
+    with pytest.raises(AnalysisError):
+        fx.use_case.run(job, CancellationToken())

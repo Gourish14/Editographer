@@ -31,11 +31,13 @@ Two job types run on the worker: **analyze** (per asset, right after upload) and
    - For each segment: decode only the needed window from the original file (NVDEC).
    - D-Log M → Rec.709 LUT if needed.
    - Speed curve: native high-fps frames or RIFE interpolation.
+   - Frame rate (FEAT-021): in Max quality, a flat clip whose rate is at most 1/1.5 of the output rate (30 fps into 60 fps) gets RIFE frames between its own, one session per stage, cancellation between frames, exact frame counts so cuts stay on the grid. Fast mode conforms with the `fps` filter. A 360 clip is conformed, not interpolated (its equirect frames are 8K).
+   - Frame rate (FEAT-021): in Max quality, a flat clip whose rate is at most 1/1.5 of the output rate (30 fps into 60 fps) gets RIFE frames between its own, one session per stage, cancellation between frames, exact frame counts so cuts stay on the grid. Fast mode conforms with the ps filter. A 360 clip is conformed, not interpolated (its equirect frames are 8K).
    - Reframe: subject-tracked crop (flat) or keyframed equirect projection (360).
    - Keyframed transforms, shader effects, transitions, motion blur, style LUT, text layers (SAM 2 mask for text-behind-subject).
    - Composited at the **working resolution**: target resolution in Fast mode, or source-limited resolution before upscaling in Max quality mode.
 7. **Upscale** (GPU, Max quality only)
-   - Real-ESRGAN realesr-general-x4v3, tiled 512 px, factor chosen per segment so each reaches the target size; final resize with Lanczos.
+   - Real-ESRGAN realesr-general-x4v3, tiled 512 px, factor chosen per segment so each reaches the target size; final resize with Lanczos. Frames travel as 16-bit RGB through RIFE and the upscaler, so 10-bit precision survives. Note: the working size is chosen once per plan (the largest size any segment holds), not per segment.
 8. **Audio and encode**
    - Music cut to the edit window on downbeats, SFX at transitions (-18 dB) and drops, speech ducking, loudness to -14 LUFS (pyloudnorm). Audio lasts exactly as long as the edit, padded with silence if the music runs out; video frames are never trimmed to fit the audio.
    - FFmpeg `hevc_nvenc`, 10-bit (`p010le`), preset p5, CQ 19, AAC 320 kbps.

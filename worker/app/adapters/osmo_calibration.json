@@ -1,0 +1,9 @@
+{
+  "profile": "dji-osmo-360-assumed",
+  "proven_on_real_files": false,
+  "note": "Lens values are assumptions from DJI's public spec (two ultra-wide lenses, each over 180 degrees). They were checked only by a round trip through FFmpeg v360 on a generated clip, never on a real .OSV. If a real file shows a seam or a warped horizon, adjust fov_degrees here: nothing else needs to change.",
+  "layout": "dual_fisheye",
+  "fov_degrees": 195.0,
+  "interpolation": "cubic",
+  "equirect_height_per_lens_height": 1.0
+}

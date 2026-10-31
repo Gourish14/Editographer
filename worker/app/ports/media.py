@@ -32,6 +32,12 @@ class ProxyMaker(Protocol):
         ...
 
 
+class OsvStitcher(Protocol):
+    def stitch(self, source: Path, target: Path) -> None:
+        """Joins the two lenses of a raw Osmo 360 .OSV into one equirect video with audio."""
+        ...
+
+
 class ThumbnailMaker(Protocol):
     def make_thumbnail(self, source: Path, target: Path, at_sec: float) -> None:
         """Writes a JPEG of the frame at the given time."""

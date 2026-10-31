@@ -24,6 +24,7 @@ from app.ports.media import (
     AnalysisCache,
     ContentHasher,
     MediaProbe,
+    OsvStitcher,
     ProxyMaker,
     ThumbnailMaker,
 )
@@ -31,6 +32,8 @@ from app.ports.speech import SpeechDetector, SpeechResult
 
 log = structlog.get_logger()
 PROXIES_FOLDER = "proxies"
+STITCHED_FOLDER = "stitched"
+OSV_EXTENSION = ".osv"
 DEPTH_MAP_FILE = "depth.png"
 THUMBNAIL_POSITION = 0.1
 
@@ -49,6 +52,7 @@ class AnalyzeAsset:
         shots: AnalyzeShots,
         photos: AnalyzePhoto | None = None,
         speech: SpeechDetector | None = None,
+        stitcher: OsvStitcher | None = None,
     ) -> None:
         self._media_root = media_root
         self._probe = probe
@@ -61,6 +65,7 @@ class AnalyzeAsset:
         self._shots = shots
         self._photos = photos
         self._speech = speech
+        self._stitcher = stitcher
 
     def run(self, job: AnalyzeJob, token: CancellationToken) -> None:
         source = self._media_root / job.path
@@ -68,6 +73,8 @@ class AnalyzeAsset:
             raise AnalysisError(f"Missing file: {job.path}", ErrorCode.ASSET_NOT_FOUND)
 
         file_hash = self._hasher.hash_file(source)
+        token.raise_if_cancelled()
+        source = self._stitched(source, job)
         token.raise_if_cancelled()
         proxy = self._ensure_proxy(source, job) if job.type is AssetType.VIDEO else None
         token.raise_if_cancelled()
@@ -122,6 +129,17 @@ class AnalyzeAsset:
             native_slow_mo=is_native_slow_mo(info),
         )
 
+    def _stitched(self, source: Path, job: AnalyzeJob) -> Path:
+        """Spec 08 rule 3: a raw .OSV is stitched once, and everything after reads the result."""
+        if source.suffix.lower() != OSV_EXTENSION:
+            return source
+        if self._stitcher is None:
+            raise AnalysisError("No .OSV stitcher is set up", ErrorCode.ASSET_UNSUPPORTED)
+        target = stitched_path(self._media_root, job.asset_id)
+        if not target.exists():
+            self._stitcher.stitch(source, target)
+        return target
+
     def _ensure_proxy(self, source: Path, job: AnalyzeJob) -> Path:
         target = self._media_root / PROXIES_FOLDER / f"{job.asset_id}.mp4"
         if target.exists():
@@ -151,6 +169,11 @@ class AnalyzeAsset:
             height=analysis.height,
             fps=analysis.fps,
         )
+
+
+def stitched_path(media_root: Path, asset_id: str) -> Path:
+    """Where the stitched equirect video of an .OSV lives, for ingest and render alike."""
+    return media_root / STITCHED_FOLDER / f"{asset_id}.mp4"
 
 
 def _stored_speech(result: SpeechResult) -> StoredSpeech:

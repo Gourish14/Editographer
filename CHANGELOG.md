@@ -16,6 +16,8 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - A project's `createdAt` is the same on create and read-back [BUG-002].
 
 ### Added
+- 60 fps output in Max mode through RIFE, and a 16-bit upscale pipe for 10-bit sources [T-409].
+- Raw `.OSV` files are stitched on import; calibration is not yet proven on real Osmo files [T-409].
 - Shot captions from Qwen2.5-VL and text behind the subject with SAM 2 [T-408].
 - A real browser test of the whole flow, including the 360 preview [T-410].
 - Specs 00–12: overview, features, architecture, stack, pipeline, editing brain, edit plan schema, API and data, Osmo 360, local setup, roadmap, coding standards, spec-driven development process.

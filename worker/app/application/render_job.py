@@ -9,12 +9,14 @@ from pathlib import Path, PurePosixPath
 
 import structlog
 
+from app.application.analyze_asset import OSV_EXTENSION, stitched_path
 from app.application.cool_mode import CoolDown, cool_compositor
 from app.application.direct_edit import DirectEdit
 from app.application.enhance_stages import (
     RetimeStage,
     UpscaleStage,
     needs_rife,
+    raises_fps,
     working_size,
 )
 from app.application.job_runner import CancellationToken
@@ -109,7 +111,7 @@ class RenderEdit:
 
         folder = self._media_root / RENDERS_FOLDER / job.render_id
         folder.mkdir(parents=True, exist_ok=True)
-        sources = {asset.id: self._media_root / asset.path for asset in job.assets}
+        sources = {asset.id: self._source_file(asset) for asset in job.assets}
         music = sources[plan.music.asset_id]
 
         retimed: dict[str, Path] = {}  # RIFE frames are made once, for preview and final
@@ -135,6 +137,18 @@ class RenderEdit:
         self._notifier.job_done(
             job.job_id, self._relative(final), plan.model_dump(mode="json", by_alias=True)
         )
+
+    def _source_file(self, asset: AssetInput) -> Path:
+        """A raw .OSV renders from its stitched equirect video, made when it was analyzed."""
+        path = self._media_root / asset.path
+        if path.suffix.lower() != OSV_EXTENSION:
+            return path
+        stitched = stitched_path(self._media_root, asset.id)
+        if not stitched.is_file():
+            raise RenderError(
+                f"{path.name} has not been stitched yet: analyze it again", ErrorCode.PLAN_INVALID
+            )
+        return stitched
 
     def _final_stages(
         self, job: RenderJob, plan: EditPlan, retimed: dict[str, Path]
@@ -259,7 +273,11 @@ class RenderEdit:
         pending = [
             (segment, sources[segment.asset_id], frames)
             for segment, frames in zip(plan.segments, frame_counts(plan), strict=True)
-            if needs_rife(segment) and segment.id not in retimed
+            if segment.id not in retimed
+            and (
+                needs_rife(segment)
+                or (plan.output.mode == MODE_MAX and raises_fps(segment, plan.output.fps))
+            )
         ]
         if not pending:
             return

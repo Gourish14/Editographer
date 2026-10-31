@@ -24,7 +24,9 @@ from app.ports.frames import UpscaleSpec
 log = structlog.get_logger()
 
 BASE_ARGUMENTS = ("ffmpeg", "-hide_banner", "-loglevel", "error", "-y")
-RGB_BYTES = 3
+PIXEL_FORMAT = "rgb48le"
+BYTES_PER_PIXEL = 6
+"""16-bit RGB keeps the 10-bit precision of the joined edit through the upscaler."""
 STDERR_TAIL_CHARS = 500
 
 
@@ -92,7 +94,7 @@ def _decode(spec: UpscaleSpec) -> list[str]:
         "-f",
         "rawvideo",
         "-pix_fmt",
-        "rgb24",
+        PIXEL_FORMAT,
         "-frames:v",
         str(spec.frames),
         "-",
@@ -105,7 +107,7 @@ def _encode(spec: UpscaleSpec) -> list[str]:
         "-f",
         "rawvideo",
         "-pix_fmt",
-        "rgb24",
+        PIXEL_FORMAT,
         "-s",
         f"{spec.size.width}x{spec.size.height}",
         "-r",
@@ -133,11 +135,11 @@ def _encode(spec: UpscaleSpec) -> list[str]:
 
 
 def _read(stream: IO[bytes], size: FrameSize) -> Frame | None:
-    wanted = size.width * size.height * RGB_BYTES
+    wanted = size.width * size.height * BYTES_PER_PIXEL
     data = stream.read(wanted)
     if len(data) < wanted:
         return None
-    return np.frombuffer(data, np.uint8).reshape(size.height, size.width, RGB_BYTES).copy()
+    return np.frombuffer(data, np.uint16).reshape(size.height, size.width, 3).copy()
 
 
 def _stop(*processes: subprocess.Popen[bytes]) -> None:

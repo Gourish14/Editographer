@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-023 | Stitch at ingest, raise frame rate only for a big gap | Accepted |
 | ADR-022 | End-to-end test ports, folders and browser | Accepted |
 | ADR-021 | Caption budget and SAM 2 memory | Accepted |
 | ADR-020 | Sections use a rank-scaled intensity, and half-tempo correction | Accepted |
@@ -26,6 +27,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-023 — Stitch at ingest, raise frame rate only for a big gap
+- Date / Status: 2026-10-31 / Accepted
+- Context: Raw `.OSV` must become equirect before analysis, and RIFE per frame is costly.
+- Options considered: Stitch at render; stitch once at ingest.
+- Decision: Stitch once to `media/stitched/{assetId}.mp4`, 10-bit HEVC at cq 14. In Max mode, RIFE raises the frame rate only when output fps is at least 1.5x native, so 50 into 60 is conformed. 360 clips are conformed, not interpolated. Working size stays per plan, not per segment.
+- Consequences: One re-encode and extra disk per clip. Lens FOV of 195 degrees is assumed and unproven on real files. A 16:9 8K Max edit always runs ESRGAN at 4x, about 10 to 13 s per frame on a shared GPU.
 
 ### ADR-022 — End-to-end test ports, folders and browser
 - Date / Status: 2026-10-31 / Accepted

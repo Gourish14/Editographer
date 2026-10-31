@@ -38,7 +38,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-406 | Tune B1 and B2 on real media: drops, BPM, duplicates, shot over-detection | In review | T-118 |
 | T-407 | Retry worker callbacks and recover jobs stuck RUNNING | Done | T-118 |
 | T-408 | Qwen2.5-VL shot captions and SAM 2 text behind subject | Done | T-118 |
-| T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | Todo | T-118 |
+| T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | In review | T-118 |
 | T-410 | Browser end-to-end test of the UI and UI polish | Done | T-118 |
 
 ## Details

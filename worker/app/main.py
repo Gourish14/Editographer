@@ -15,6 +15,7 @@ from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
 from app.adapters.ffmpeg_compositor import FfmpegCompositor
 from app.adapters.ffmpeg_frame_media import FfmpegFrameMedia, FfmpegVideoUpscaler
 from app.adapters.ffmpeg_media_tools import FfmpegMediaTools
+from app.adapters.ffmpeg_osv import FfmpegOsvStitcher
 from app.adapters.ffmpeg_probe import FfmpegProbe
 from app.adapters.file_cache import FileCache
 from app.adapters.http_backend_notifier import HttpBackendNotifier
@@ -108,6 +109,7 @@ def build_app() -> FastAPI:
             DepthAnythingEstimator(models / "depth_anything_v2_small", gpu),
         ),
         WhisperSpeechDetector(models / "faster-whisper-small", gpu),
+        FfmpegOsvStitcher(),
     )
     return create_api(
         runner=JobRunner(notifier),

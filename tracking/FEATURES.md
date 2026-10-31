@@ -24,7 +24,7 @@ Status: Planned → In progress → Done → Verified (phase gate passed). Templ
 | FEAT-018 | Osmo 360 detection, .LRF proxies, stitched input | 08 | 3 | Planned |
 | FEAT-019 | 360 camera paths, beat spin, tiny planet, rabbit hole, FOV punch | 08 | 3 | Planned |
 | FEAT-020 | Max quality mode with Real-ESRGAN, 6K/8K | 04, 09 | 4 | Planned |
-| FEAT-021 | 60 fps interpolation | 04 | 4 | Planned |
-| FEAT-022 | Raw .OSV in-app stitching | 08 | 4 | Planned |
+| FEAT-021 | 60 fps interpolation | 04 | 4 | Built |
+| FEAT-022 | Raw .OSV in-app stitching | 08 | 4 | Built, needs a real .OSV |
 | FEAT-023 | Auto audio mix, SFX, ducking, captions | 05#B8 | 4 | Planned |
 | FEAT-024 | Cool mode and overnight queue | 09 | 4 | Planned |
