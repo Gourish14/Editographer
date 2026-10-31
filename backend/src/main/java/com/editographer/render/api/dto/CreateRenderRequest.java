@@ -3,6 +3,7 @@ package com.editographer.render.api.dto;
 import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
 import com.editographer.render.domain.RenderSettings;
+import java.time.Instant;
 
 /**
  * Body of POST /api/projects/{id}/renders. Anything left out takes the default from
@@ -17,7 +18,12 @@ public record CreateRenderRequest(
     Integer lengthSec,
     String prompt,
     Boolean coolMode,
-    Long seed) {
+    Long seed,
+    Instant startAt,
+    FollowPointRequest followPoint) {
+
+  /** The tap point as sent by the browser. */
+  public record FollowPointRequest(double x, double y, double timeSec) {}
 
   /** The settings to render with, using randomSeed when the request names no seed. */
   public RenderSettings toSettings(long randomSeed) {
@@ -31,7 +37,12 @@ public record CreateRenderRequest(
           lengthSec,
           prompt,
           orDefault(coolMode, Boolean.FALSE),
-          orDefault(seed, randomSeed));
+          orDefault(seed, randomSeed),
+          startAt,
+          followPoint == null
+              ? null
+              : new RenderSettings.FollowPoint(
+                  followPoint.x(), followPoint.y(), followPoint.timeSec()));
     } catch (IllegalArgumentException exception) {
       throw new ApiException(ErrorCode.VALIDATION_FAILED, exception.getMessage(), exception);
     }

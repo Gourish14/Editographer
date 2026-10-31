@@ -4,6 +4,8 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-015 | 360 views render with FFmpeg v360 | Accepted |
+| ADR-014 | Photo parallax and speech defaults | Accepted |
 | ADR-013 | Phase 2 starts before the real-footage Phase 1 gate | Accepted |
 | ADR-012 | Phase 1 composites with FFmpeg filters | Accepted |
 | ADR-011 | The beat grid includes midpoints, and energy is scaled against the peak | Accepted |
@@ -17,6 +19,20 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-015 — 360 views render with FFmpeg v360
+- Date / Status: 2026-10-31 / Accepted
+- Context: Spec 08 named a ModernGL shader for reframing. `v360` proved able to animate per frame, and a projection change fits in one graph through split, trim and concat.
+- Options considered: ModernGL; `v360` commands.
+- Decision: Use `v360` with `reset_rot=1`. Plan FOV is a horizontal lens FOV, converted for stereographic output so 160 gives a real globe. Dead zone is ±10% of the crop; the subject sits on the third behind its motion, above 2% of frame width of travel; 1€ uses `min_cutoff` 1 Hz and `beta` 1.5. A drop spin in a slot under a beat is compressed so the full 360° still happens.
+- Consequences: No shader code for reframing. 8K is CPU heavy: 5.5 s per 30 frames at native view width and 48 s at full 8K, so Max mode should render at view size and upscale.
+
+### ADR-014 — Photo parallax and speech defaults
+- Date / Status: 2026-10-31 / Accepted
+- Context: T-402 and T-403 needed choices the specs leave open.
+- Options considered: FFmpeg `displace` needs x and y maps, so a true parallax was costly; Whisper can run on CPU or GPU.
+- Decision: Parallax is two layers, a depth-masked near layer over the photo, used when depth contrast is at least 0.8. Whisper defaults to the CPU, with CUDA opt-in through `GpuGuard`. `av` is pinned to 16.x because faster-whisper 1.2.1 fails on av 19.
+- Consequences: The 0.8 threshold comes from two generated images and needs tuning on real photos. The `av` pin must be revisited when faster-whisper updates.
 
 ### ADR-013 — Phase 2 starts before the real-footage Phase 1 gate
 - Date / Status: 2026-10-31 / Accepted
