@@ -1,15 +1,29 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
+import { EMPTY, catchError, switchMap, timer } from 'rxjs';
 
 import { ProjectsApi } from '../../core/api/projects.api';
 import { SystemApi } from '../../core/api/system.api';
 import { Project, SystemStatus } from '../../core/models/api.models';
-import { StatusBadge } from '../../shared/ui/status-badge';
+import { BadgeTone, StatusBadge } from '../../shared/ui/status-badge';
+
+/** Spec 09: the worker pauses at 83 C and resumes at 75 C. */
+export const PAUSE_TEMP_C = 83;
+export const RESUME_TEMP_C = 75;
+const SYSTEM_POLL_MS = 3000;
+
+export function temperatureTone(tempC: number): BadgeTone {
+  if (tempC >= PAUSE_TEMP_C) {
+    return 'bad';
+  }
+  return tempC >= RESUME_TEMP_C ? 'active' : 'good';
+}
 
 @Component({
   selector: 'app-projects-page',
@@ -38,7 +52,12 @@ import { StatusBadge } from '../../shared/ui/status-badge';
               [tone]="status.ollamaOnline ? 'good' : 'neutral'"
             />
             @if (status.gpu; as gpu) {
-              <span class="muted">{{ gpu.name }} · {{ gpu.tempC }} °C</span>
+              <span class="muted">{{ gpu.name }}</span>
+              <app-status-badge
+                [label]="gpu.tempC + ' °C'"
+                [tone]="temperatureTone(gpu.tempC)"
+                aria-live="polite"
+              />
             }
           </div>
         }
@@ -104,10 +123,16 @@ export class ProjectsPage {
 
   constructor() {
     this.api.list().subscribe((projects) => this.projects.set(projects));
-    inject(SystemApi)
-      .status()
+    const systemApi = inject(SystemApi);
+    timer(0, SYSTEM_POLL_MS)
+      .pipe(
+        switchMap(() => systemApi.status().pipe(catchError(() => EMPTY))),
+        takeUntilDestroyed(inject(DestroyRef)),
+      )
       .subscribe((status) => this.system.set(status));
   }
+
+  protected readonly temperatureTone = temperatureTone;
 
   protected create(): void {
     this.api.create(this.form.controls.name.value).subscribe((project) => {

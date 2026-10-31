@@ -20,6 +20,11 @@ import { StatusBadge } from '../../shared/ui/status-badge';
 
 const FINISHED = new Set(['DONE', 'FAILED', 'CANCELLED']);
 
+/** The log lines about prompt requests the editor could not apply. */
+export function skippedRequests(log: readonly string[] | undefined): readonly string[] {
+  return (log ?? []).filter((line) => /skipped/i.test(line));
+}
+
 /** Progress and result of one render. Spec: specs/07-api-and-data.md#angular-screens */
 @Component({
   selector: 'app-render-page',
@@ -35,7 +40,7 @@ const FINISHED = new Set(['DONE', 'FAILED', 'CANCELLED']);
         @if (!finished()) {
           <section class="panel" aria-label="Progress">
             <div class="row spread">
-              <span>{{ message() || stageLabel() }}</span>
+              <span>{{ message() || waitingLabel() || stageLabel() }}</span>
               <span class="muted">{{ percent() }}%</span>
             </div>
             <mat-progress-bar mode="determinate" [value]="percent()" />
@@ -65,10 +70,15 @@ const FINISHED = new Set(['DONE', 'FAILED', 'CANCELLED']);
                 {{ plan.style }} style · {{ plan.segments.length }} cuts ·
                 {{ effectCount() }} effects
               </p>
-              @for (note of plan.log; track note) {
-                <p class="muted">{{ note }}</p>
-              }
             </section>
+            @if (skipped().length > 0) {
+              <section class="panel" aria-label="Skipped prompt requests">
+                <h2>Skipped prompt requests</h2>
+                @for (note of skipped(); track note) {
+                  <p class="muted">{{ note }}</p>
+                }
+              </section>
+            }
           }
         }
 
@@ -118,6 +128,13 @@ export class RenderPage {
 
   protected readonly finished = computed(() => FINISHED.has(this.render()?.status ?? ''));
   protected readonly stageLabel = computed(() => this.render()?.stage ?? 'Waiting in the queue');
+  protected readonly waitingLabel = computed(() => {
+    const current = this.render();
+    const startAt = current?.status === 'QUEUED' ? current.settings.startAt : null;
+    return startAt && new Date(startAt) > new Date()
+      ? `Scheduled for ${new Date(startAt).toLocaleString()}`
+      : '';
+  });
   protected readonly tone = computed(() => {
     const status = this.render()?.status;
     if (status === 'DONE') {
@@ -137,6 +154,8 @@ export class RenderPage {
     const [across, down] = (this.render()?.settings.ratio ?? '16:9').split(':').map(Number);
     return down > across;
   });
+  /** Spec 05: a request that maps to nothing is skipped and listed in the job log. */
+  protected readonly skipped = computed(() => skippedRequests(this.render()?.editPlan?.log));
   protected readonly effectCount = computed(
     () =>
       this.render()?.editPlan?.segments.reduce(

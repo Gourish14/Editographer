@@ -95,7 +95,7 @@ class ProjectServiceTest {
   void deleteAlsoRemovesTheFoldersOfItsRenders() throws IOException {
     ProjectId id = ProjectId.newId();
     RenderSettings settings =
-        new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 1L);
+        new RenderSettings("9:16", "4K", 30, "auto", "fast", null, null, false, 1L, null, null);
     Render render = Render.queued(id, settings, NOW);
     when(repository.existsById(id)).thenReturn(true);
     when(renders.findByProject(id)).thenReturn(List.of(render));

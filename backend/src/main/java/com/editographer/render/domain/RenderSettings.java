@@ -1,11 +1,13 @@
 package com.editographer.render.domain;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 
 /**
  * What the user chose for a render. A null lengthSec means Auto. Spec:
- * specs/00-overview.md#user-choices
+ * specs/00-overview.md#user-choices. A null startAt starts as soon as the worker is free ("Render
+ * tonight", specs/09-local-setup.md). A null followPoint lets the worker pick the subject.
  */
 public record RenderSettings(
     String ratio,
@@ -16,7 +18,9 @@ public record RenderSettings(
     Integer lengthSec,
     String prompt,
     boolean coolMode,
-    long seed) {
+    long seed,
+    Instant startAt,
+    FollowPoint followPoint) {
 
   public static final String DEFAULT_RATIO = "9:16";
   public static final String DEFAULT_QUALITY = "4K";
@@ -28,6 +32,21 @@ public record RenderSettings(
   private static final Set<String> QUALITIES = Set.of("4K", "6K", "8K");
   private static final Set<Integer> FRAME_RATES = Set.of(24, 30, 60);
   private static final Set<String> MODES = Set.of("preview", "fast", "max");
+
+  /**
+   * Where the user tapped to pick the subject to follow. x and y run 0 to 1 across the frame,
+   * timeSec is the moment of the clip being previewed. Spec: specs/08-osmo360.md#ui-additions
+   */
+  public record FollowPoint(double x, double y, double timeSec) {
+    public FollowPoint {
+      if (x < 0 || x > 1 || y < 0 || y > 1) {
+        throw new IllegalArgumentException("followPoint x and y must be between 0 and 1");
+      }
+      if (timeSec < 0) {
+        throw new IllegalArgumentException("followPoint timeSec must not be negative");
+      }
+    }
+  }
 
   public RenderSettings {
     requireOneOf("ratio", ratio, RATIOS);
@@ -42,7 +61,23 @@ public record RenderSettings(
 
   public RenderSettings withSeed(long newSeed) {
     return new RenderSettings(
-        ratio, quality, fps, style, mode, lengthSec, prompt, coolMode, newSeed);
+        ratio,
+        quality,
+        fps,
+        style,
+        mode,
+        lengthSec,
+        prompt,
+        coolMode,
+        newSeed,
+        startAt,
+        followPoint);
+  }
+
+  /** The same settings with no start time, for a version that should run right away. */
+  public RenderSettings withoutStartTime() {
+    return new RenderSettings(
+        ratio, quality, fps, style, mode, lengthSec, prompt, coolMode, seed, null, followPoint);
   }
 
   private static <T> void requireOneOf(String name, T value, Set<T> allowed) {

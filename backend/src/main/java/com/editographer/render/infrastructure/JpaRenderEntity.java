@@ -44,6 +44,18 @@ class JpaRenderEntity {
   @Column(nullable = false)
   long seed;
 
+  @Column(name = "start_at")
+  Instant startAt;
+
+  @Column(name = "follow_x")
+  Double followX;
+
+  @Column(name = "follow_y")
+  Double followY;
+
+  @Column(name = "follow_time_sec")
+  Double followTimeSec;
+
   @Column(nullable = false)
   String status;
 
