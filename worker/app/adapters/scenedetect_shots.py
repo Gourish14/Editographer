@@ -46,7 +46,7 @@ class SceneDetectShots:
             for frame in range(video.frame_number + 1)
             if stats.metrics_exist(frame, [CONTENT_METRIC])
         }
-        starts = {start.get_frames(): start for start, _ in scenes}
+        starts = {start.frame_num: start for start, _ in scenes}
         kept = set(real_cuts(changes, [frame for frame in starts if frame > 0], BASE_THRESHOLD))
         edges = [scenes[0][0], *(start for frame, start in starts.items() if frame in kept)]
         ends = [*edges[1:], scenes[-1][1]]
