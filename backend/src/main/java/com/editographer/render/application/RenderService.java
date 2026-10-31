@@ -78,7 +78,7 @@ public class RenderService {
   @Transactional
   public Render regenerate(RenderId id) {
     Render original = find(id);
-    RenderSettings settings = original.settings().withSeed(randomSeed());
+    RenderSettings settings = original.settings().withoutStartTime().withSeed(randomSeed());
     return enqueue(Render.queued(original.projectId(), settings, clock.instant()));
   }
 
@@ -128,7 +128,7 @@ public class RenderService {
 
   private Render enqueue(Render render) {
     Render saved = renders.save(render);
-    queue.enqueue(JobKind.RENDER, saved.id().value());
+    queue.enqueue(JobKind.RENDER, saved.id().value(), saved.settings().startAt());
     return saved;
   }
 

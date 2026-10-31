@@ -16,8 +16,16 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-010 | A render needs at least one music track and one clip | Implemented |
 | CR-011 | Define how the UI learns that an asset finished analysis | Proposed |
 | CR-012 | Subject-aware crop moves to Phase 3 with B7 | Implemented |
+| CR-013 | Render start time and follow point in the render request | Implemented |
 
 ## Details
+
+### CR-013 — Render start time and follow point in the render request
+- Status: Implemented
+- Requested: 2026-10-31, by Claude during T-401
+- Reason: Specs 08 and 09 ask for "render tonight" and a subject picker, but spec 07's request had no fields for them.
+- Impact: specs `07`; backend `RenderSettings`, `JobQueue`; frontend render settings. Risk: the follow point has no asset id, so it only works for the first 360 clip.
+- Decision: auto-approved, does not touch a hard rule or the architecture.
 
 ### CR-012 — Subject-aware crop moves to Phase 3 with B7
 - Status: Implemented
