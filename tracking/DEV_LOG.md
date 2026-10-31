@@ -3,10 +3,10 @@
 Newest first. One entry per working session (template in `specs/12-spec-driven-development.md` §8).
 
 ## 2026-10-31 — Session 4 (overnight, multi-agent)
-- Done: T-118 in review, T-201, T-202, T-301, T-302, T-303, T-401, T-402, T-403, T-404, T-405.
-- In progress: T-406 and T-409 in review, gate re-run running. T-409 8K and 6K checks ran on a shared GPU, so times are upper bounds; 8K 16:9 Max reached 6.0 GB system-wide against the 6.1 GB limit. Cool mode was only tried on a 2 s render, peak 78 C, so the full-length claim is unproven.
+- Done: T-118, T-406, T-408, T-410, T-201, T-202, T-301, T-302, T-303, T-401, T-402, T-403, T-404, T-405.
+- In progress: T-411. T-409 in review, needs a real `.OSV`. T-409 8K and 6K checks ran on a shared GPU, so times are upper bounds; 8K 16:9 Max reached 6.0 GB system-wide against the 6.1 GB limit. Cool mode was only tried on a 2 s render, peak 78 C, so the full-length claim is unproven.
 - Found: BUG-003, ADR-014, ADR-015, ADR-016, CR-013.
-- Next: merge the T-40x agents. Gate on 10 real clips and a real song passed beats, frames and time, slowest 13.8 min at 1:1, but found no drop.
+- Next: T-411, then T-412. Phase 1 gate passed on real media, slowest 11.5 min at 1:1, drop found. Phase 3 gate needs a real Osmo 360 clip.
 - Needs user: real footage for the gate; push from GitHub Desktop.
 
 ## 2026-10-31 — Session 3

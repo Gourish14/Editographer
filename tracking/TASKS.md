@@ -1,6 +1,6 @@
 # Task board
 
-Current phase: **Phase 1 — Core engine** (gate in `specs/10-roadmap.md`).
+Current phase: **Phase 1 gate passed (0.1.0). Phases 2 to 4 are built, their gates are open** (`specs/10-roadmap.md`).
 Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High bugs first. See `specs/12-spec-driven-development.md`.
 
 ## Summary
@@ -24,7 +24,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-115 | Frontend: projects, upload, asset grid, music waveform | Done | T-114, T-105 |
 | T-116 | Frontend: render settings, live progress, result player and download | Done | T-115, T-107 |
 | T-117 | start.bat / stop.bat / scripts/check.bat, Angular build into backend | Done | T-107, T-113, T-116 |
-| T-118 | Phase 1 gate: end-to-end run, beat-accuracy check, timing | In review | T-117 |
+| T-118 | Phase 1 gate: end-to-end run, beat-accuracy check, timing | Done | T-117 |
 | T-201 | Worker: full shot analysis (YOLO, OpenCLIP tags and aesthetics, full B2) | Done | T-117 |
 | T-202 | Worker: prompt constraints, Ollama director, keyword fallback, 7 styles (B9, B10) | Done | T-117 |
 | T-301 | Worker: RIFE and Real-ESRGAN adapters | Done | T-117 |
@@ -35,11 +35,13 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
 | T-404 | Wire photos, speech and text into analysis, planner and renderer | Done | T-202, T-303, T-402, T-403 |
 | T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Done | T-202, T-301, T-302, T-303 |
-| T-406 | Tune B1 and B2 on real media: drops, BPM, duplicates, shot over-detection | In review | T-118 |
+| T-406 | Tune B1 and B2 on real media: drops, BPM, duplicates, shot over-detection | Done | T-118 |
 | T-407 | Retry worker callbacks and recover jobs stuck RUNNING | Done | T-118 |
 | T-408 | Qwen2.5-VL shot captions and SAM 2 text behind subject | Done | T-118 |
 | T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | In review | T-118 |
 | T-410 | Browser end-to-end test of the UI and UI polish | Done | T-118 |
+| T-411 | Phase 2 gate on real media: three prompts and Ollama stopped | In progress | T-118 |
+| T-412 | Phase 4 gate: full-length Max render with cool mode, 8K 9:16 playback | Todo | T-411 |
 
 ## Details
 
@@ -293,12 +295,13 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] Angular production build served by the backend at `/`.
 
 ### T-118 — Phase 1 gate
-- Status: In review
+- Status: Done
 - Spec: 10-roadmap.md#phase-1--core-engine
 - Depends on: T-117
 - Acceptance criteria:
   - [x] 10 clips + 1 song → 4K edit in all 6 ratios.
   - [x] `scripts/check_beats.py` confirms every cut within one frame of a beat.
   - [x] 60 s edit in Fast mode < 15 min on the RTX 3050 (recorded in DEV_LOG).
-  - [ ] VERSION → 0.1.0, CHANGELOG release section, features set to Verified.
-- Notes: Run 20261031-152530 on 10 real Commons clips and one CC0 song: 168 cuts, worst offset 13.3 ms against a 33.3 ms frame, 1780 of 1780 frames in all 6 ratios, slowest 13.8 min (1:1). Stays In review because B1 found no drop in the real song, so drop effects never ran on real media (T-406), and the clips are not Osmo footage. Beat This! ran about +26 ms late on the generated song, which `check_beats` cannot see because it compares with the tracker's own grid.
+  - [x] VERSION → 0.1.0, CHANGELOG release section, features set to Verified.
+- Notes: Passing run 20261031-204453 on the same media with T-406 and T-409 merged: 106 cuts, worst offset 16.7 ms against a 33.3 ms frame, 100% of measured cuts within one frame, 1799 of 1799 frames in all 6 ratios, slowest 11.5 min (1:1). A drop was found and drop effects ran: 51 whips, 53 motion blurs, 1 zoom through. No ramps ran, since no prompt asked for them. Open: that drop is 135 s long, about half the song, so section labels may be too broad. The media is not Osmo footage, and Beat This! bias was only measured on a generated song. Features with a later phase stay as they are. FEAT-001 is not Verified because a 16 GB upload was not run.
+- Earlier run 20261031-152530 on 10 real Commons clips and one CC0 song: 168 cuts, worst offset 13.3 ms against a 33.3 ms frame, 1780 of 1780 frames in all 6 ratios, slowest 13.8 min (1:1). Stays In review because B1 found no drop in the real song, so drop effects never ran on real media (T-406), and the clips are not Osmo footage. Beat This! ran about +26 ms late on the generated song, which `check_beats` cannot see because it compares with the tracker's own grid.

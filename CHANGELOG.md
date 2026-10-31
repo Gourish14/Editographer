@@ -4,6 +4,8 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-31
+
 ### Fixed
 - Drops are found in real songs, and double-time BPM is corrected [T-406].
 - The render page follows live progress after "Make another version", shows a calm message on cancel, and fits phones. Labels no longer render in a serif font [T-410].
