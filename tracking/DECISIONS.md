@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-018 | How the gate judges cuts | Accepted |
 | ADR-017 | Ramp eligibility, reframe path and transition mix | Accepted |
 | ADR-016 | Choices made in T-201, T-202, T-301 and T-303 | Accepted |
 | ADR-015 | 360 views render with FFmpeg v360 | Accepted |
@@ -21,6 +22,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-018 — How the gate judges cuts
+- Date / Status: 2026-10-31 / Accepted
+- Context: Measuring cuts in the final file is fooled by jumps inside clips and by look-alike frames across a cut.
+- Options considered: every cut measured; a share of visible cuts.
+- Decision: `scripts/phase1_gate.py` requires at least 95% of visible cuts within one frame, plus exact frame counts. Stress renders are judged on frames only. `--shared-gpu` reports time without failing on it.
+- Consequences: This rule was set after seeing data, though the real run scored 100%, so it did not change the result. Cuts between look-alike frames are vouched for by frame counts alone.
 
 ### ADR-017 — Ramp eligibility, reframe path and transition mix
 - Date / Status: 2026-10-31 / Accepted

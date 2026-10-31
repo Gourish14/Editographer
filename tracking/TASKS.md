@@ -24,7 +24,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-115 | Frontend: projects, upload, asset grid, music waveform | Done | T-114, T-105 |
 | T-116 | Frontend: render settings, live progress, result player and download | Done | T-115, T-107 |
 | T-117 | start.bat / stop.bat / scripts/check.bat, Angular build into backend | Done | T-107, T-113, T-116 |
-| T-118 | Phase 1 gate: end-to-end run, beat-accuracy check, timing | Todo | T-117 |
+| T-118 | Phase 1 gate: end-to-end run, beat-accuracy check, timing | In review | T-117 |
 | T-201 | Worker: full shot analysis (YOLO, OpenCLIP tags and aesthetics, full B2) | Done | T-117 |
 | T-202 | Worker: prompt constraints, Ollama director, keyword fallback, 7 styles (B9, B10) | Done | T-117 |
 | T-301 | Worker: RIFE and Real-ESRGAN adapters | Done | T-117 |
@@ -35,6 +35,11 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
 | T-404 | Wire photos, speech and text into analysis, planner and renderer | Done | T-202, T-303, T-402, T-403 |
 | T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Done | T-202, T-301, T-302, T-303 |
+| T-406 | Tune B1 and B2 on real media: drops, BPM, duplicates, shot over-detection | Todo | T-118 |
+| T-407 | Retry worker callbacks and recover jobs stuck RUNNING | Todo | T-118 |
+| T-408 | Qwen2.5-VL shot captions and SAM 2 text behind subject | Todo | T-118 |
+| T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | Todo | T-118 |
+| T-410 | Browser end-to-end test of the UI and UI polish | Todo | T-118 |
 
 ## Details
 
@@ -288,11 +293,12 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
   - [ ] Angular production build served by the backend at `/`.
 
 ### T-118 — Phase 1 gate
-- Status: Todo
+- Status: In review
 - Spec: 10-roadmap.md#phase-1--core-engine
 - Depends on: T-117
 - Acceptance criteria:
-  - [ ] 10 clips + 1 song → 4K edit in all 6 ratios.
-  - [ ] `scripts/check_beats.py` confirms every cut within one frame of a beat.
-  - [ ] 60 s edit in Fast mode < 15 min on the RTX 3050 (recorded in DEV_LOG).
+  - [x] 10 clips + 1 song → 4K edit in all 6 ratios.
+  - [x] `scripts/check_beats.py` confirms every cut within one frame of a beat.
+  - [x] 60 s edit in Fast mode < 15 min on the RTX 3050 (recorded in DEV_LOG).
   - [ ] VERSION → 0.1.0, CHANGELOG release section, features set to Verified.
+- Notes: Run 20261031-152530 on 10 real Commons clips and one CC0 song: 168 cuts, worst offset 13.3 ms against a 33.3 ms frame, 1780 of 1780 frames in all 6 ratios, slowest 13.8 min (1:1). Stays In review because B1 found no drop in the real song, so drop effects never ran on real media (T-406), and the clips are not Osmo footage. Beat This! ran about +26 ms late on the generated song, which `check_beats` cannot see because it compares with the tracker's own grid.

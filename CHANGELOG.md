@@ -5,6 +5,9 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- Database writes no longer fail after about 25 minutes [BUG-005].
+- Cuts stay on the beat through the whole edit and no frames are lost; the mix is exactly the edit's length [T-118] [BUG-004].
+- Zoom punches are centered, and BPM near 120 reads correctly [BUG-006] [BUG-007].
 - One shared GPU guard, restoring the one-model-at-a-time rule [BUG-003].
 - `setup.bat` no longer stops silently after installing FFmpeg [BUG-001].
 - A project's `createdAt` is the same on create and read-back [BUG-002].
