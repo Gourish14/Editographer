@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import shutil
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 
 import structlog
 
-from app.application.cool_mode import cool_compositor
+from app.application.cool_mode import CoolDown, cool_compositor
 from app.application.direct_edit import DirectEdit
+from app.application.enhance_stages import (
+    RetimeStage,
+    UpscaleStage,
+    needs_rife,
+    working_size,
+)
 from app.application.job_runner import CancellationToken
 from app.application.look import audio_mix, segment_look
 from app.domain.analysis import StoredAnalysis
@@ -21,6 +27,8 @@ from app.domain.models import AssetInput, AssetType, RenderJob
 from app.domain.photo import PhotoAnalysis
 from app.domain.plan import EditPlan
 from app.ports.backend_notifier import BackendNotifier
+from app.ports.enhance import FrameSize, Interpolator
+from app.ports.frames import FrameMedia, UpscaleSpec, VideoUpscaler
 from app.ports.media import AnalysisCache
 from app.ports.render import (
     AudioFinisher,
@@ -48,6 +56,12 @@ STAGE_PLANNING = "PLANNING"
 STAGE_COMPOSING = "COMPOSING"
 STAGE_ENCODING = "ENCODING"
 STAGE_DELIVER = "DELIVER"
+STAGE_UPSCALING = "UPSCALING"
+MODE_MAX = "max"
+COMPOSE_SHARE_MAX = 30
+UPSCALE_SHARE_MAX = 35
+ALL_SHARES_MAX = 90
+UPSCALE_REPORT_EVERY_FRAMES = 10
 
 DIRECTOR_PERCENT = 2
 DIRECTOR_MESSAGE = "Asking the AI director"
@@ -68,6 +82,9 @@ class RenderEdit:
         notifier: BackendNotifier,
         director: DirectEdit,
         thermal: ThermalGuard | None = None,
+        interpolator: Interpolator | None = None,
+        frames: FrameMedia | None = None,
+        upscaler: VideoUpscaler | None = None,
         text: TextOverlay | None = None,
     ) -> None:
         self._media_root = media_root
@@ -78,6 +95,9 @@ class RenderEdit:
         self._notifier = notifier
         self._director = director
         self._thermal = thermal
+        self._interpolator = interpolator
+        self._frames = frames
+        self._upscaler = upscaler
         self._text = text
 
     def run(self, job: RenderJob, token: CancellationToken) -> None:
@@ -92,10 +112,11 @@ class RenderEdit:
         sources = {asset.id: self._media_root / asset.path for asset in job.assets}
         music = sources[plan.music.asset_id]
 
+        retimed: dict[str, Path] = {}  # RIFE frames are made once, for preview and final
         preview = folder / PREVIEW_FILE
         self._render_pass(
             job, plan, sources, _preview_profile(plan), music, preview, token,
-            PLANNED_PERCENT, PREVIEW_DONE_PERCENT,
+            PLANNED_PERCENT, PREVIEW_DONE_PERCENT, _Stages(retimed),
         )  # fmt: skip
         self._notifier.preview_ready(job.job_id, self._relative(preview))
 
@@ -103,9 +124,10 @@ class RenderEdit:
         if plan.output.mode == "preview":
             shutil.copyfile(preview, final)
         else:
+            profile, stages = self._final_stages(job, plan, retimed)
             self._render_pass(
-                job, plan, sources, _final_profile(plan), music, final, token,
-                PREVIEW_DONE_PERCENT, FINAL_DONE_PERCENT,
+                job, plan, sources, profile, music, final, token,
+                PREVIEW_DONE_PERCENT, FINAL_DONE_PERCENT, stages,
             )  # fmt: skip
 
         self._notifier.progress(job.job_id, STAGE_DELIVER, ENCODED_PERCENT)
@@ -113,6 +135,19 @@ class RenderEdit:
         self._notifier.job_done(
             job.job_id, self._relative(final), plan.model_dump(mode="json", by_alias=True)
         )
+
+    def _final_stages(
+        self, job: RenderJob, plan: EditPlan, retimed: dict[str, Path]
+    ) -> tuple[EncodeProfile, _Stages]:
+        """Max quality composes at the size the sources hold and upscales to the output size."""
+        profile = _final_profile(plan)
+        if plan.output.mode != MODE_MAX or self._upscaler is None:
+            return profile, _Stages(retimed)
+        size = working_size(plan, {asset.id: asset for asset in job.assets})
+        if not size.upscale:
+            return profile, _Stages(retimed)
+        working = replace(profile, width=size.width, height=size.height, sharpen=False)
+        return working, _Stages(retimed, FrameSize(profile.width, profile.height))
 
     def _plan(self, job: RenderJob, token: CancellationToken) -> EditPlan:
         tracks = [asset for asset in job.assets if asset.type is AssetType.MUSIC]
@@ -153,30 +188,39 @@ class RenderEdit:
         token: CancellationToken,
         first_percent: int,
         last_percent: int,
+        stages: _Stages | None = None,
     ) -> None:
+        stages = stages or _Stages({})
         work = target.parent / WORK_FOLDER / target.stem
         work.mkdir(parents=True, exist_ok=True)
-        report = _progress_reporter(self._notifier, job.job_id, first_percent, last_percent)
+        compose_end, upscale_end = _stage_ends(first_percent, last_percent, stages.upscale_to)
+        report = _progress_reporter(self._notifier, job.job_id, first_percent, compose_end)
+        self._retime(job, plan, sources, work.parent, token, stages.retimed)
         compositor = cool_compositor(self._compositor, self._thermal, job.settings.cool_mode, token)
         photos = self._photo_analyses(job)
         parts = []
+        total_frames = 0
         for index, segment in enumerate(plan.segments):
             token.raise_if_cancelled()
             part = work / f"{segment.id}.mp4"
             frames = _frame_count(segment.at, segment.duration, plan)
+            total_frames += frames
+            look = replace(
+                segment_look(plan, index, sources), retimed=stages.retimed.get(segment.id)
+            )
             compositor.render_segment(
                 sources[segment.asset_id],
                 segment,
                 frames,
                 profile,
                 part,
-                _with_photo(segment_look(plan, index, sources), photos.get(segment.asset_id)),
+                _with_photo(look, photos.get(segment.asset_id)),
             )
             parts.append(part)
             report(index + 1, len(plan.segments))
         token.raise_if_cancelled()
 
-        self._notifier.progress(job.job_id, STAGE_ENCODING, last_percent)
+        self._notifier.progress(job.job_id, STAGE_ENCODING, compose_end)
         joined = work / "joined.mp4"
         self._compositor.join(parts, joined)
         picture = joined
@@ -189,6 +233,12 @@ class RenderEdit:
                 _frame_count(plan.music.start, plan.music.end - plan.music.start, plan),
                 picture,
             )
+        if stages.upscale_to is not None and self._upscaler is not None:
+            picture = self._upscale(
+                job, picture, work, profile, stages.upscale_to, total_frames, token,
+                (compose_end, upscale_end),
+            )  # fmt: skip
+        self._notifier.progress(job.job_id, STAGE_ENCODING, upscale_end)
         self._audio.add_music(
             picture,
             music,
@@ -197,6 +247,68 @@ class RenderEdit:
             target,
             audio_mix(plan, sources),
         )
+
+    def _retime(
+        self,
+        job: RenderJob,
+        plan: EditPlan,
+        sources: dict[str, Path],
+        work: Path,
+        token: CancellationToken,
+        retimed: dict[str, Path],
+    ) -> None:
+        pending = [
+            (segment, sources[segment.asset_id], _frame_count(segment.at, segment.duration, plan))
+            for segment in plan.segments
+            if needs_rife(segment) and segment.id not in retimed
+        ]
+        if not pending:
+            return
+        if self._interpolator is None or self._frames is None:
+            log.warning("render.rife_missing", segments=len(pending))
+            return
+
+        def report(done: int, total: int) -> None:
+            self._notifier.progress(
+                job.job_id, STAGE_COMPOSING, PLANNED_PERCENT, f"Slow motion {done} of {total}"
+            )
+
+        stage = RetimeStage(self._interpolator, self._frames, self._cool_down(job, token))
+        retimed.update(stage.run(pending, plan.output.fps, work, token, report))
+
+    def _upscale(
+        self,
+        job: RenderJob,
+        joined: Path,
+        work: Path,
+        profile: EncodeProfile,
+        size: FrameSize,
+        frames: int,
+        token: CancellationToken,
+        percents: tuple[int, int],
+    ) -> Path:
+        assert self._upscaler is not None
+        target = work / "upscaled.mp4"
+        spec = UpscaleSpec(
+            joined, target, FrameSize(profile.width, profile.height), size, frames,
+            profile.fps, FINAL_QUALITY, FINAL_PRESET, job.settings.cool_mode,
+        )  # fmt: skip
+        first, last = percents
+
+        def report(done: int, total: int) -> None:
+            if done % UPSCALE_REPORT_EVERY_FRAMES == 0 or done == total:
+                percent = first + (last - first) * done // total
+                self._notifier.progress(
+                    job.job_id, STAGE_UPSCALING, percent, f"Frame {done} of {total}"
+                )
+
+        UpscaleStage(self._upscaler, self._cool_down(job, token)).run(spec, token, report)
+        return target
+
+    def _cool_down(self, job: RenderJob, token: CancellationToken) -> CoolDown | None:
+        if job.settings.cool_mode and self._thermal is not None:
+            return CoolDown(self._thermal, token)
+        return None
 
     def _photo_analyses(self, job: RenderJob) -> dict[str, PhotoAnalysis]:
         found = {
@@ -208,6 +320,24 @@ class RenderEdit:
 
     def _relative(self, path: Path) -> str:
         return path.relative_to(self._media_root).as_posix()
+
+
+@dataclass(frozen=True)
+class _Stages:
+    """What one pass shares with the others: RIFE frames made so far, and the upscale target."""
+
+    retimed: dict[str, Path]
+    upscale_to: FrameSize | None = None
+
+
+def _stage_ends(first: int, last: int, upscale_to: FrameSize | None) -> tuple[int, int]:
+    """Where compose and upscale end. Spec 04 weights Max as compose 30, upscale 35, rest 25."""
+    if upscale_to is None:
+        return last, last
+    span = last - first
+    compose_end = first + span * COMPOSE_SHARE_MAX // ALL_SHARES_MAX
+    upscale_end = first + span * (COMPOSE_SHARE_MAX + UPSCALE_SHARE_MAX) // ALL_SHARES_MAX
+    return compose_end, upscale_end
 
 
 def _with_photo(look: SegmentLook, photo: PhotoAnalysis | None) -> SegmentLook:

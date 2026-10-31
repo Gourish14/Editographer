@@ -65,6 +65,17 @@ class FrameObjects:
 
 
 @dataclass(frozen=True)
+class SubjectSample(BaseModel):
+    """Where the main subject was in a sampled frame, as shares of the frame."""
+
+    model_config = ConfigDict(frozen=True)
+
+    time: float
+    x: float
+    y: float
+
+
+@dataclass(frozen=True)
 class ShotVision:
     """What CLIP sees in one shot."""
 
@@ -99,6 +110,7 @@ class ShotMeasure(BaseModel):
     motion_direction: MotionDirection = MotionDirection.NONE
     dominant_color: str = NO_COLOR
     embedding: Embedding = ()
+    subject_track: tuple[SubjectSample, ...] = ()
 
 
 def cosine_similarity(first: Sequence[float], second: Sequence[float]) -> float:

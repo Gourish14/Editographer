@@ -13,6 +13,7 @@ from app.adapters.depth_anything import DepthAnythingEstimator
 from app.adapters.ffmpeg_audio import FfmpegAudioDecoder
 from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
 from app.adapters.ffmpeg_compositor import FfmpegCompositor
+from app.adapters.ffmpeg_frame_media import FfmpegFrameMedia, FfmpegVideoUpscaler
 from app.adapters.ffmpeg_media_tools import FfmpegMediaTools
 from app.adapters.ffmpeg_probe import FfmpegProbe
 from app.adapters.file_cache import FileCache
@@ -23,6 +24,8 @@ from app.adapters.nvml_thermal_guard import NvmlThermalGuard
 from app.adapters.ollama_llm import OllamaLlmClient
 from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
 from app.adapters.opencv_photo import OpenCvImageSizer, OpenCvSubjectLocator
+from app.adapters.realesrgan_upscaler import RealEsrganUpscaler
+from app.adapters.rife_interpolator import RifeInterpolator
 from app.adapters.scenedetect_shots import SceneDetectShots
 from app.adapters.skia_text_layer import SkiaTextLayer
 from app.adapters.whisper_speech_detector import WhisperSpeechDetector
@@ -72,6 +75,11 @@ def build_app() -> FastAPI:
         notifier,
         director,
         thermal=NvmlThermalGuard(gpu),
+        interpolator=RifeInterpolator(gpu, models / "rife" / "flownet_v4.25.pkl"),
+        frames=FfmpegFrameMedia(),
+        upscaler=FfmpegVideoUpscaler(
+            RealEsrganUpscaler(gpu, models / "realesrgan" / "realesr-general-x4v3.pth")
+        ),
         text=compositor,
     )
     analyze_asset = AnalyzeAsset(

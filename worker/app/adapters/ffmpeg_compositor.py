@@ -7,9 +7,13 @@ from pathlib import Path
 
 import structlog
 
+from app.adapters.ffmpeg_360 import camera_filter
 from app.adapters.ffmpeg_filters import (
+    NO_FRAMING,
     XFADE_BY_TRANSITION,
+    Framing,
     StyleFinish,
+    path_crop,
     segment_filter,
     segment_graph,
     transition_graph,
@@ -18,11 +22,12 @@ from app.adapters.ffmpeg_photo import photo_command
 from app.adapters.ffmpeg_runner import FfmpegError, run_tool
 from app.adapters.ffmpeg_text_overlay import input_args, overlay_chain
 from app.config import ROOT
+from app.domain.brain.ramps import retime_expression
 from app.domain.brain.text_rules import TextItem
 from app.domain.errors import ErrorCode, RenderError
 from app.domain.look import BLURRED_TRANSITIONS, MOTION_BLUR, ZOOM_PUNCH, transition_frames
 from app.domain.media import LogProfile
-from app.domain.plan import Effect, Grade, Segment
+from app.domain.plan import Camera360, Grade, Reframe, ReframePoint, Segment
 from app.ports.render import NO_LOOK, EncodeProfile, NextClip, SegmentLook
 from app.ports.speech import TextLayerRenderer
 
@@ -33,6 +38,8 @@ OUT_OF_MEMORY_MARKERS = ("out of memory", "cannot allocate")
 PHOTO_SEGMENT = "photo"
 DJI_LOG_LUT = "dji_osmo360_dlogm_to_rec709.cube"
 GENERIC_LOG_LUT = "generic_log_to_rec709.cube"
+VIDEO_360 = "video360"
+UNKNOWN_PANO_WIDTH = 3840
 
 
 class FfmpegCompositor:
@@ -54,8 +61,13 @@ class FfmpegCompositor:
         if segment.type == PHOTO_SEGMENT:
             self._render_photo(source, frames, profile, target, look)
             return
-        inputs = _input(source, segment.src_in)
-        clip = self._clip_chain(segment.effects, profile, segment.source.log_profile)
+        retimed = look.retimed is not None
+        inputs = (
+            _frames_input(look.retimed, profile.fps)
+            if look.retimed
+            else _input(source, segment.src_in)
+        )
+        clip = self._clip_chain(segment, frames, profile, retimed)
         blend_frames = _blend_frames(segment, frames, profile.fps, look.next_clip)
         finish = self._finish(segment, frames, blend_frames, profile.fps, look)
         if look.next_clip is None or blend_frames == 0:
@@ -65,7 +77,7 @@ class FfmpegCompositor:
             inputs += _input(look.next_clip.source, max(0.0, look.next_clip.src_in - preroll))
             graph = transition_graph(
                 clip,
-                self._clip_chain((), profile, look.next_clip.log_profile),
+                self._incoming_chain(look.next_clip, profile),
                 XFADE_BY_TRANSITION[segment.transition_out.type],
                 blend_frames,
                 frames,
@@ -83,20 +95,7 @@ class FfmpegCompositor:
                 "-an",
                 "-frames:v",
                 str(frames),
-                "-c:v",
-                "hevc_nvenc",
-                "-preset",
-                profile.preset,
-                "-rc",
-                "vbr",
-                "-cq",
-                str(profile.quality),
-                "-b:v",
-                "0",
-                "-profile:v",
-                "main10",
-                "-pix_fmt",
-                "p010le",
+                *_hevc_args(profile),
                 str(target),
             ]
         )
@@ -156,15 +155,30 @@ class FfmpegCompositor:
         )
 
     def _clip_chain(
-        self, effects: Sequence[Effect], profile: EncodeProfile, log_profile: str | None
+        self, segment: Segment, frames: int, profile: EncodeProfile, retimed: bool
     ) -> str:
+        return segment_filter(
+            segment.effects,
+            profile.width,
+            profile.height,
+            profile.fps,
+            profile.sharpen,
+            self._log_lut(segment.source.log_profile),
+            _framing(segment, frames, profile, retimed),
+        )
+
+    def _incoming_chain(self, following: NextClip, profile: EncodeProfile) -> str:
+        """The clip a transition blends into: plain, framed as it will be at its first frame."""
+        effects = ()
+        framing = _first_frame_framing(following.segment, profile)
         return segment_filter(
             effects,
             profile.width,
             profile.height,
             profile.fps,
             profile.sharpen,
-            self._log_lut(log_profile),
+            self._log_lut(following.log_profile),
+            framing,
         )
 
     def _log_lut(self, log_profile: str | None) -> Path | None:
@@ -240,6 +254,48 @@ def _hevc_args(profile: EncodeProfile) -> list[str]:
 
 def _input(source: Path, start: float) -> list[str]:
     return ["-hwaccel", "auto", "-ss", f"{start:.4f}", "-i", str(source)]
+
+
+def _frames_input(pattern: Path, fps: int) -> list[str]:
+    return ["-framerate", str(fps), "-start_number", "1", "-i", str(pattern)]
+
+
+def _is_ramp(curve: Sequence[tuple[float, float]]) -> bool:
+    return any(abs(speed - 1.0) > 1e-9 for _, speed in curve)
+
+
+def _framing(segment: Segment, frames: int, profile: EncodeProfile, retimed: bool) -> Framing:
+    """Speed curve, then the crop path or 360 camera, all on the segment's own timeline."""
+    retime = None
+    if not retimed and _is_ramp(segment.speed.curve):
+        if segment.speed.interpolate == "native":
+            retime = retime_expression(segment.speed.curve, segment.duration)
+        else:
+            log.warning("render.ramp_without_frames", segment=segment.id)
+    size = (profile.width, profile.height)
+    if segment.type == VIDEO_360 and segment.camera360 is not None:
+        width = segment.source.width or UNKNOWN_PANO_WIDTH
+        camera = camera_filter(segment.camera360, frames / profile.fps, width, size, profile.fps)
+        return Framing(retime=retime, camera=camera)
+    return Framing(retime=retime, crop=_crop(segment.reframe, profile))
+
+
+def _crop(reframe: Reframe, profile: EncodeProfile) -> str | None:
+    return path_crop(reframe.path, profile.width / profile.height) if reframe.path else None
+
+
+def _first_frame_framing(segment: Segment | None, profile: EncodeProfile) -> Framing:
+    if segment is None:
+        return NO_FRAMING
+    if segment.type == VIDEO_360 and segment.camera360 is not None:
+        still = Camera360(keyframes=segment.camera360.keyframes[:1])
+        width = segment.source.width or UNKNOWN_PANO_WIDTH
+        size = (profile.width, profile.height)
+        return Framing(camera=camera_filter(still, 1 / profile.fps, width, size, profile.fps))
+    if segment.reframe.path:
+        first: ReframePoint = segment.reframe.path[0]
+        return Framing(crop=path_crop([first], profile.width / profile.height))
+    return NO_FRAMING
 
 
 def _blend_frames(segment: Segment, frames: int, fps: int, next_clip: NextClip | None) -> int:

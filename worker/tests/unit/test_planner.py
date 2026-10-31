@@ -386,14 +386,6 @@ def test_a_project_of_only_rejected_shots_fails_clearly() -> None:
     assert failure.value.code is ErrorCode.PLAN_INVALID
 
 
-def test_a_360_clip_gets_a_note_about_phase_3() -> None:
-    pano = analysis(measure()).model_copy(update={"camera_mode": "OSMO360_PANO_8K"})
-
-    result = build_edit_plan("m1", music_map(), [ClipInput("v0", pano)], SETTINGS)
-
-    assert "360" in result.log[0]
-
-
 @pytest.mark.parametrize(
     ("ratio", "quality", "expected"),
     [

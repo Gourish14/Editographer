@@ -31,6 +31,7 @@ class NextClip:
     source: Path
     src_in: float
     log_profile: str | None = None
+    segment: Segment | None = None
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,8 @@ class SegmentLook:
     grade: Grade | None = None
     motion_blur: float = 0.0
     next_clip: NextClip | None = None
+    retimed: Path | None = None
+    """Frames already on the segment's timeline, a pattern like `folder/%06d.png` (RIFE)."""
     photo: PhotoAnalysis | None = None
 
 

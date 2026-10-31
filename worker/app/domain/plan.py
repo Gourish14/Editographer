@@ -39,9 +39,18 @@ class Speed(_PlanModel):
     interpolate: str = "none"
 
 
+class ReframePoint(_PlanModel):
+    """Where the crop window's center sits `t` seconds into the segment, as shares of the frame."""
+
+    t: float
+    x: float
+    y: float
+
+
 class Reframe(_PlanModel):
     mode: str = "center"
     subject: str | None = None
+    path: tuple[ReframePoint, ...] = ()
 
 
 class Effect(_PlanModel):
@@ -61,6 +70,7 @@ class Source(_PlanModel):
     camera_mode: str | None
     log_profile: str | None
     native_fps: float | None
+    width: int | None = None
 
 
 class CameraKeyframe(_PlanModel):

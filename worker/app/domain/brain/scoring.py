@@ -21,6 +21,7 @@ from app.domain.shots import (
     MotionDirection,
     ShotMeasure,
     ShotVision,
+    SubjectSample,
     TimeWindow,
     cosine_similarity,
 )
@@ -89,8 +90,21 @@ def measure_shot(
         usable=_usable_windows(people),
         action=object_velocity_peak(objects),
         motion_direction=_motion_direction(moving),
+        subject_track=subject_track(objects),
         dominant_color=Counter(frame.color for frame in people).most_common(1)[0][0],
     )
+
+
+def subject_track(objects: Sequence[FrameObjects]) -> tuple[SubjectSample, ...]:
+    """B7: the main subject per sampled frame, the largest person, else the largest object."""
+    track = []
+    for found in objects:
+        if not found.objects:
+            continue
+        people = [box for box in found.objects if box.label == PERSON_LABEL]
+        main = max(people or found.objects, key=lambda box: box.area)
+        track.append(SubjectSample(time=found.time, x=main.center_x, y=main.center_y))
+    return tuple(track)
 
 
 def describe_shot(
