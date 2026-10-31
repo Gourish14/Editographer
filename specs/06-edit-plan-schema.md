@@ -39,7 +39,7 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
       "assetId": "p1",
       "type": "photo",
       "at": 13.34, "duration": 0.47,
-      "motion": { "type": "parallax|kenburns", "depth": true, "direction": "push_in" }
+      "motion": { "type": "parallax|kenburns", "depth": true, "direction": "push_in", "focusX": 0.62, "focusY": 0.4 }
     },
     {
       "id": "s3",
@@ -80,6 +80,8 @@ The brain outputs one JSON edit plan per render; the compositor renders exactly 
 | `source.cameraMode` | see `08-osmo360.md` |
 
 A `transitionOut` plays inside the last frames of its own segment and finishes on the segment's last frame, so the next segment still starts on its beat and frame counts never change. `planet_morph` renders as an FFmpeg circle wipe until a 360 shader exists. `keepAudio` keeps a segment's clip audio and ducks the music under it (B8); it defaults to false. When `sfx` is empty, a whoosh peaking on each transition's cut and an impact on each drop hit are derived from the plan.
+
+`motion.focusX` and `motion.focusY` are the point a photo pushes toward, as shares of the frame (default 0.5, the center). In `camera360.keyframes`, `ease` shapes the span that starts at that keyframe, and a span uses the projection of its end keyframe, else of its start keyframe, else `camera360.projection`.
 
 ## Prompt constraint JSON
 

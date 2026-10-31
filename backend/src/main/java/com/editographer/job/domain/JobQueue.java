@@ -1,5 +1,6 @@
 package com.editographer.job.domain;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -7,9 +8,19 @@ import java.util.UUID;
 public interface JobQueue {
 
   /** Queues work on the asset or render with the given id. */
-  void enqueue(JobKind kind, UUID refId);
+  default void enqueue(JobKind kind, UUID refId) {
+    enqueue(kind, refId, null);
+  }
 
-  /** The queued job that should run next: lowest priority number, then oldest. */
+  /**
+   * Queues work that must not start before notBefore. A null notBefore means as soon as possible.
+   */
+  void enqueue(JobKind kind, UUID refId, Instant notBefore);
+
+  /**
+   * The queued job that should run next: lowest priority number, then oldest. Jobs whose start time
+   * has not come yet are skipped.
+   */
   Optional<Job> nextQueued();
 
   Optional<Job> findById(UUID id);

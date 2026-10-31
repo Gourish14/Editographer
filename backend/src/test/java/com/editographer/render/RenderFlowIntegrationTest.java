@@ -2,6 +2,7 @@ package com.editographer.render;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -141,6 +142,39 @@ class RenderFlowIntegrationTest {
           }
           return names;
         });
+  }
+
+  @Test
+  void renderTonightWaitsForItsStartTimeAndKeepsTheFollowPoint() throws Exception {
+    String start = Instant.now().plusSeconds(3600).toString();
+    HttpResponse<String> created =
+        post(
+            "/api/projects/" + projectId.value() + "/renders",
+            "{\"style\":\"velocity\",\"coolMode\":true,\"startAt\":\""
+                + start
+                + "\",\"followPoint\":{\"x\":0.25,\"y\":0.5,\"timeSec\":3.5}}");
+    assertThat(created.statusCode()).as(created.body()).isEqualTo(201);
+    assertThat(created.body())
+        .contains("\"startAt\":\"" + start + "\"")
+        .contains("\"followPoint\":{\"x\":0.25,\"y\":0.5,\"timeSec\":3.5}");
+
+    when(worker.isIdle()).thenReturn(true);
+    dispatcher.dispatchNext();
+
+    verify(worker, never()).submitRender(any());
+    assertThat(
+            jdbc.queryForObject("SELECT COUNT(*) FROM job WHERE status = 'QUEUED'", Integer.class))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aFollowPointOutsideTheFrameIsRefused() throws Exception {
+    HttpResponse<String> response =
+        post(
+            "/api/projects/" + projectId.value() + "/renders",
+            "{\"followPoint\":{\"x\":2,\"y\":0.5,\"timeSec\":0}}");
+
+    assertThat(response.statusCode()).isEqualTo(400);
   }
 
   @Test

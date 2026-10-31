@@ -44,7 +44,8 @@ class RenderServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-10-30T10:00:00Z");
   private static final RenderSettings SETTINGS =
-      new RenderSettings("9:16", "4K", 30, "velocity", "fast", 30, "slow-mo", false, 7L);
+      new RenderSettings(
+          "9:16", "4K", 30, "velocity", "fast", 30, "slow-mo", false, 7L, null, null);
 
   private final RenderRepository renders = mock(RenderRepository.class);
   private final ProjectRepository projects = mock(ProjectRepository.class);
@@ -99,7 +100,57 @@ class RenderServiceTest {
 
     assertThat(render.state().status()).isEqualTo(RenderStatus.QUEUED);
     assertThat(render.settings()).isEqualTo(SETTINGS);
-    verify(queue).enqueue(JobKind.RENDER, render.id().value());
+    verify(queue).enqueue(JobKind.RENDER, render.id().value(), null);
+  }
+
+  @Test
+  void aRenderWithAStartTimeIsQueuedForThatTime() {
+    Instant tonight = Instant.parse("2026-10-30T22:00:00Z");
+    RenderSettings scheduled =
+        new RenderSettings(
+            "9:16",
+            "4K",
+            30,
+            "velocity",
+            "fast",
+            30,
+            "slow-mo",
+            true,
+            7L,
+            tonight,
+            new RenderSettings.FollowPoint(0.25, 0.5, 3.0));
+
+    Render render = service.startRender(projectId, scheduled);
+
+    verify(queue).enqueue(JobKind.RENDER, render.id().value(), tonight);
+  }
+
+  @Test
+  void anotherVersionRunsRightAwayEvenIfTheOriginalWasScheduled() {
+    RenderSettings scheduled = SETTINGS.withSeed(1L);
+    Render original =
+        stored(
+            Render.queued(
+                projectId,
+                new RenderSettings(
+                    "9:16",
+                    "4K",
+                    30,
+                    "velocity",
+                    "fast",
+                    30,
+                    null,
+                    true,
+                    7L,
+                    Instant.parse("2026-10-30T22:00:00Z"),
+                    null),
+                NOW));
+
+    Render version = service.regenerate(original.id());
+
+    assertThat(version.settings().startAt()).isNull();
+    verify(queue).enqueue(JobKind.RENDER, version.id().value(), null);
+    assertThat(scheduled.startAt()).isNull();
   }
 
   @Test
@@ -121,7 +172,7 @@ class RenderServiceTest {
     when(assets.findByProject(projectId)).thenReturn(List.of(asset(AssetType.VIDEO)));
 
     assertFailsWith(() -> service.startRender(projectId, SETTINGS), ErrorCode.VALIDATION_FAILED);
-    verify(queue, never()).enqueue(any(), any());
+    verify(queue, never()).enqueue(any(), any(), any());
   }
 
   @Test
@@ -148,7 +199,7 @@ class RenderServiceTest {
     assertThat(version.id()).isNotEqualTo(original.id());
     assertThat(version.settings().seed()).isNotEqualTo(SETTINGS.seed());
     assertThat(version.settings().withSeed(SETTINGS.seed())).isEqualTo(SETTINGS);
-    verify(queue).enqueue(JobKind.RENDER, version.id().value());
+    verify(queue).enqueue(JobKind.RENDER, version.id().value(), null);
   }
 
   @Test

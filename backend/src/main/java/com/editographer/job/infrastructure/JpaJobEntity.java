@@ -34,18 +34,23 @@ class JpaJobEntity {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
+  @Column(name = "not_before")
+  private Instant notBefore;
+
   @Column(name = "started_at")
   private Instant startedAt;
 
   protected JpaJobEntity() {}
 
-  JpaJobEntity(UUID id, String kind, UUID refId, int priority, Instant createdAt) {
+  JpaJobEntity(
+      UUID id, String kind, UUID refId, int priority, Instant createdAt, Instant notBefore) {
     this.id = id;
     this.kind = kind;
     this.refId = refId;
     this.priority = priority;
     this.status = STATUS_QUEUED;
     this.createdAt = createdAt;
+    this.notBefore = notBefore;
   }
 
   void start(String runningStatus, Instant now) {

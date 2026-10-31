@@ -50,7 +50,7 @@
 | Object detection | Ultralytics YOLO (nano) | AGPL-3.0 |
 | Tags and aesthetics | OpenCLIP ViT-B/32 | MIT |
 | Cutout and tracking | [SAM 2.1](https://ai.meta.com/blog/segment-anything-2/) small | Apache-2.0 |
-| Photo depth | [Depth Anything V2 Small](https://github.com/DepthAnything/Depth-Anything-V2) | Apache-2.0 (Small only) |
+| Photo depth | [Depth Anything V2 Small](https://github.com/DepthAnything/Depth-Anything-V2) through Transformers | Apache-2.0 (Small only) |
 | Frame interpolation | [Practical-RIFE](https://github.com/hzwer/Practical-RIFE) 4.x | MIT |
 | Upscaling | [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) realesr-general-x4v3 | BSD-3 |
 | Effects and transitions | ModernGL shaders + gl-transitions | MIT |
