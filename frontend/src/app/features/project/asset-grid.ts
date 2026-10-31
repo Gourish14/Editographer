@@ -55,7 +55,13 @@ function badgesFor(asset: Asset): string[] {
               <app-status-badge [label]="badge" tone="active" />
             }
           </div>
-          <button matButton (click)="remove.emit(view.asset.id)">Remove</button>
+          <button
+            matButton
+            [attr.aria-label]="'Remove ' + view.asset.filename"
+            (click)="remove.emit(view.asset.id)"
+          >
+            Remove
+          </button>
         </article>
       }
     </div>
@@ -63,7 +69,7 @@ function badgesFor(asset: Asset): string[] {
   styles: `
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
       gap: 16px;
     }
     .asset {

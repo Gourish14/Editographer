@@ -31,6 +31,15 @@ import { RouterLink, RouterOutlet } from '@angular/router';
       margin: 0 auto;
       padding: 32px 24px 64px;
     }
+    @media (max-width: 600px) {
+      .top-bar,
+      .page {
+        padding-inline: 16px;
+      }
+      .page {
+        padding-top: 20px;
+      }
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

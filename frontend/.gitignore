@@ -42,3 +42,10 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Playwright end-to-end output
+/e2e-results
+/e2e-screenshots
+/e2e-media
+/playwright-report
+/e2e-run.log

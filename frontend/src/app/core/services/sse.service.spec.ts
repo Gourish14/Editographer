@@ -62,4 +62,16 @@ describe('SseService', () => {
 
     expect(received).toEqual([{ type: 'failed', error: 'GPU_OUT_OF_MEMORY' }]);
   });
+
+  it('completes and closes when the stream errors, so it never reconnects by itself', () => {
+    let completed = false;
+    TestBed.inject(SseService)
+      .renderEvents('r1')
+      .subscribe({ complete: () => (completed = true) });
+
+    FakeEventSource.last.emit('error');
+
+    expect(completed).toBe(true);
+    expect(FakeEventSource.last.closed).toBe(true);
+  });
 });

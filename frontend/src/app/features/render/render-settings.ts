@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
-import { MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatFormField, MatHint, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
@@ -38,6 +38,7 @@ const MODES = [
   imports: [
     MatButton,
     MatFormField,
+    MatHint,
     MatInput,
     MatLabel,
     MatOption,
@@ -92,8 +93,9 @@ const MODES = [
           </mat-select>
         </mat-form-field>
         <mat-form-field>
-          <mat-label>Length in seconds (empty for Auto)</mat-label>
+          <mat-label>Length in seconds</mat-label>
           <input matInput type="number" min="1" formControlName="lengthSec" />
+          <mat-hint>Empty for Auto</mat-hint>
         </mat-form-field>
         <mat-form-field class="wide">
           <mat-label>Prompt (optional)</mat-label>
@@ -101,9 +103,10 @@ const MODES = [
         </mat-form-field>
         <mat-slide-toggle class="wide" formControlName="coolMode">Cool mode</mat-slide-toggle>
         <div class="wide row tonight">
-          <mat-form-field subscriptSizing="dynamic">
-            <mat-label>Render tonight: start at (empty to start now)</mat-label>
+          <mat-form-field class="start-at">
+            <mat-label>Render tonight: start at</mat-label>
             <input matInput type="datetime-local" formControlName="startAt" />
+            <mat-hint>Empty to start now</mat-hint>
           </mat-form-field>
           <button matButton type="button" (click)="tonight()">Tonight at 22:00</button>
           @if (form.controls.startAt.value) {
@@ -158,8 +161,18 @@ const MODES = [
     }
     .tonight {
       flex-wrap: wrap;
+      align-items: flex-start;
+      margin-top: 12px;
+    }
+    .start-at {
+      flex: 1 1 260px;
+      max-width: 360px;
+    }
+    .tonight button {
+      margin-top: 8px;
     }
     .follow {
+      margin-top: 12px;
       display: flex;
       flex-direction: column;
       gap: 8px;

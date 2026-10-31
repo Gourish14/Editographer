@@ -36,6 +36,12 @@ if errorlevel 1 set "FAILED=%FAILED% frontend-lint"
 call npx ng test --watch=false
 if errorlevel 1 set "FAILED=%FAILED% frontend-tests"
 
+if defined EDITOGRAPHER_E2E (
+    echo === Browser end-to-end ^(optional, set EDITOGRAPHER_E2E=1; needs the built jar and the GPU^)
+    call "%ROOT%\scripts\e2e.bat"
+    if errorlevel 1 set "FAILED=%FAILED% frontend-e2e"
+)
+
 echo.
 if defined FAILED (
     echo CHECKS FAILED:%FAILED%
