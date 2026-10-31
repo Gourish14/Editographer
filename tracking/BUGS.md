@@ -12,6 +12,7 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Fixed in |
 | --- | --- | --- | --- |
+| BUG-003 | Two GPU guards after merging T-201 and T-202 broke the one-model rule | High | 8e8596e |
 | BUG-002 | createdAt differs between create and read-back | Low | T-106 commit |
 | BUG-001 | setup.bat exits with code 255 right after winget installs FFmpeg | High | ef2569b |
 

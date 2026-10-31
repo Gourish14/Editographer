@@ -3,10 +3,10 @@
 Newest first. One entry per working session (template in `specs/12-spec-driven-development.md` §8).
 
 ## 2026-10-31 — Session 4 (overnight, multi-agent)
-- Done: T-302, T-401, T-402, T-403.
-- In progress: T-118, T-201, T-202, T-301, T-303.
-- Found: ADR-014, ADR-015, CR-013.
-- Next: merge the running agents, then T-404 and T-405.
+- Done: T-201, T-202, T-301, T-302, T-303, T-401, T-402, T-403.
+- In progress: T-118, T-404, T-405.
+- Found: BUG-003, ADR-014, ADR-015, ADR-016, CR-013.
+- Next: merge T-118, T-404 and T-405, then run the gate on the real clips.
 - Needs user: real footage for the gate; push from GitHub Desktop.
 
 ## 2026-10-31 — Session 3

@@ -5,6 +5,7 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- One shared GPU guard, restoring the one-model-at-a-time rule [BUG-003].
 - `setup.bat` no longer stops silently after installing FFmpeg [BUG-001].
 - A project's `createdAt` is the same on create and read-back [BUG-002].
 
@@ -18,6 +19,10 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 - Projects REST API [T-104].
 - Resumable tus uploads, local media storage, asset list and delete, thumbnail endpoint, ANALYZE jobs queued on upload [T-105].
 - Job queue, dispatcher, worker client, token-protected worker callbacks, restart recovery [T-106].
+- Grades, D-Log M, transitions, motion blur, SFX, ducking and cool mode [T-303].
+- RIFE and Real-ESRGAN adapters, not yet wired in [T-301].
+- Prompt constraints, Ollama director with fallback, all 7 styles [T-202].
+- YOLO, CLIP tags, aesthetics, duplicate rejection and shot search [T-201].
 - Speed ramp curve, smart reframe rules and 360 projections with FFmpeg, not yet wired in [T-302].
 - Render tonight, 360 preview and subject picker, skipped-prompt list, speed tips, live GPU temperature [T-401].
 - Speech detection, text rules and text layers, not yet wired in [T-402].
