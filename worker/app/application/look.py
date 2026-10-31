@@ -22,7 +22,7 @@ def segment_look(plan: EditPlan, index: int, sources: Mapping[str, Path]) -> Seg
     next_clip = None
     if following is not None:
         next_clip = NextClip(
-            sources[following.asset_id], following.src_in, following.source.log_profile
+            sources[following.asset_id], following.src_in, following.source.log_profile, following
         )
     return SegmentLook(plan.grade, motion_blur_amount(segment, fx_intensity), next_clip)
 

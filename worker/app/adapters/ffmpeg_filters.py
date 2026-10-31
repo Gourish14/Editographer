@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.domain.brain.effects import FLASH, SHAKE, ZOOM_PUNCH
-from app.domain.plan import Effect
+from app.domain.plan import Effect, ReframePoint
 
 SHAKE_OVERSCAN = 0.04
 SHAKE_MAX_SHARE = 0.015
@@ -43,6 +43,55 @@ XFADE_BY_TRANSITION = {
 
 
 @dataclass(frozen=True)
+class Framing:
+    """The parts of a clip's chain that depend on its plan: speed curve, crop path or camera."""
+
+    retime: str | None = None
+    crop: str | None = None
+    camera: str | None = None
+
+
+NO_FRAMING = Framing()
+MAX_PATH_POINTS = 24
+
+
+def center_crop(aspect: float) -> str:
+    return f"crop=w='min(iw,ih*{aspect:.6f})':h='min(ih,iw/{aspect:.6f})'"
+
+
+def path_crop(path: Sequence[ReframePoint], aspect: float) -> str:
+    """A crop that follows the plan's window centers, moving in a straight line between them."""
+    points = _thin(path)
+    center_x = _piecewise([(point.t, point.x) for point in points])
+    center_y = _piecewise([(point.t, point.y) for point in points])
+    return (
+        f"crop=w='min(iw,ih*{aspect:.6f})':h='min(ih,iw/{aspect:.6f})'"
+        f":x='clip(({center_x})*iw-ow/2,0,iw-ow)':y='clip(({center_y})*ih-oh/2,0,ih-oh)'"
+    )
+
+
+def _thin(path: Sequence[ReframePoint]) -> list[ReframePoint]:
+    if len(path) <= MAX_PATH_POINTS:
+        return list(path)
+    step = (len(path) - 1) / (MAX_PATH_POINTS - 1)
+    return [path[round(index * step)] for index in range(MAX_PATH_POINTS)]
+
+
+def _piecewise(points: Sequence[tuple[float, float]]) -> str:
+    """Straight lines between (time, value) points, flat before the first and after the last."""
+    expression = f"{points[-1][1]:.5f}"
+    for (time_a, value_a), (time_b, value_b) in reversed(
+        list(zip(points, points[1:], strict=False))
+    ):
+        if time_b <= time_a:
+            continue
+        slope = (value_b - value_a) / (time_b - time_a)
+        line = f"{value_a:.5f}+({slope:.5f})*(t-{time_a:.4f})"
+        expression = f"if(lt(t,{time_b:.4f}),{line},{expression})"
+    return f"if(lt(t,{points[0][0]:.4f}),{points[0][1]:.5f},{expression})"
+
+
+@dataclass(frozen=True)
 class StyleFinish:
     """What runs after the transition: style LUT, grain, then motion blur on the moving parts."""
 
@@ -60,14 +109,21 @@ def segment_filter(
     fps: int,
     sharpen: bool,
     log_lut: Path | None = None,
+    framing: Framing = NO_FRAMING,
 ) -> str:
-    """One clip's chain: conform fps, crop to the ratio, effects, finish at the output size."""
+    """One clip's chain: retime, conform fps, frame to the ratio, effects, finish at the size.
+
+    The retime comes first, so everything after it, the crop path and 360 camera too, works on
+    the segment's own timeline. A 360 camera filter ends the chain's first graph and may be a
+    split and concat, so only comma-chained filters follow it.
+    """
     aspect = width / height
-    chain = [
-        f"fps={fps}",
-        f"format={WORK_FORMAT}",
-        f"crop=w='min(iw,ih*{aspect:.6f})':h='min(ih,iw/{aspect:.6f})'",
-    ]
+    chain = [f"setpts='{framing.retime}'"] if framing.retime else []
+    chain += [f"fps={fps}", f"format={WORK_FORMAT}"]
+    if framing.camera:
+        chain += [ZERO_TIME, framing.camera]
+    else:
+        chain.append(framing.crop or center_crop(aspect))
     chain.extend(_motion_filters(effects, width, height))
     if log_lut is not None:
         chain.append(_lut_steps(log_lut, in_matrix=""))

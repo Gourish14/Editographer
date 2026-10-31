@@ -25,7 +25,7 @@ Only one AI model is on the GPU at a time (`GpuGuard` in `worker/app/adapters/nv
 | AI director | Qwen3 4B, 4-bit | ≈ 3 GB | Ollama `keep_alive: 0` |
 | Cutout and tracking | SAM 2.1 small | ≈ 1–2 GB | Only segments that need it |
 | Photo depth | Depth Anything V2 Small | < 1 GB | — |
-| Slow-mo | RIFE 4.25 | ≈ 1 GB at 1080p, ≈ 2.5–3.5 GB at 4K | `scale 0.5` above 4K, fp16 |
+| Slow-mo | RIFE 4.25 | ≈ 1 GB at 1080p, ≈ 2.5–3.5 GB at 4K | `scale 0.5` from 4K up (a 4K frame at scale 1 did not fit), fp16 |
 | Upscale | Real-ESRGAN realesr-general-x4v3 | ≈ 1–2 GB | Tiles of 512 px, fp16 |
 | Encode | FFmpeg `hevc_nvenc` | dedicated chip | 10-bit |
 

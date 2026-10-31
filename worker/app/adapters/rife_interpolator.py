@@ -31,15 +31,15 @@ from app.ports.gpu_guard import GpuGuard
 
 UHD_PIXELS = 3840 * 2160
 FULL_SCALE = 1.0
-ABOVE_4K_SCALE = 0.5
+FROM_4K_SCALE = 0.5
 SIDE_MULTIPLE = 64
 STATE_PREFIX = "module."
 TRAINING_ONLY_PREFIXES = ("teacher.", "caltime.")
 
 
 def flow_scale(width: int, height: int) -> float:
-    """Spec: scale 0.5 above 4K. Counted in pixels so that vertical frames are treated alike."""
-    return ABOVE_4K_SCALE if width * height > UHD_PIXELS else FULL_SCALE
+    """Spec 09: scale 0.5 from 4K up, counted in pixels so vertical frames are treated alike."""
+    return FROM_4K_SCALE if width * height >= UHD_PIXELS else FULL_SCALE
 
 
 def padded_side(side: int, scale: float) -> int:

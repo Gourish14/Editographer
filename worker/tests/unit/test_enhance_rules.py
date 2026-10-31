@@ -38,18 +38,20 @@ from app.domain.errors import ErrorCode, RenderError
 from app.ports.enhance import Frame, FrameSize
 
 
-def test_rife_keeps_full_scale_up_to_4k() -> None:
+def test_rife_keeps_full_scale_below_4k() -> None:
     assert flow_scale(1920, 1080) == 1.0
-    assert flow_scale(3840, 2160) == 1.0
+    assert flow_scale(3839, 2160) == 1.0
 
 
-def test_rife_uses_scale_half_above_4k() -> None:
+def test_rife_uses_scale_half_from_4k_up() -> None:
+    assert flow_scale(3840, 2160) == 0.5
     assert flow_scale(5760, 2880) == 0.5
     assert flow_scale(7680, 4320) == 0.5
 
 
 def test_rife_treats_a_vertical_4k_frame_like_a_horizontal_one() -> None:
-    assert flow_scale(2160, 3840) == 1.0
+    assert flow_scale(2160, 3840) == 0.5
+    assert flow_scale(2160, 3800) == 1.0
     assert flow_scale(4320, 7680) == 0.5
 
 
