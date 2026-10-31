@@ -85,9 +85,9 @@ def build_edit_plan(
         constraints.duration_sec or float(settings.length_sec or DEFAULT_LENGTH_SEC),
     )
     if photos_only:
-        slots = build_slots(music, window, style)
+        slots = list(build_slots(music, window, style))
         assignments: tuple[Assignment, ...] = ()
-        effects: list[tuple[Effect, ...]] = []
+        effects: Sequence[tuple[Effect, ...]] = ()
         tag_notes: tuple[str, ...] = ()
     else:
         candidates, tag_notes = select_candidates(usable, constraints, window.end - window.start)
@@ -114,7 +114,9 @@ def build_edit_plan(
     segments = tuple(
         photo_segment(f"s{i + 1}", photos[by_slot[i]].asset_id, slot, photos[by_slot[i]].analysis)
         if i in by_slot
-        else _segment(i + 1, assignments[i], effects[i], analyses[assignments[i].candidate.asset_id])
+        else _segment(
+            i + 1, assignments[i], effects[i], analyses[assignments[i].candidate.asset_id]
+        )
         for i, slot in enumerate(slots)
     )
     text, text_notes = plan_text(

@@ -7,9 +7,10 @@ from pathlib import Path
 import structlog
 
 from app.application.analyze_music import AnalyzeMusic
+from app.application.analyze_photo import AnalyzePhoto
 from app.application.analyze_shots import AnalyzeShots
 from app.application.job_runner import CancellationToken
-from app.domain.analysis import StoredAnalysis
+from app.domain.analysis import StoredAnalysis, StoredSpeech
 from app.domain.errors import AnalysisError, ErrorCode
 from app.domain.media import (
     MediaInfo,
@@ -26,9 +27,11 @@ from app.ports.media import (
     ProxyMaker,
     ThumbnailMaker,
 )
+from app.ports.speech import SpeechDetector, SpeechResult
 
 log = structlog.get_logger()
 PROXIES_FOLDER = "proxies"
+DEPTH_MAP_FILE = "depth.png"
 THUMBNAIL_POSITION = 0.1
 
 
@@ -44,6 +47,8 @@ class AnalyzeAsset:
         notifier: BackendNotifier,
         music: AnalyzeMusic,
         shots: AnalyzeShots,
+        photos: AnalyzePhoto | None = None,
+        speech: SpeechDetector | None = None,
     ) -> None:
         self._media_root = media_root
         self._probe = probe
@@ -54,6 +59,8 @@ class AnalyzeAsset:
         self._notifier = notifier
         self._music = music
         self._shots = shots
+        self._photos = photos
+        self._speech = speech
 
     def run(self, job: AnalyzeJob, token: CancellationToken) -> None:
         source = self._media_root / job.path
@@ -76,6 +83,16 @@ class AnalyzeAsset:
             if proxy is not None:
                 shots = self._shots.run(proxy, analysis.duration_sec or 0.0)
                 analysis = analysis.model_copy(update={"shots": shots})
+            if job.type is AssetType.PHOTO and self._photos is not None:
+                depth_map = self._cache.thumbnail_file(file_hash).with_name(DEPTH_MAP_FILE)
+                analysis = analysis.model_copy(
+                    update={"photo": self._photos.run(source, depth_map)}
+                )
+            if job.type is AssetType.VIDEO and self._speech is not None:
+                token.raise_if_cancelled()
+                analysis = analysis.model_copy(
+                    update={"speech": _stored_speech(self._speech.detect(source))}
+                )
             self._cache.save(analysis)
         else:
             log.info("analysis.cache_hit", fileHash=file_hash)
@@ -133,3 +150,10 @@ class AnalyzeAsset:
             height=analysis.height,
             fps=analysis.fps,
         )
+
+
+def _stored_speech(result: SpeechResult) -> StoredSpeech:
+    return StoredSpeech(
+        spans=tuple((span.start, span.end) for span in result.spans),
+        words=tuple((word.text, word.start, word.end) for word in result.words),
+    )

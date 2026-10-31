@@ -420,10 +420,10 @@ def test_b9_slowmo_is_recorded_in_the_plan_log() -> None:
     assert plan.log == ("Slow motion requested on: drop; speed ramps arrive in Phase 3",)
 
 
-def test_b9_text_and_effects_on_are_recorded_in_the_plan_log() -> None:
+def test_b9_text_goes_into_the_plan_and_effects_on_are_recorded_in_the_log() -> None:
     plan = planned(Constraints(text=("GOA 2026",), effects_on=("tinyplanet",)))
 
-    assert "Text 'GOA 2026' requested; text overlays arrive in Phase 3" in plan.log
+    assert [item.content for item in plan.text] == ["GOA 2026"]
     assert "Effect 'tinyplanet' requested; not available yet" in plan.log
 
 

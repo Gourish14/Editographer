@@ -41,7 +41,7 @@ def overlay_chain(
             f"setpts=PTS+{item.at:.3f}/TB[{layer}]"
         )
         parts.append(
-            f"[{current}][{layer}]overlay=eof_action=pass:"
+            f"[{current}][{layer}]overlay=eof_action=pass:format=auto:"
             f"enable='between(t,{item.at:.3f},{item.at + item.duration:.3f})'[{nxt}]"
         )
         current = nxt
