@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from app.adapters.ffmpeg_osv import blend_mask, load_calibration, pick_profile, stitch_graph
+from app.adapters.ffmpeg_osv import (
+    blend_mask,
+    frame_count,
+    load_calibration,
+    pick_profile,
+    stitch_graph,
+)
 
 
 def test_rule_3_the_profile_follows_the_encoder_tag_of_the_file() -> None:
@@ -72,6 +78,14 @@ def test_rule_3_the_blend_mask_rises_across_the_seam_in_every_plane() -> None:
     assert "lum='" in mask and "cb='" in mask and "cr='" in mask
     assert "(90-4)" in mask
     assert "loop=loop=-1:size=1" in mask
+
+
+def test_rule_3_the_stitch_writes_exactly_the_lens_frames_because_the_mask_never_ends() -> None:
+    assert frame_count({"nb_frames": "585"}, "23.4") == 585
+
+
+def test_rule_3_a_file_without_a_frame_count_uses_rate_and_length() -> None:
+    assert frame_count({"avg_frame_rate": "25/1"}, "23.4") == 585
 
 
 def test_rule_3_the_calibration_says_what_was_proven() -> None:

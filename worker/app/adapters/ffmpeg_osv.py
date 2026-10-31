@@ -12,6 +12,7 @@ The profiles were measured on two real files (Osmo 360 and Osmo 360 II). See the
 from __future__ import annotations
 
 import json
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -114,10 +115,17 @@ def lens_streams(streams: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def frame_count(lens: dict[str, Any], duration: object) -> int:
+    """The frames to write. The blend mask loops forever, so this is what ends the stitch."""
+    if str(lens.get("nb_frames", "")).isdigit():
+        return int(lens["nb_frames"])
+    return round(float(Fraction(lens["avg_frame_rate"])) * float(str(duration)))
+
+
 class FfmpegOsvStitcher:
     def stitch(self, source: Path, target: Path) -> None:
         calibration = load_calibration()
-        streams, lens_height, encoder = self._inspect(source)
+        streams, lens_height, encoder, frames = self._inspect(source)
         profile = pick_profile(calibration, encoder)
         target.parent.mkdir(parents=True, exist_ok=True)
         log.info(
@@ -139,6 +147,8 @@ class FfmpegOsvStitcher:
                     "[out]",
                     "-map",
                     "0:a:0?",
+                    "-frames:v",
+                    str(frames),
                     "-c:v",
                     "hevc_nvenc",
                     "-preset",
@@ -165,8 +175,8 @@ class FfmpegOsvStitcher:
             raise AnalysisError(str(error), ErrorCode.ASSET_UNSUPPORTED) from error
 
     @staticmethod
-    def _inspect(source: Path) -> tuple[int, int, str | None]:
-        """How many lens streams the file has, the height of the first, and the camera name."""
+    def _inspect(source: Path) -> tuple[int, int, str | None, int]:
+        """Lens stream count, the first one's height, the camera name and the frame count."""
         try:
             data = json.loads(
                 run_tool(
@@ -188,4 +198,5 @@ class FfmpegOsvStitcher:
         if not lenses:
             raise AnalysisError(f"No video in {source.name}", ErrorCode.ASSET_UNSUPPORTED)
         encoder = (data.get("format", {}).get("tags") or {}).get("encoder")
-        return len(lenses), int(lenses[0]["height"]), encoder
+        duration = data.get("format", {}).get("duration")
+        return len(lenses), int(lenses[0]["height"]), encoder, frame_count(lenses[0], duration)
