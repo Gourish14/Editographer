@@ -128,7 +128,8 @@ def _encode_texts(runtime: _Runtime, texts: Sequence[str]) -> list[Embedding]:
 def _autocast(runtime: _Runtime, encode: Any, batch: torch.Tensor) -> torch.Tensor:
     """fp16 halves the VRAM; the cast back keeps the aesthetic head's float32 input."""
     with torch.autocast(runtime.device):
-        return encode(batch.to(runtime.device)).float()
+        encoded: torch.Tensor = encode(batch.to(runtime.device))
+        return encoded.float()
 
 
 def _span_of(

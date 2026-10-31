@@ -14,6 +14,7 @@ import pytest
 from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
 from app.adapters.scenedetect_shots import SceneDetectShots
 from app.application.analyze_shots import AnalyzeShots
+from tests.unit.shot_fakes import FakeEncoder, FakeObjects
 
 FACE_MODEL = (
     Path(__file__).resolve().parents[3] / "models" / "mediapipe" / "blaze_face_short_range.tflite"
@@ -58,7 +59,9 @@ def two_shots(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def analyzed(two_shots: Path) -> tuple[object, ...]:
-    return AnalyzeShots(SceneDetectShots(), OpenCvFrameSampler(FACE_MODEL)).run(two_shots, 8.0)
+    sampler = OpenCvFrameSampler(FACE_MODEL)
+    use_case = AnalyzeShots(SceneDetectShots(), sampler, FakeObjects(), FakeEncoder())
+    return use_case.run(two_shots, 8.0)
 
 
 def test_b2_a_hard_cut_splits_the_clip_into_two_shots(analyzed: tuple[object, ...]) -> None:

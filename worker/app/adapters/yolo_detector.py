@@ -41,7 +41,7 @@ class YoloObjectDetector:
 
     def _load(self) -> Any:
         pin_model_folders(self._weights.parent.parent)
-        from ultralytics import YOLO
+        from ultralytics.models import YOLO
 
         return YOLO(str(require_file(self._weights))).to(best_device())
 

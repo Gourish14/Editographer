@@ -61,7 +61,7 @@ Toggle in render settings. When on:
 2. Install FFmpeg (`winget install Gyan.FFmpeg`) if `ffmpeg -encoders` lacks `hevc_nvenc`, then confirm `hevc_nvenc` really opens in 10-bit.
 3. Install Ollama (`winget install Ollama.Ollama`). `ollama pull qwen3:4b` and `ollama pull qwen2.5vl:3b` are added with Phase 2, the first phase that uses them.
 4. Install uv into `tools/uv`, then `uv python install 3.12` (into `tools/python`) and `uv sync` in `worker/` (PyTorch CUDA wheels). `scripts/env.bat` points uv at these folders.
-5. Download model weights into `models/` with checksums, resuming interrupted downloads. The list lives in `scripts/models.json`, tagged by phase: Beat This! and the MediaPipe face model in Phase 1, then YOLO nano, OpenCLIP, SAM 2.1 small, Depth Anything V2 Small, RIFE and Real-ESRGAN with the phases that use them.
+5. Download model weights into `models/` with checksums, resuming interrupted downloads. The list lives in `scripts/models.json`, tagged by phase: Beat This! and the MediaPipe face model in Phase 1, YOLO nano, OpenCLIP and the LAION aesthetic head in Phase 2, then SAM 2.1 small, Depth Anything V2 Small, RIFE and Real-ESRGAN with the phases that use them. The worker points torch hub, Hugging Face, Ultralytics and Matplotlib at `models/` before loading them, and sets them offline, which also turns off Ultralytics analytics and its automatic package installs (`adapters/model_runtime.py`).
 6. Download free LUTs and SFX into `luts/` and `sfx/` (added with Phase 3 and Phase 4).
 7. `npm ci` and `ng build` in `frontend/`, copy the build into `backend/src/main/resources/static/`.
 8. `mvnw package` in `backend/`.
