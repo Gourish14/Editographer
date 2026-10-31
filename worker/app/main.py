@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.adapters.beat_this_tracker import BeatThisTracker
+from app.adapters.clip_encoder import OpenClipEncoder
 from app.adapters.ffmpeg_audio import FfmpegAudioDecoder
 from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
 from app.adapters.ffmpeg_compositor import FfmpegCompositor
@@ -20,6 +21,7 @@ from app.adapters.nvml_gpu_guard import NvmlGpuGuard
 from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
 from app.adapters.scenedetect_shots import SceneDetectShots
 from app.adapters.xxhash_hasher import XxhashHasher
+from app.adapters.yolo_detector import YoloObjectDetector
 from app.api.routes import create_api
 from app.application.analyze_asset import AnalyzeAsset
 from app.application.analyze_music import AnalyzeMusic
@@ -39,9 +41,16 @@ def build_app() -> FastAPI:
     models = settings.resolved(settings.models_dir)
     checkpoint = models / "beat_this" / "small0.ckpt"
     music = AnalyzeMusic(FfmpegAudioDecoder(), BeatThisTracker(checkpoint), LibrosaCurveExtractor())
+    gpu = NvmlGpuGuard()
     shots = AnalyzeShots(
         SceneDetectShots(),
         OpenCvFrameSampler(models / "mediapipe" / "blaze_face_short_range.tflite"),
+        YoloObjectDetector(models / "yolo" / "yolo11n.pt", gpu),
+        OpenClipEncoder(
+            models / "clip" / "vit_b_32_openai.safetensors",
+            models / "clip" / "sa_0_4_vit_b_32_linear.pth",
+            gpu,
+        ),
     )
     cache = FileCache(media_root)
     render_edit = RenderEdit(
@@ -60,7 +69,7 @@ def build_app() -> FastAPI:
     )
     return create_api(
         runner=JobRunner(notifier),
-        gpu=NvmlGpuGuard(),
+        gpu=gpu,
         analyze=analyze_asset.run,
         render=render_edit.run,
         token=settings.worker_token,

@@ -38,15 +38,24 @@ S = 0.25·M + 0.20·F + 0.15·Sh + 0.15·A + 0.15·Ae + 0.10·St
 | Term | Meaning | Measured by | Normalization |
 | --- | --- | --- | --- |
 | M | Motion | Mean optical-flow magnitude | Percentile rank within the project |
-| F | Subject | Face/person presence × box area | 0 none … 1 large subject |
+| F | Subject | Larger of the MediaPipe face box and the YOLO person box, as a share of the frame; a quarter of the frame is full marks | 0 none … 1 large subject |
 | Sh | Sharpness | Laplacian variance | Percentile rank |
-| A | Action | Pose keypoint and object velocity peaks | Percentile rank |
-| Ae | Aesthetics | CLIP aesthetic predictor | Model output scaled 0–1 |
+| A | Action | Object velocity peak: the 90th percentile of the fastest object's speed, in frame widths per second. Pose keypoints are not used yet. Object speed is measured in the frame, so a camera pan counts as speed | Percentile rank |
+| Ae | Aesthetics | LAION aesthetic predictor on CLIP embeddings | (output − 1) / 9, clamped to 0–1 |
 | St | Stability | 1 − camera shake (global flow variance) | 0–1 |
 
-Each shot also stores: peak moment (frame with the highest M × F), usable windows (sharp, not too dark), CLIP tags, caption, motion direction, dominant color, `cameraMode`, `nativeFps`.
+A shot's first sampled frame is left out of M, St, the peak moment and the motion direction, because its optical flow was measured across the cut.
 
-**Reject** when S < 0.2, mean luma < 0.08, or it duplicates a better shot (CLIP cosine similarity > 0.95).
+Each shot also stores: peak moment (frame with the highest M × F), usable windows (sharp, not too dark), tags, caption, motion direction, dominant color, CLIP embedding, `cameraMode`, `nativeFps`.
+
+- **Tags:** vocabulary words (`TAG_VOCABULARY` in `shot_tags.py`) with CLIP similarity > 0.25, at most 5, plus YOLO labels seen in at least 25% of the shot's frames. Tags are compared as the phrase "a photo of {tag}".
+- **Motion direction:** `left`, `right`, `up`, `down` or `none`, the way the picture moves, so a camera panning right gives `left`. It is `none` when the mean flow is under 0.2 px at 320 px width, or under 30% of the mean flow magnitude.
+- **Dominant color:** the most common per-frame color, where a frame's color is the fullest 32-level RGB bin, as `#rrggbb`.
+- **Embedding:** the normalized mean of the frames' unit CLIP vectors, stored as plain floats rounded to 5 decimals.
+
+**Reject** when S < 0.2, mean luma < 0.08, or it duplicates a better shot (CLIP cosine similarity > 0.95). Shots are compared best first, and only against shots that were kept.
+
+**CLIP shot search** (`application/search_shots.py`): ranks shots by similarity to a text, marking those above 0.25. It gives B4's prompt fit its data for included and excluded tags; it never picks shots.
 
 ## B3. Pacing and style presets (`pacing.py`)
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from app.domain.music import MusicMap
 from app.domain.shots import ShotMeasure
 
-ANALYSIS_VERSION = 2
+ANALYSIS_VERSION = 3
 
 
 class StoredAnalysis(BaseModel):

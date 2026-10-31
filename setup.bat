@@ -84,7 +84,7 @@ if exist "worker\pyproject.toml" (
 )
 
 echo [6/9] Downloading model weights
-uv run --no-project python scripts\download_models.py
+uv run --no-project python scripts\download_models.py --phase 2
 if errorlevel 1 (
     call :fail "Model download failed. Run setup.bat again to resume."
     exit /b 1

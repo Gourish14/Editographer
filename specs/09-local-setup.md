@@ -19,8 +19,8 @@ Only one AI model is on the GPU at a time (`GpuGuard` in `worker/app/adapters/nv
 | Stage | Model | Approx. VRAM | Setting |
 | --- | --- | --- | --- |
 | Beats | Beat This! (small) | CPU | — |
-| Shots, faces, objects | PySceneDetect, MediaPipe, YOLO nano | < 1 GB | Proxies only |
-| Tags and aesthetics | OpenCLIP ViT-B/32 | < 1 GB | Batch 32 frames |
+| Shots, faces, objects | PySceneDetect, MediaPipe (CPU), YOLO nano | < 1 GB (measured ≈ 240 MB reserved) | Proxies only, batch 16 frames, fp16 |
+| Tags and aesthetics | OpenCLIP ViT-B/32 + LAION aesthetic head | < 1 GB (measured ≈ 690 MB reserved) | Batch 32 frames, fp16 autocast |
 | Shot captions | Qwen2.5-VL 3B, 4-bit | ≈ 3 GB | Top 40 shots only |
 | AI director | Qwen3 4B, 4-bit | ≈ 3 GB | Ollama `keep_alive: 0` |
 | Cutout and tracking | SAM 2.1 small | ≈ 1–2 GB | Only segments that need it |
@@ -61,7 +61,7 @@ Toggle in render settings. When on:
 2. Install FFmpeg (`winget install Gyan.FFmpeg`) if `ffmpeg -encoders` lacks `hevc_nvenc`, then confirm `hevc_nvenc` really opens in 10-bit.
 3. Install Ollama (`winget install Ollama.Ollama`). `ollama pull qwen3:4b` and `ollama pull qwen2.5vl:3b` are added with Phase 2, the first phase that uses them.
 4. Install uv into `tools/uv`, then `uv python install 3.12` (into `tools/python`) and `uv sync` in `worker/` (PyTorch CUDA wheels). `scripts/env.bat` points uv at these folders.
-5. Download model weights into `models/` with checksums, resuming interrupted downloads. The list lives in `scripts/models.json`, tagged by phase: Beat This! and the MediaPipe face model in Phase 1, then YOLO nano, OpenCLIP, SAM 2.1 small, Depth Anything V2 Small, RIFE and Real-ESRGAN with the phases that use them.
+5. Download model weights into `models/` with checksums, resuming interrupted downloads. The list lives in `scripts/models.json`, tagged by phase: Beat This! and the MediaPipe face model in Phase 1, YOLO nano, OpenCLIP and the LAION aesthetic head in Phase 2, then SAM 2.1 small, Depth Anything V2 Small, RIFE and Real-ESRGAN with the phases that use them. The worker points torch hub, Hugging Face, Ultralytics and Matplotlib at `models/` before loading them, and sets them offline, which also turns off Ultralytics analytics and its automatic package installs (`adapters/model_runtime.py`).
 6. Make the free assets with `scripts/make_look_assets.py`: style LUTs and SFX are generated locally and are not DJI files; DJI's official Osmo 360 D-Log M to Rec.709 LUT is downloaded from DJI with a checksum into `luts/`. If that download fails, setup continues and renders use `generic_log_to_rec709.cube`, a plain approximation, with a warning in the log.
 7. `npm ci` and `ng build` in `frontend/`, copy the build into `backend/src/main/resources/static/`.
 8. `mvnw package` in `backend/`.

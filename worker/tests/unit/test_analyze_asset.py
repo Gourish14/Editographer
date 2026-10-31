@@ -18,6 +18,7 @@ from app.domain.models import AnalyzeJob, AssetType
 from app.domain.music import MusicMap
 from app.domain.shots import FrameSample
 from app.ports.music import AudioCurves, AudioSamples, BeatGrid
+from tests.unit.shot_fakes import FakeEncoder, FakeObjects
 from tests.unit.test_job_runner import FakeNotifier
 
 HASH = "abc"
@@ -144,7 +145,7 @@ class Fixture:
             self.tools,
             self.notifier,
             AnalyzeMusic(Decoder(), Tracker(), Curves()),
-            AnalyzeShots(Scenes(), Frames()),
+            AnalyzeShots(Scenes(), Frames(), FakeObjects(), FakeEncoder()),
         )
 
     def job(self, kind: AssetType = AssetType.VIDEO, proxy_source: str | None = None) -> AnalyzeJob:
@@ -203,7 +204,9 @@ def test_a_video_gets_shots_and_no_music_map(fx: Fixture) -> None:
 
 
 def test_detected_cuts_become_separate_shots(tmp_path: Path) -> None:
-    measures = AnalyzeShots(Scenes(((0.0, 5.0), (5.0, 20.0))), Frames()).run(tmp_path / "p", 20.0)
+    spans = ((0.0, 5.0), (5.0, 20.0))
+    use_case = AnalyzeShots(Scenes(spans), Frames(), FakeObjects(), FakeEncoder())
+    measures = use_case.run(tmp_path / "p", 20.0)
 
     assert [(shot.start, shot.end) for shot in measures] == [(0.0, 5.0), (5.0, 20.0)]
 
@@ -211,7 +214,9 @@ def test_detected_cuts_become_separate_shots(tmp_path: Path) -> None:
 def test_a_cut_too_short_to_have_a_sample_is_skipped(tmp_path: Path) -> None:
     spans = ((0.0, 5.0), (30.0, 30.1))
 
-    assert len(AnalyzeShots(Scenes(spans), Frames()).run(tmp_path / "p", 40.0)) == 1
+    use_case = AnalyzeShots(Scenes(spans), Frames(), FakeObjects(), FakeEncoder())
+
+    assert len(use_case.run(tmp_path / "p", 40.0)) == 1
 
 
 def test_a_clip_with_no_readable_frames_fails(tmp_path: Path) -> None:
@@ -220,7 +225,7 @@ def test_a_clip_with_no_readable_frames_fails(tmp_path: Path) -> None:
             return ()
 
     with pytest.raises(AnalysisError):
-        AnalyzeShots(Scenes(), Empty()).run(tmp_path / "p", 5.0)
+        AnalyzeShots(Scenes(), Empty(), FakeObjects(), FakeEncoder()).run(tmp_path / "p", 5.0)
 
 
 def test_a_song_with_no_beats_fails_as_unsupported(tmp_path: Path) -> None:
