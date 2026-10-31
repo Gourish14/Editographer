@@ -1,9 +1,25 @@
 {
-  "profile": "dji-osmo-360-assumed",
-  "proven_on_real_files": false,
-  "note": "Lens values are assumptions from DJI's public spec (two ultra-wide lenses, each over 180 degrees). They were checked only by a round trip through FFmpeg v360 on a generated clip, never on a real .OSV. If a real file shows a seam or a warped horizon, adjust fov_degrees here: nothing else needs to change.",
+  "proven_on_real_files": true,
+  "proof": "Measured on two real files from the Bennetts bikesocial reviews (local test inputs, not in git): an Osmo 360 clip (CAM_20250715191201_0003_D.OSV) and an Osmo 360 II clip (CAM_20260822131942_0016_D_1.osv). Each lens was projected separately with v360 and the two pictures were compared across their overlap (phase correlation of the high-passed far field, 0 to 35 degrees above the horizon, both seams). Profile values were fitted on 2 frames per file and checked on 3 other frames: residual seam error fell from 1.42 to 0.08 degrees (Osmo 360) and from 0.58 to 0.19 degrees (Osmo 360 II). Near objects (rider, bike body) cannot align at any setting: that is parallax, and the blend hides it. Unit-to-unit variation is not measured: only one unit per model was available.",
   "layout": "dual_fisheye",
-  "fov_degrees": 195.0,
   "interpolation": "cubic",
-  "equirect_height_per_lens_height": 1.0
+  "feather_degrees": 4,
+  "equirect_height_per_lens_height": 1.0,
+  "default_profile": "osmo-360",
+  "profiles": {
+    "osmo-360": {
+      "encoder": "Osmo 360",
+      "fov_degrees": 193.97,
+      "lens2_yaw": -0.61,
+      "lens2_pitch": 0.39,
+      "lens2_roll": -1.73
+    },
+    "osmo-360-ii": {
+      "encoder": "Osmo 360 II",
+      "fov_degrees": 194.41,
+      "lens2_yaw": 0.56,
+      "lens2_pitch": 0.05,
+      "lens2_roll": 0.33
+    }
+  }
 }
