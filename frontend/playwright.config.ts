@@ -44,6 +44,7 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${UI_PORT}`,
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   // E2E_BROWSER_CHANNEL=chrome uses an installed Chrome instead of the downloaded Chromium.
   projects: [

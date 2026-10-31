@@ -155,6 +155,7 @@ test('a 360 clip shows the WebGL preview and lets you pick a subject to follow',
   await page.getByLabel('New project name').fill(name);
   await page.getByRole('button', { name: 'New project' }).click();
   await page.getByRole('link', { name }).click();
+  await expect(page.getByRole('heading', { name })).toBeVisible();
   const projectId = page.url().split('/').pop() ?? '';
 
   await page.getByLabel('Choose files to upload').setInputFiles(media.equirect);
@@ -166,24 +167,30 @@ test('a 360 clip shows the WebGL preview and lets you pick a subject to follow',
   const canvas = page.getByRole('img', { name: /360 preview/ });
   await expect(canvas).toBeVisible();
   await expect(page.getByText('needs WebGL')).toHaveCount(0);
-  // The canvas must hold painted pixels, not a black box: read it back through a 2D copy.
+  // The canvas must show the frame, not a black box. A WebGL canvas cannot be read back with
+  // drawImage once composited, so decode a screenshot of it instead.
+  await canvas.scrollIntoViewIfNeeded();
   await expect
-    .poll(() =>
-      canvas.evaluate((element: HTMLCanvasElement) => {
+    .poll(async () => {
+      const png = (await canvas.screenshot()).toString('base64');
+      return page.evaluate(async (data) => {
+        const bitmap = await createImageBitmap(
+          await (await fetch(`data:image/png;base64,${data}`)).blob(),
+        );
         const copy = document.createElement('canvas');
         copy.width = 64;
         copy.height = 36;
         const context = copy.getContext('2d');
-        context?.drawImage(element, 0, 0, 64, 36);
-        const data = context?.getImageData(0, 0, 64, 36).data ?? new Uint8ClampedArray();
+        context?.drawImage(bitmap, 0, 0, 64, 36);
+        const pixels = context?.getImageData(0, 0, 64, 36).data ?? new Uint8ClampedArray();
         let lit = 0;
-        for (let index = 0; index < data.length; index += 4) {
-          lit += data[index] + data[index + 1] + data[index + 2] > 60 ? 1 : 0;
+        for (let index = 0; index < pixels.length; index += 4) {
+          lit += pixels[index] + pixels[index + 1] + pixels[index + 2] > 60 ? 1 : 0;
         }
         return lit;
-      }),
-    )
-    .toBeGreaterThan(100);
+      }, png);
+    })
+    .toBeGreaterThan(500);
   const box = await canvas.boundingBox();
   if (box) {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

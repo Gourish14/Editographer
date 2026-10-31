@@ -162,6 +162,7 @@ const MODES = [
     .tonight {
       flex-wrap: wrap;
       align-items: flex-start;
+      margin-top: 12px;
     }
     .start-at {
       flex: 1 1 260px;
@@ -171,6 +172,7 @@ const MODES = [
       margin-top: 8px;
     }
     .follow {
+      margin-top: 12px;
       display: flex;
       flex-direction: column;
       gap: 8px;

@@ -15,11 +15,12 @@ import { Router, RouterLink } from '@angular/router';
 import { Subscription, timer } from 'rxjs';
 
 import { RendersApi } from '../../core/api/renders.api';
-import { Render, RenderEvent } from '../../core/models/api.models';
+import { Render, RenderEvent, RenderStatus } from '../../core/models/api.models';
 import { SseService } from '../../core/services/sse.service';
 import { StatusBadge } from '../../shared/ui/status-badge';
 
 const RESYNC_MS = 2000;
+const ACTIVE = new Set(['ANALYZING', 'PLANNING', 'COMPOSING', 'UPSCALING', 'ENCODING']);
 const FINISHED = new Set(['DONE', 'FAILED', 'CANCELLED']);
 
 /** The log lines about prompt requests the editor could not apply. */
@@ -137,7 +138,10 @@ export class RenderPage {
   private subscription: Subscription | null = null;
 
   protected readonly finished = computed(() => FINISHED.has(this.render()?.status ?? ''));
-  protected readonly stageLabel = computed(() => this.render()?.stage ?? 'Waiting in the queue');
+  protected readonly stageLabel = computed(() => {
+    const stage = this.render()?.stage;
+    return stage ? stage.charAt(0) + stage.slice(1).toLowerCase() : 'Waiting in the queue';
+  });
   protected readonly waitingLabel = computed(() => {
     const current = this.render();
     const startAt = current?.status === 'QUEUED' ? current.settings.startAt : null;
@@ -237,6 +241,15 @@ export class RenderPage {
       case 'progress':
         this.percent.set(event.percent);
         this.message.set(event.message);
+        this.render.update((current) =>
+          current && !FINISHED.has(current.status)
+            ? {
+                ...current,
+                stage: event.stage,
+                status: ACTIVE.has(event.stage) ? (event.stage as RenderStatus) : current.status,
+              }
+            : current,
+        );
         break;
       case 'preview-ready':
         this.previewReady.set(true);
