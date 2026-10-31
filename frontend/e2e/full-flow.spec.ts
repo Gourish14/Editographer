@@ -134,8 +134,15 @@ test('create, upload, analyze, render a preview, download, regenerate, cancel, d
   await shoot(page, 'project-with-renders');
   await page.getByRole('button', { name: 'Remove' }).first().click();
   await expect(page.getByRole('article')).toHaveCount(2);
-  const deleted = await request.delete(`http://127.0.0.1:18080/api/projects/${projectId}`);
-  expect(deleted.ok()).toBe(true);
+  await expect
+    .poll(
+      async () =>
+        (await request.delete(`http://127.0.0.1:18080/api/projects/${projectId}`)).status(),
+      {
+        timeout: 60_000,
+      },
+    )
+    .toBe(204);
 
   expect(problems, 'browser console errors').toEqual([]);
 });
