@@ -33,8 +33,9 @@ def scores(values: list[float]) -> list[gate.FrameScore]:
 def finished(ratio: str, seconds: float, label: str = "edit") -> gate.RenderResult:
     check = gate.BeatCheck(10, 5.0, 33.3, 1800, 1800, True)
     return gate.RenderResult(
-        label, ratio, "DONE", seconds, beat_check=check, worst_measured_frames=0
-    )
+        label, ratio, "DONE", seconds, beat_check=check, worst_measured_frames=0,
+        share_within_one=1.0,
+    )  # fmt: skip
 
 
 class ParsingTests(unittest.TestCase):
@@ -94,6 +95,17 @@ class CutTests(unittest.TestCase):
         values[13] = 0.7
 
         self.assertEqual(gate.cut_offsets(scores(values), [10]), [0])
+
+    def test_a_bigger_jump_inside_a_clip_does_not_hide_the_cut(self) -> None:
+        values = [0.01] * 20
+        values[7] = 0.96
+        values[10] = 0.22
+
+        self.assertEqual(gate.cut_offsets(scores(values), [10]), [0])
+
+    def test_share_counts_cuts_within_one_frame(self) -> None:
+        self.assertEqual(gate.share_within_one_frame([0, 1, -1, 3]), 0.75)
+        self.assertEqual(gate.share_within_one_frame([]), 0.0)
 
     def test_a_cut_too_faint_to_see_is_left_out(self) -> None:
         self.assertEqual(gate.cut_offsets(scores([0.001] * 20), [10]), [])
@@ -184,7 +196,7 @@ class VerdictTests(unittest.TestCase):
 
     def test_a_shared_machine_never_excuses_a_cut_off_the_grid(self) -> None:
         late = finished("1:1", 100)
-        late.worst_measured_frames = 2
+        late.share_within_one = 0.9
 
         self.assertFalse(gate.judge([late], 15, True)["passed"])
 

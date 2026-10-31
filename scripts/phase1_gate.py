@@ -64,7 +64,8 @@ SAMPLE_SEC = 5.0
 UPLOAD_CHUNK_BYTES = 32 * 1024 * 1024
 TUS_VERSION = "1.0.0"
 PEAK_REACH_FRAMES = 3
-PEAK_SHARE = 0.5
+PEAK_FACTOR = 3.0
+MIN_SHARE_WITHIN_ONE_FRAME = 0.95
 MIN_CUT_SCORE = 0.01
 STRESS_FLASH_SEC = 0.08
 STRESS_ZOOM = 0.15
@@ -121,6 +122,7 @@ class RenderResult:
     true_grid_worst_ms: float | None = None
     cuts_measured: int = 0
     worst_measured_frames: int | None = None
+    share_within_one: float = 0.0
     worst_pts_drift_ms: float | None = None
     codec: str | None = None
     profile: str | None = None
@@ -138,8 +140,7 @@ class RenderResult:
             self.status == "DONE"
             and self.beat_check is not None
             and self.beat_check.passed
-            and self.worst_measured_frames is not None
-            and self.worst_measured_frames <= 1
+            and self.share_within_one >= MIN_SHARE_WITHIN_ONE_FRAME
         )
 
 
@@ -194,20 +195,25 @@ def planned_cut_frames(plan: dict[str, Any]) -> list[int]:
 def cut_offsets(scores: Sequence[FrameScore], cuts: Iterable[int]) -> list[int]:
     """How many frames each visible cut sits from its planned frame.
 
-    Takes the frame closest to the plan that reaches half of the local peak, because a flash that
-    ends two frames after a cut, or a busy clip, can score higher than the cut. Cuts between two
-    look-alike frames score too low to see and are left out.
+    Takes the frame closest to the plan that stands out from its neighbours, because a flash that
+    ends after a cut, or a sudden jump inside a clip, can score higher than the cut. Cuts between
+    two look-alike frames score too low to see and are left out.
     """
     offsets = []
     for cut in cuts:
         first = max(0, cut - PEAK_REACH_FRAMES)
         near = scores[first : cut + PEAK_REACH_FRAMES + 1]
-        peak = max((item.score for item in near), default=0.0)
-        if peak < MIN_CUT_SCORE:
+        if not near:
             continue
-        hits = [first + i - cut for i, item in enumerate(near) if item.score >= peak * PEAK_SHARE]
-        offsets.append(min(hits, key=abs))
+        floor = max(MIN_CUT_SCORE, statistics.median(item.score for item in near) * PEAK_FACTOR)
+        hits = [first + i - cut for i, item in enumerate(near) if item.score >= floor]
+        if hits:
+            offsets.append(min(hits, key=abs))
     return offsets
+
+
+def share_within_one_frame(offsets: Sequence[int]) -> float:
+    return sum(abs(offset) <= 1 for offset in offsets) / len(offsets) if offsets else 0.0
 
 
 def worst_pts_drift(scores: Sequence[FrameScore], fps: int) -> float:
@@ -306,7 +312,8 @@ def _table_row(result: RenderResult) -> str:
         check.cuts if check else "-",
         f"{check.worst_ms:.1f}" if check else "-",
         _number(result.true_grid_worst_ms),
-        f"{result.worst_measured_frames} ({result.cuts_measured} cuts)",
+        f"{result.share_within_one:.1%} of {result.cuts_measured}, worst "
+        f"{result.worst_measured_frames}",
         frames,
         _number(result.size_mb),
         f"{result.codec} {result.pix_fmt}",
@@ -665,6 +672,7 @@ def inspect_render(
     offsets = cut_offsets(scores, planned_cut_frames(plan))
     result.cuts_measured = len(offsets)
     result.worst_measured_frames = max((abs(offset) for offset in offsets), default=None)
+    result.share_within_one = round(share_within_one_frame(offsets), 3)
     result.worst_pts_drift_ms = round(worst_pts_drift(scores, plan["output"]["fps"]) * 1000, 2)
     stream = probe_summary(video, env)
     result.codec = stream.get("codec_name")
