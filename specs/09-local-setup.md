@@ -19,8 +19,8 @@ Only one AI model is on the GPU at a time (`GpuGuard` in `worker/app/adapters/nv
 | Stage | Model | Approx. VRAM | Setting |
 | --- | --- | --- | --- |
 | Beats | Beat This! (small) | CPU | — |
-| Shots, faces, objects | PySceneDetect, MediaPipe, YOLO nano | < 1 GB | Proxies only |
-| Tags and aesthetics | OpenCLIP ViT-B/32 | < 1 GB | Batch 32 frames |
+| Shots, faces, objects | PySceneDetect, MediaPipe (CPU), YOLO nano | < 1 GB (measured ≈ 240 MB reserved) | Proxies only, batch 16 frames, fp16 |
+| Tags and aesthetics | OpenCLIP ViT-B/32 + LAION aesthetic head | < 1 GB (measured ≈ 690 MB reserved) | Batch 32 frames, fp16 autocast |
 | Shot captions | Qwen2.5-VL 3B, 4-bit | ≈ 3 GB | Top 40 shots only |
 | AI director | Qwen3 4B, 4-bit | ≈ 3 GB | Ollama `keep_alive: 0` |
 | Cutout and tracking | SAM 2.1 small | ≈ 1–2 GB | Only segments that need it |
