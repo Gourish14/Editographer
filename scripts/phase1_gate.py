@@ -194,9 +194,9 @@ def planned_cut_frames(plan: dict[str, Any]) -> list[int]:
 def cut_offsets(scores: Sequence[FrameScore], cuts: Iterable[int]) -> list[int]:
     """How many frames each visible cut sits from its planned frame.
 
-    Takes the first frame near the plan that reaches half of the local peak, because a flash that
-    ends two frames after a cut can score higher than the cut. Cuts between two look-alike frames
-    score too low to see and are left out.
+    Takes the frame closest to the plan that reaches half of the local peak, because a flash that
+    ends two frames after a cut, or a busy clip, can score higher than the cut. Cuts between two
+    look-alike frames score too low to see and are left out.
     """
     offsets = []
     for cut in cuts:
@@ -205,8 +205,8 @@ def cut_offsets(scores: Sequence[FrameScore], cuts: Iterable[int]) -> list[int]:
         peak = max((item.score for item in near), default=0.0)
         if peak < MIN_CUT_SCORE:
             continue
-        found = next(i for i, item in enumerate(near) if item.score >= peak * PEAK_SHARE)
-        offsets.append(first + found - cut)
+        hits = [first + i - cut for i, item in enumerate(near) if item.score >= peak * PEAK_SHARE]
+        offsets.append(min(hits, key=abs))
     return offsets
 
 

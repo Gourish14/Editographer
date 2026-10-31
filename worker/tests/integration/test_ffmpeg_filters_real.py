@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from app.adapters.ffmpeg_audio_finisher import FfmpegAudioFinisher
 from app.adapters.ffmpeg_filters import segment_filter
 from app.domain.plan import Effect
 
@@ -95,6 +96,46 @@ def test_b5_a_zoom_punch_stays_centered_on_every_frame(centered_square: Path, at
         across, down = square_center(frame)
         assert across == pytest.approx((WIDTH - 1) / 2, abs=ALLOWED_DRIFT_PIXELS), f"frame {index}"
         assert down == pytest.approx((HEIGHT - 1) / 2, abs=ALLOWED_DRIFT_PIXELS), f"frame {index}"
+
+
+def test_gate_adding_music_keeps_every_video_frame(tmp_path: Path) -> None:
+    """Video half a frame longer than the music, encoded with B-frames as NVENC p5 does."""
+    frames = 90
+    video = tmp_path / "video.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+            "-i", f"testsrc2=s=320x180:r={FPS}", "-frames:v", str(frames),
+            "-c:v", "libx264", "-bf", "3", "-pix_fmt", "yuv420p", str(video),
+        ],
+        check=True,
+    )  # fmt: skip
+    music = tmp_path / "music.wav"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+            "-i", "sine=frequency=330:duration=4", str(music),
+        ],
+        check=True,
+    )  # fmt: skip
+    target = tmp_path / "final.mp4"
+
+    FfmpegAudioFinisher().add_music(video, music, 0.0, frames / FPS - 0.5 / FPS, target)
+
+    assert count_frames(target) == frames
+
+
+def count_frames(video: Path) -> int:
+    output = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets",
+            "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", str(video),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout  # fmt: skip
+    return int(output.strip().strip(","))
 
 
 def test_b5_a_zoom_punch_really_enlarges_the_frame(centered_square: Path) -> None:

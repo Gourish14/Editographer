@@ -127,10 +127,10 @@ class RenderEdit:
         work.mkdir(parents=True, exist_ok=True)
         report = _progress_reporter(self._notifier, job.job_id, first_percent, last_percent)
         parts = []
-        for index, segment in enumerate(plan.segments):
+        counts = frame_counts(plan)
+        for index, (segment, frames) in enumerate(zip(plan.segments, counts, strict=True)):
             token.raise_if_cancelled()
             part = work / f"{segment.id}.mp4"
-            frames = _frame_count(segment.at, segment.duration, plan)
             self._compositor.render_segment(
                 sources[segment.asset_id], segment, frames, profile, part
             )
@@ -149,11 +149,18 @@ class RenderEdit:
         return path.relative_to(self._media_root).as_posix()
 
 
-def _frame_count(at: float, duration: float, plan: EditPlan) -> int:
-    """Frames from whole-edit positions, so rounding never drifts from the beat over time."""
+def cut_frames(plan: EditPlan) -> list[int]:
+    """The frame of every cut plus the end of the edit, all counted from the start of the edit."""
     fps = plan.output.fps
-    start = at - plan.music.start
-    return round((start + duration) * fps) - round(start * fps)
+    start = plan.music.start
+    edges = [segment.at for segment in plan.segments] + [plan.music.end]
+    return [round((edge - start) * fps) for edge in edges]
+
+
+def frame_counts(plan: EditPlan) -> list[int]:
+    """Each segment fills the space to the next cut, so the sum is the edit, frame for frame."""
+    cuts = cut_frames(plan)
+    return [later - earlier for earlier, later in zip(cuts, cuts[1:], strict=False)]
 
 
 def _preview_profile(plan: EditPlan) -> EncodeProfile:

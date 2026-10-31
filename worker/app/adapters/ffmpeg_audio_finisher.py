@@ -53,7 +53,6 @@ class FfmpegAudioFinisher:
                     AUDIO_BITRATE,
                     "-movflags",
                     "+faststart",
-                    "-shortest",
                     str(target),
                 ]
             )
