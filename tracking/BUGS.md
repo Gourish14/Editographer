@@ -6,12 +6,13 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
-| BUG-009 | A join can end a frame 0.33 ms early, so timestamps drift about 1.3 ms in a 24 s edit | Low | In review, needs a real render | T-406 |
+| — | No open bugs | — | — | — |
 
 ## Closed
 
 | ID | Title | Severity | Fixed in |
 | --- | --- | --- | --- |
+| BUG-009 | A join could end a frame 0.33 ms early, so timestamps drifted | Low | 50fa6db |
 | BUG-008 | A worker callback that fails was not retried, so a render could stay unfinished forever | High | T-407 |
 | BUG-007 | BPM misread 118 as 120, across the B3 style boundary | Medium | 79edabd |
 | BUG-006 | Zoom punches landed off-centre | High | 79edabd |

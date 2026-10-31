@@ -1,6 +1,6 @@
 # Task board
 
-Current phase: **Phase 1 and 2 gates passed. Phases 3 and 4 are built, their gates are open** (`specs/10-roadmap.md`).
+Current phase: **Phase 1, 2 and 4 gates passed. Phase 3 gate is running on real Osmo clips** (`specs/10-roadmap.md`).
 Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High bugs first. See `specs/12-spec-driven-development.md`.
 
 ## Summary
@@ -41,10 +41,10 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | In review | T-118 |
 | T-410 | Browser end-to-end test of the UI and UI polish | Done | T-118 |
 | T-411 | Phase 2 gate on real media: three prompts and Ollama stopped | Done | T-118 |
-| T-412 | Phase 4 gate: full-length Max render with cool mode, 8K 9:16 playback | In progress | T-411 |
-| T-413 | Check whether B1 section labels are too broad (135 s drop on the gate song) | In review, on branch, needs the real-tracker test | T-118 |
-| T-414 | Calibrate the `.OSV` stitch on real Osmo files, then run the Phase 3 gate | In review, stage 1 on branch, gate not run | T-409 |
-| T-415 | Follow a picked 360 subject with SAM 2 across the seam | In review, on branch, real SAM 2 not run | T-405, T-408 |
+| T-412 | Phase 4 gate: full-length Max render with cool mode, 8K 9:16 playback | Done | T-411 |
+| T-413 | Check whether B1 section labels are too broad (135 s drop on the gate song) | Done | T-118 |
+| T-414 | Calibrate the `.OSV` stitch on real Osmo files, then run the Phase 3 gate | In progress | T-409 |
+| T-415 | Follow a picked 360 subject with SAM 2 across the seam | In review, generated clip only | T-405, T-408 |
 
 ## Details
 

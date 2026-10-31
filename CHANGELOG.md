@@ -5,9 +5,13 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- Long song parts are split, so one drop no longer covers half a song [T-413].
+- Raw `.OSV` seams are calibrated on real Osmo files, with per-camera profiles and a feathered join [T-414].
 - Segment joins are placed by exact frame count, to stop a small timestamp drift [BUG-009].
 
 ### Added
+- A picked 360 subject is tracked with SAM 2, across the seam, with stated fallbacks [T-415].
+- Phase 4 gate script for thermal and 8K playback checks [T-412].
 - Phase 2 gate script run on real clips: prompts change the edit, and the fallback works with Ollama down [T-411].
 
 ## [0.1.0] - 2026-10-31

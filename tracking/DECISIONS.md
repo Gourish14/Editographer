@@ -4,8 +4,9 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
-| ADR-025 | 360 follow: plan, measure with SAM 2, plan again | Proposed |
-| ADR-024 | Per-camera stitch profiles fitted on real clips | Proposed |
+| ADR-026 | Split B1 parts over 32 bars at a change above 0.15 | Accepted |
+| ADR-025 | 360 follow: plan, measure with SAM 2, plan again | Accepted |
+| ADR-024 | Per-camera stitch profiles fitted on real clips | Accepted |
 | ADR-023 | Stitch at ingest, raise frame rate only for a big gap | Accepted |
 | ADR-022 | End-to-end test ports, folders and browser | Accepted |
 | ADR-021 | Caption budget and SAM 2 memory | Accepted |
@@ -30,15 +31,22 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
 
+### ADR-026 — Split B1 parts over 32 bars at a change above 0.15
+- Date / Status: 2026-11-01 / Accepted
+- Context: The gate song's drop ran 135 s, because a step in brightness at 110 s scored 0.16, under the 0.3 boundary.
+- Options considered: Lower the boundary for all songs; split only long parts.
+- Decision: A part over 32 bars also gets its biggest 4-bar change over 0.15, repeated until none is left. Lowering 0.3 everywhere split songs too heavily. `ANALYSIS_VERSION` 7.
+- Consequences: The drop is now 45 to 111 s, followed by a build. AcidJazz gained two short drops, seen only with stand-in beats, so unconfirmed.
+
 ### ADR-025 — 360 follow: plan, measure with SAM 2, plan again
-- Date / Status: 2026-11-01 / Proposed, until the GPU test and merge
+- Date / Status: 2026-11-01 / Accepted
 - Context: The planner is pure and the source windows are known only after planning, but following a subject needs SAM 2. A person is under 1% of an equirect frame.
 - Options considered: Track whole clips at analysis; track after a first plan.
 - Decision: Plan once, measure, then plan again with the same seed, so only framing changes. SAM 2 runs on a 100 degree view centred on the subject, in 2 s chunks at 4 samples a second, capped at 90 s. A follow point applies to the first 360 clip. Tracking moves yaw only.
 - Consequences: One SAM 2 load per chunk is slow on long windows. The constants are guesses until the GPU run.
 
 ### ADR-024 — Per-camera stitch profiles fitted on real clips
-- Date / Status: 2026-11-01 / Proposed, until the GPU test and merge
+- Date / Status: 2026-11-01 / Accepted
 - Context: The assumed 195 degrees left visible seams on real files. A fit gave about 194 degrees, plus lens rotations that differ by camera model.
 - Options considered: One FOV; per-model profiles; decoding DJI's factory calibration.
 - Decision: Profiles chosen by the file's `encoder` tag, each lens mapped separately and feathered 4 degrees either side of the seam, 10-bit kept. The `djmd` metadata is not decoded.
