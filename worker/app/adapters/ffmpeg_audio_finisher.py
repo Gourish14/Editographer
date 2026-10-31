@@ -94,11 +94,11 @@ class FfmpegAudioFinisher:
                     str(video),
                     *inputs,
                     "-filter_complex",
-                    mix_graph(sources, 1, music_gain, trim),
+                    _fit_to_edit(mix_graph(sources, 1, music_gain, trim), duration),
                     "-map",
                     "0:v:0",
                     "-map",
-                    "[out]",
+                    "[final]",
                     "-ac",
                     str(CHANNELS),
                     "-ar",
@@ -111,7 +111,6 @@ class FfmpegAudioFinisher:
                     AUDIO_BITRATE,
                     "-movflags",
                     "+faststart",
-                    "-shortest",
                     str(target),
                 ]
             )
@@ -161,6 +160,14 @@ def mix_graph(sources: _Sources, music_input: int, music_gain: float, trim_db: f
             f"{_level_filter(trim_db)}[out]"
         )
     return ";".join(steps)
+
+
+def _fit_to_edit(graph: str, duration: float) -> str:
+    """BUG-004: silence fills a mix that runs out early, so audio lasts exactly as long as the edit.
+
+    Only the final mux does this. Padding while measuring would count silence as loudness input.
+    """
+    return f"{graph};[out]apad=whole_dur={duration:.4f},atrim=end={duration:.4f}[final]"
 
 
 def _sfx_steps(

@@ -7,6 +7,10 @@ spring:
     url: jdbc:h2:file:./${DATA_DIR:data}/editographer
     username: sa
     password: ""
+    hikari:
+      # H2 ties CHECK constraints to the session that created them, so Flyway's connection must
+      # live as long as the app. Recycling connections has no use for an embedded database.
+      max-lifetime: 0
   jpa:
     open-in-view: false
     hibernate:

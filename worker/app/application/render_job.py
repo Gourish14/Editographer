@@ -199,12 +199,11 @@ class RenderEdit:
         compositor = cool_compositor(self._compositor, self._thermal, job.settings.cool_mode, token)
         photos = self._photo_analyses(job)
         parts = []
-        total_frames = 0
-        for index, segment in enumerate(plan.segments):
+        counts = frame_counts(plan)
+        total_frames = sum(counts)
+        for index, (segment, frames) in enumerate(zip(plan.segments, counts, strict=True)):
             token.raise_if_cancelled()
             part = work / f"{segment.id}.mp4"
-            frames = _frame_count(segment.at, segment.duration, plan)
-            total_frames += frames
             look = replace(
                 segment_look(plan, index, sources), retimed=stages.retimed.get(segment.id)
             )
@@ -230,7 +229,7 @@ class RenderEdit:
                 joined,
                 _overlay_items(plan),
                 profile,
-                _frame_count(plan.music.start, plan.music.end - plan.music.start, plan),
+                total_frames,
                 picture,
             )
         if stages.upscale_to is not None and self._upscaler is not None:
@@ -258,8 +257,8 @@ class RenderEdit:
         retimed: dict[str, Path],
     ) -> None:
         pending = [
-            (segment, sources[segment.asset_id], _frame_count(segment.at, segment.duration, plan))
-            for segment in plan.segments
+            (segment, sources[segment.asset_id], frames)
+            for segment, frames in zip(plan.segments, frame_counts(plan), strict=True)
             if needs_rife(segment) and segment.id not in retimed
         ]
         if not pending:
@@ -358,11 +357,18 @@ def _overlay_items(plan: EditPlan) -> list[OverlayItem]:
     ]
 
 
-def _frame_count(at: float, duration: float, plan: EditPlan) -> int:
-    """Frames from whole-edit positions, so rounding never drifts from the beat over time."""
+def cut_frames(plan: EditPlan) -> list[int]:
+    """The frame of every cut plus the end of the edit, all counted from the start of the edit."""
     fps = plan.output.fps
-    start = at - plan.music.start
-    return round((start + duration) * fps) - round(start * fps)
+    start = plan.music.start
+    edges = [segment.at for segment in plan.segments] + [plan.music.end]
+    return [round((edge - start) * fps) for edge in edges]
+
+
+def frame_counts(plan: EditPlan) -> list[int]:
+    """Each segment fills the space to the next cut, so the sum is the edit, frame for frame."""
+    cuts = cut_frames(plan)
+    return [later - earlier for earlier, later in zip(cuts, cuts[1:], strict=False)]
 
 
 def _preview_profile(plan: EditPlan) -> EncodeProfile:

@@ -40,6 +40,36 @@ def test_b1_bpm_comes_from_the_beat_spacing() -> None:
     assert build_music_map(song(TYPICAL)).bpm == 120.0
 
 
+def test_b1_bpm_is_not_rounded_to_the_trackers_20_ms_frames() -> None:
+    """Beat This! reports whole 20 ms frames, so most gaps of a 118 BPM song read 0.50 s."""
+    beats = tuple(round(i * 60 / 118 / 0.02) * 0.02 for i in range(200))
+    base = song(TYPICAL)
+    features = MusicFeatures(
+        base.duration_sec, beats, beats[::4], base.rms, base.onset_strength, HOP
+    )
+
+    assert build_music_map(features).bpm == pytest.approx(118.0, abs=0.3)
+
+
+def test_b1_bpm_survives_a_stray_extra_beat() -> None:
+    beats = sorted([*(i * 0.5 for i in range(100)), 20.08])
+    base = song(TYPICAL)
+    features = MusicFeatures(
+        base.duration_sec, tuple(beats), tuple(beats[::4]), base.rms, base.onset_strength, HOP
+    )
+
+    assert build_music_map(features).bpm == pytest.approx(120.0, abs=0.5)
+
+
+def test_b1_bpm_works_with_very_few_beats() -> None:
+    base = song(TYPICAL)
+    features = MusicFeatures(
+        base.duration_sec, (0.0, 0.5, 1.0), (0.0, 1.0), base.rms, base.onset_strength, HOP
+    )
+
+    assert build_music_map(features).bpm == 120.0
+
+
 def test_b1_energy_is_relative_to_the_loudest_moment() -> None:
     energy = build_music_map(song(TYPICAL)).energy
 

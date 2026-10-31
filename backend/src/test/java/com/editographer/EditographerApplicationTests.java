@@ -2,7 +2,10 @@ package com.editographer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.zaxxer.hikari.HikariDataSource;
+import java.sql.SQLException;
 import java.util.List;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,6 +15,16 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class EditographerApplicationTests {
 
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private DataSource dataSource;
+
+  /**
+   * H2 ties a CHECK constraint to the session that created it. If the pool retires Flyway's
+   * connection, every later update on those tables fails until a restart.
+   */
+  @Test
+  void poolNeverRetiresTheConnectionThatRanTheMigrations() throws SQLException {
+    assertThat(dataSource.unwrap(HikariDataSource.class).getMaxLifetime()).isZero();
+  }
 
   @Test
   void flywayCreatesEveryTableFromTheDataSpec() {
