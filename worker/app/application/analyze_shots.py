@@ -12,7 +12,10 @@ from app.domain.brain.scoring import describe_shot, measure_shot
 from app.domain.brain.shot_tags import TAG_VOCABULARY, tag_phrase
 from app.domain.errors import AnalysisError
 from app.domain.shots import FrameObjects, FrameSample, ShotMeasure
+from app.ports.captioner import Captioner
 from app.ports.shots import FrameSampler, ObjectDetector, ShotDetector, ShotEncoder
+
+MAX_CAPTIONED = 40
 
 
 class AnalyzeShots:
@@ -22,11 +25,13 @@ class AnalyzeShots:
         sampler: FrameSampler,
         objects: ObjectDetector,
         encoder: ShotEncoder,
+        captioner: Captioner | None = None,
     ) -> None:
         self._detector = detector
         self._sampler = sampler
         self._objects = objects
         self._encoder = encoder
+        self._captioner = captioner
 
     def run(self, proxy: Path, duration_sec: float) -> tuple[ShotMeasure, ...]:
         frames = self._sampler.sample(proxy)
@@ -47,7 +52,23 @@ class AnalyzeShots:
             objects = _inside(detections, span)
             measure = measure_shot(inside, span[0], span[1], objects)
             measures.append(describe_shot(measure, vision, objects, vocabulary))
+        return self._captioned(proxy, measures)
+
+    def _captioned(self, proxy: Path, measures: list[ShotMeasure]) -> tuple[ShotMeasure, ...]:
+        """Captions only the best shots of the clip (spec 04: top 40); the director sees 40."""
+        if self._captioner is None or not measures:
+            return tuple(measures)
+        best = sorted(range(len(measures)), key=lambda i: _promise(measures[i]), reverse=True)
+        chosen = sorted(best[:MAX_CAPTIONED])
+        captions = self._captioner.caption_frames(proxy, [measures[i].peak_time for i in chosen])
+        for index, caption in zip(chosen, captions, strict=False):
+            if caption:
+                measures[index] = measures[index].model_copy(update={"caption": caption})
         return tuple(measures)
+
+
+def _promise(measure: ShotMeasure) -> float:
+    return measure.aesthetics + measure.subject + measure.action
 
 
 def _inside[T: (FrameSample, FrameObjects)](

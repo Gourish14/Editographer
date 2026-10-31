@@ -123,6 +123,19 @@ class WorkerCallbackServiceTest {
   }
 
   @Test
+  void recoveryARepeatedCompletionOfAFinishedJobIsIgnored() {
+    UUID renderId = UUID.randomUUID();
+    Job done = new Job(UUID.randomUUID(), JobKind.RENDER, renderId, JobStatus.DONE, 1);
+    when(queue.findById(done.id())).thenReturn(Optional.of(done));
+
+    service.jobCompleted(new JobCompletion(done.id(), JobStatus.DONE, null, null, null));
+
+    verify(queue, never()).finish(any(), any());
+    verify(renders, never()).failed(any(), any());
+    verify(renders, never()).completed(any(), any(), any());
+  }
+
+  @Test
   void renderProgressReachesTheRender() {
     UUID renderId = UUID.randomUUID();
     Job job = renderJob(renderId);

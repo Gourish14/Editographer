@@ -241,6 +241,70 @@ class RenderFlowIntegrationTest {
     assertThat(listenToEvents(renderId).get(5, TimeUnit.SECONDS)).containsExactly("done");
   }
 
+  private void ageRunningJob() {
+    jdbc.update(
+        "UPDATE job SET started_at = ? WHERE status = 'RUNNING'",
+        java.sql.Timestamp.from(Instant.now().minusSeconds(3600)));
+  }
+
+  @Test
+  void recoveryARestartedWorkerGetsTheLostJobAgainAndARepeatedCallbackIsHarmless()
+      throws Exception {
+    String renderId = startRender();
+    String jobId = dispatchAndGetJobId();
+    ageRunningJob();
+    when(worker.status())
+        .thenReturn(
+            java.util.Optional.of(
+                new com.editographer.worker.domain.WorkerStatus(false, null, null)));
+
+    dispatcher.dispatchNext();
+
+    verify(worker, org.mockito.Mockito.times(2)).submitRender(any());
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT attempts FROM job WHERE id = ?",
+                Integer.class,
+                java.util.UUID.fromString(jobId)))
+        .isEqualTo(2);
+
+    Files.createDirectories(media.locate(new MediaPath("renders/" + renderId + "/x")).getParent());
+    Files.writeString(media.locate(new MediaPath("renders/" + renderId + "/final.mp4")), "bytes");
+    String done =
+        "{\"jobId\":\""
+            + jobId
+            + "\",\"status\":\"DONE\",\"outputPath\":\"renders/"
+            + renderId
+            + "/final.mp4\"}";
+    report("/internal/complete", done);
+    report("/internal/complete", done);
+
+    assertThat(get("/api/renders/" + renderId).body()).contains("\"status\":\"DONE\"");
+    assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM job WHERE status = 'DONE'", Integer.class))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void recoveryAJobTheWorkerKeepsLosingFailsItsRenderInsteadOfWaitingForever() throws Exception {
+    String renderId = startRender();
+    when(worker.isIdle()).thenReturn(true);
+    when(worker.status())
+        .thenReturn(
+            java.util.Optional.of(
+                new com.editographer.worker.domain.WorkerStatus(false, null, null)));
+    for (int attempt = 0; attempt < 3; attempt++) {
+      dispatcher.dispatchNext();
+      ageRunningJob();
+    }
+
+    dispatcher.dispatchNext();
+
+    assertThat(get("/api/renders/" + renderId).body()).contains("\"status\":\"FAILED\"");
+    assertThat(
+            jdbc.queryForObject("SELECT COUNT(*) FROM job WHERE status = 'FAILED'", Integer.class))
+        .isEqualTo(1);
+  }
+
   @Test
   void aQueuedRenderCanBeCancelledAndIsThenNeverSent() throws Exception {
     String renderId = startRender();

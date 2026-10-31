@@ -6,12 +6,13 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
-| BUG-008 | A worker callback that fails is not retried, so a render can stay unfinished forever | High | New | T-118 |
+| — | No open bugs | — | — | — |
 
 ## Closed
 
 | ID | Title | Severity | Fixed in |
 | --- | --- | --- | --- |
+| BUG-008 | A worker callback that fails was not retried, so a render could stay unfinished forever | High | T-407 |
 | BUG-007 | BPM misread 118 as 120, across the B3 style boundary | Medium | 79edabd |
 | BUG-006 | Zoom punches landed off-centre | High | 79edabd |
 | BUG-005 | Database writes failed after about 25 minutes on a fresh install | Critical | 79edabd |

@@ -41,6 +41,8 @@ In normal use the user opens only `http://localhost:8080`. Angular is built once
 - A Spring `@Scheduled` dispatcher runs every 2 s: if the worker reports idle (`GET /health` → `busy: false`), it sends the oldest queued job.
 - The worker processes **one job at a time** (GPU lock). Analysis jobs have priority over render jobs.
 - On backend restart, `RUNNING` jobs are reset to `QUEUED`; the worker's analysis cache makes re-runs cheap.
+- Stuck jobs: if a job has been `RUNNING` longer than `app.job-stuck-grace-ms` (30 s) and `/health` says the worker is idle or on another `currentJobId`, it is requeued; after `app.job-max-attempts` (3) it is `FAILED` and its render or asset is failed. A repeated `/internal/complete` for a finished job is ignored.
+- The worker retries `/internal/complete` and `/internal/asset-analyzed` (6 tries, backoff 1 to 10 s, on connection errors and 5xx) while it still reports busy.
 
 ## Storage (replaces MinIO)
 

@@ -111,6 +111,46 @@
       "path": "realesrgan/realesr-general-x4v3.pth",
       "size": 4885111,
       "sha256": "8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292"
+    },
+    {
+      "name": "sam2-1-hiera-small-model",
+      "phase": 3,
+      "url": "https://huggingface.co/facebook/sam2.1-hiera-small/resolve/main/model.safetensors",
+      "path": "sam2_1_small/model.safetensors",
+      "size": 184305280,
+      "sha256": "0a4067b11ce1e23d5229203f11c718a823060d15a4b23fa2372a7d4b77cbbc60"
+    },
+    {
+      "name": "sam2-1-hiera-small-config",
+      "phase": 3,
+      "url": "https://huggingface.co/facebook/sam2.1-hiera-small/resolve/main/config.json",
+      "path": "sam2_1_small/config.json",
+      "size": 5698,
+      "sha256": "97ff9f65b76d107acda4247885f0a5555d0048850ae3c5f97183df289aaecde9"
+    },
+    {
+      "name": "sam2-1-hiera-small-preprocessor-config",
+      "phase": 3,
+      "url": "https://huggingface.co/facebook/sam2.1-hiera-small/resolve/main/preprocessor_config.json",
+      "path": "sam2_1_small/preprocessor_config.json",
+      "size": 683,
+      "sha256": "6ebf229ee259368ce4a8d4f2fe893a72b053023710853e257253939e601f583d"
+    },
+    {
+      "name": "sam2-1-hiera-small-processor-config",
+      "phase": 3,
+      "url": "https://huggingface.co/facebook/sam2.1-hiera-small/resolve/main/processor_config.json",
+      "path": "sam2_1_small/processor_config.json",
+      "size": 95,
+      "sha256": "f8a68e865cfad115c1c2763f3d93eca7b1c622da06da2a9273eb437fb2389b6d"
+    },
+    {
+      "name": "sam2-1-hiera-small-video-preprocessor-config",
+      "phase": 3,
+      "url": "https://huggingface.co/facebook/sam2.1-hiera-small/resolve/main/video_preprocessor_config.json",
+      "path": "sam2_1_small/video_preprocessor_config.json",
+      "size": 705,
+      "sha256": "9fccfe5f464ec38c2f236d0e6a68e95511c80c22132fc2fa4b9f7b65f24fad95"
     }
   ]
 }

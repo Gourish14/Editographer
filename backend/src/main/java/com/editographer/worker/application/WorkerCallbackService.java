@@ -7,6 +7,7 @@ import com.editographer.asset.domain.AssetId;
 import com.editographer.asset.domain.AssetRepository;
 import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
+import com.editographer.job.application.JobFailureHandler;
 import com.editographer.job.domain.Job;
 import com.editographer.job.domain.JobKind;
 import com.editographer.job.domain.JobQueue;
@@ -20,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Applies what the worker reports back. Spec: specs/07-api-and-data.md#job-flow */
 @Service
-public class WorkerCallbackService {
+public class WorkerCallbackService implements JobFailureHandler {
 
   private static final String NO_OUTPUT_ERROR = "The worker finished without an output file";
 
@@ -66,10 +67,25 @@ public class WorkerCallbackService {
   @Transactional
   public void jobCompleted(JobCompletion completion) {
     Job job = find(completion.jobId());
+    if (job.status() == JobStatus.DONE || job.status() == JobStatus.FAILED) {
+      return; // a retried callback, or a job the backend already gave up on
+    }
     queue.finish(job.id(), completion.status());
     if (job.kind() == JobKind.RENDER) {
       completeRender(new RenderId(job.refId()), completion);
     } else if (completion.status() == JobStatus.FAILED) {
+      assets
+          .findById(new AssetId(job.refId()))
+          .ifPresent(asset -> assets.save(asset.withAnalysisStatus(AnalysisStatus.FAILED)));
+    }
+  }
+
+  @Override
+  @Transactional
+  public void jobAbandoned(Job job, String error) {
+    if (job.kind() == JobKind.RENDER) {
+      renders.failed(new RenderId(job.refId()), error);
+    } else {
       assets
           .findById(new AssetId(job.refId()))
           .ifPresent(asset -> assets.save(asset.withAnalysisStatus(AnalysisStatus.FAILED)));
