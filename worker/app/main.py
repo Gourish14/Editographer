@@ -21,11 +21,13 @@ from app.adapters.http_backend_notifier import HttpBackendNotifier
 from app.adapters.librosa_curves import LibrosaCurveExtractor
 from app.adapters.nvml_gpu_guard import NvmlGpuGuard
 from app.adapters.nvml_thermal_guard import NvmlThermalGuard
+from app.adapters.ollama_captioner import OllamaCaptioner
 from app.adapters.ollama_llm import OllamaLlmClient
 from app.adapters.opencv_frame_sampler import OpenCvFrameSampler
 from app.adapters.opencv_photo import OpenCvImageSizer, OpenCvSubjectLocator
 from app.adapters.realesrgan_upscaler import RealEsrganUpscaler
 from app.adapters.rife_interpolator import RifeInterpolator
+from app.adapters.sam2_segmenter import Sam2Segmenter
 from app.adapters.scenedetect_shots import SceneDetectShots
 from app.adapters.skia_text_layer import SkiaTextLayer
 from app.adapters.whisper_speech_detector import WhisperSpeechDetector
@@ -39,6 +41,7 @@ from app.application.analyze_shots import AnalyzeShots
 from app.application.direct_edit import DirectEdit
 from app.application.job_runner import JobRunner
 from app.application.render_job import RenderEdit
+from app.application.subject_matte import SubjectMatte
 from app.config import Settings
 from app.logging_setup import configure_logging
 
@@ -62,10 +65,17 @@ def build_app() -> FastAPI:
             models / "clip" / "sa_0_4_vit_b_32_linear.pth",
             gpu,
         ),
+        OllamaCaptioner.create(settings.ollama_url, gpu),
     )
     cache = FileCache(media_root)
     director = DirectEdit(OllamaLlmClient.create(settings.ollama_url), gpu)
-    compositor = FfmpegCompositor(text_layer=SkiaTextLayer())
+    face_model = models / "mediapipe" / "blaze_face_short_range.tflite"
+    matte = SubjectMatte(
+        FfmpegFrameMedia(),
+        OpenCvSubjectLocator(face_model),
+        Sam2Segmenter(models / "sam2_1_small", gpu),
+    )
+    compositor = FfmpegCompositor(text_layer=SkiaTextLayer(), matte=matte)
     render_edit = RenderEdit(
         media_root,
         cache,

@@ -111,6 +111,7 @@ class ShotMeasure(BaseModel):
     dominant_color: str = NO_COLOR
     embedding: Embedding = ()
     subject_track: tuple[SubjectSample, ...] = ()
+    caption: str = ""
 
 
 def cosine_similarity(first: Sequence[float], second: Sequence[float]) -> float:
