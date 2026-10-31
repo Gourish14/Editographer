@@ -5,9 +5,22 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from app.domain.music import MusicMap
+from app.domain.photo import PhotoAnalysis
 from app.domain.shots import ShotMeasure
 
-ANALYSIS_VERSION = 3
+ANALYSIS_VERSION = 4
+
+
+class StoredSpeech(BaseModel):
+    """Where a clip's audio has speech, and the words said. Times are seconds in the source."""
+
+    model_config = ConfigDict(frozen=True)
+
+    spans: tuple[tuple[float, float], ...] = ()
+    words: tuple[tuple[str, float, float], ...] = ()
+
+    def overlaps(self, start: float, end: float) -> bool:
+        return any(span_start < end and start < span_end for span_start, span_end in self.spans)
 
 
 class StoredAnalysis(BaseModel):
@@ -30,3 +43,5 @@ class StoredAnalysis(BaseModel):
     native_slow_mo: bool
     music: MusicMap | None = None
     shots: tuple[ShotMeasure, ...] = ()
+    photo: PhotoAnalysis | None = None
+    speech: StoredSpeech | None = None

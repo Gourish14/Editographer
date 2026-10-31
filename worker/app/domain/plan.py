@@ -109,6 +109,16 @@ class Segment(_PlanModel):
     keep_audio: bool = False
 
 
+class TextItem(_PlanModel):
+    """Text on the edit. `at` is on the music timeline, like a segment's `at`."""
+
+    content: str
+    at: float
+    duration: float
+    anim: str = "pop_on_beat"
+    behind_subject: bool = False
+
+
 class SfxCue(_PlanModel):
     type: str
     at: float
@@ -123,5 +133,6 @@ class EditPlan(_PlanModel):
     music: MusicWindow
     grade: Grade
     segments: tuple[Segment, ...]
+    text: tuple[TextItem, ...] = ()
     sfx: tuple[SfxCue, ...] = ()
     log: tuple[str, ...] = ()
