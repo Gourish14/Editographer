@@ -24,6 +24,8 @@ app:
   worker-token: ${WORKER_TOKEN:}
   ollama-url: ${OLLAMA_URL:http://127.0.0.1:11434}
   dispatch-interval-ms: 2000
+  job-stuck-grace-ms: 30000
+  job-max-attempts: 3
 
 server:
   address: 127.0.0.1
