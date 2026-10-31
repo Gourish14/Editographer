@@ -110,8 +110,9 @@ def clip_analysis(file_hash: str, motion: float) -> StoredAnalysis:
     return base_analysis(file_hash, shots=(shot,))
 
 
-def music_analysis() -> StoredAnalysis:
-    rms = (0.2,) * 80 + (1.0,) * 80 + (0.25,) * 40
+def music_analysis(
+    rms: tuple[float, ...] = (0.2,) * 80 + (1.0,) * 80 + (0.25,) * 40,
+) -> StoredAnalysis:
     beats = tuple(i * BEAT for i in range(20))
     onset = [0.0] * len(rms)
     for index, beat in enumerate(beats):

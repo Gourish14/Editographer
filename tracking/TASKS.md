@@ -34,9 +34,14 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-402 | Worker: speech detection, text rules, text layers | Done | T-117 |
 | T-403 | Worker: photo analysis, Ken Burns, depth parallax | Done | T-117 |
 | T-404 | Wire photos, speech and text into analysis, planner and renderer | Done | T-202, T-303, T-402, T-403 |
-| T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Todo | T-202, T-301, T-302, T-303 |
+| T-405 | Wire ramps, smart reframe and 360 into planner and renderer, add the spec 08 effects | Done | T-202, T-301, T-302, T-303 |
 
 ## Details
+
+### T-405 — Wire ramps, smart reframe, 360 and Max quality
+- Status: Done
+- Spec: 05-editing-brain.md#b5, #b6, #b7, 08-osmo360.md, 04-pipeline.md#stages (7)
+- Notes: Verified on generated media with native 120 fps, RIFE and equirect clips; Max quality in 9:16 and 16:9 took about 5 minutes per ratio with exact frame counts. Not run on real Osmo footage. RIFE and upscale frames are 8-bit, losing 10-bit precision on those segments. The upscale factor is chosen per plan, not per segment as spec 04 says. Transitions into ramped or 360 clips play the incoming clip at 1×. FEAT-021 60 fps interpolation is not built. A ramp needs a slot of at least 0.5 s with its middle on the grid, and a song with no drop section gets a log note, not a ramp.
 
 ### T-401 — Backend and frontend: render tonight, 360 preview, subject picker
 - Status: Done

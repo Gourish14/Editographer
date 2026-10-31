@@ -36,6 +36,7 @@ pytestmark = [
 ]
 
 NOTHING_LISTENS_HERE = "http://127.0.0.1:9"
+SONG_WITH_A_DROP = (0.2,) * 80 + (1.0,) * 120
 CAR_CLIPS = {"c1", "c2"}
 SOURCES = {"c1": "testsrc2", "c2": "smptebars", "b1": "testsrc", "b2": "rgbtestsrc"}
 TAGS = {"c1": ("car",), "c2": ("car", "road"), "b1": ("beach",), "b2": ("beach", "sea")}
@@ -64,7 +65,7 @@ def build_media(root: Path) -> Path:
         shots = tuple(shot.model_copy(update={"tags": TAGS[name]}) for shot in clip.shots)
         cache.save(clip.model_copy(update={"shots": shots}))
     generate(root / "uploads" / "song.wav", "-f", "lavfi", "-i", "sine=frequency=330:duration=10")
-    cache.save(music_analysis())
+    cache.save(music_analysis(rms=SONG_WITH_A_DROP))
     return root
 
 
@@ -117,10 +118,19 @@ def test_gate_only_car_shots_changes_the_edit(media: Path) -> None:
     assert rendered_seconds(media, "car") > 0
 
 
-def test_gate_slow_mo_on_the_drop_is_recorded(media: Path) -> None:
+def test_gate_slow_mo_on_the_drop_changes_the_edit(media: Path) -> None:
+    _, plain = render(media, "plain-slow", None)
     _, plan = render(media, "slow", "slow-mo on the drop")
 
-    assert "Slow motion requested on: drop; speed ramps arrive in Phase 3" in plan["log"]
+    def ramped(edit: dict[str, Any]) -> list[dict[str, Any]]:
+        return [
+            segment
+            for segment in edit["segments"]
+            if {speed for _, speed in segment["speed"]["curve"]} != {1.0}
+        ]
+
+    assert any(note.startswith("Slow motion on: drop") for note in plan["log"])
+    assert len(ramped(plan)) > len(ramped(plain))
     assert rendered_seconds(media, "slow") > 0
 
 
