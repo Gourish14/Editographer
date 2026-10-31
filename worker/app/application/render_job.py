@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 
 import structlog
 
+from app.application.direct_edit import DirectEdit
 from app.application.job_runner import CancellationToken
 from app.domain.analysis import StoredAnalysis
 from app.domain.brain.planner import ClipInput, build_edit_plan
@@ -35,6 +36,8 @@ STAGE_COMPOSING = "COMPOSING"
 STAGE_ENCODING = "ENCODING"
 STAGE_DELIVER = "DELIVER"
 
+DIRECTOR_PERCENT = 2
+DIRECTOR_MESSAGE = "Asking the AI director"
 PLANNED_PERCENT = 5
 PREVIEW_DONE_PERCENT = 20
 FINAL_DONE_PERCENT = 90
@@ -50,6 +53,7 @@ class RenderEdit:
         compositor: Compositor,
         audio: AudioFinisher,
         notifier: BackendNotifier,
+        director: DirectEdit,
     ) -> None:
         self._media_root = media_root
         self._cache = cache
@@ -57,10 +61,11 @@ class RenderEdit:
         self._compositor = compositor
         self._audio = audio
         self._notifier = notifier
+        self._director = director
 
     def run(self, job: RenderJob, token: CancellationToken) -> None:
         self._notifier.progress(job.job_id, STAGE_PLANNING, 1)
-        plan = self._plan(job)
+        plan = self._plan(job, token)
         self._plans.save_plan(job.render_id, plan)
         self._notifier.progress(job.job_id, STAGE_PLANNING, PLANNED_PERCENT)
         token.raise_if_cancelled()
@@ -92,7 +97,7 @@ class RenderEdit:
             job.job_id, self._relative(final), plan.model_dump(mode="json", by_alias=True)
         )
 
-    def _plan(self, job: RenderJob) -> EditPlan:
+    def _plan(self, job: RenderJob, token: CancellationToken) -> EditPlan:
         tracks = [asset for asset in job.assets if asset.type is AssetType.MUSIC]
         clips = [asset for asset in job.assets if asset.type is AssetType.VIDEO]
         if not tracks or not clips:
@@ -102,7 +107,12 @@ class RenderEdit:
         if music is None:
             raise RenderError(f"No music map for {song.id}", ErrorCode.PLAN_INVALID)
         inputs = [ClipInput(clip.id, self._analysis(clip)) for clip in clips]
-        return build_edit_plan(song.id, music, inputs, job.settings)
+        if self._director.has_work(job.settings):
+            token.raise_if_cancelled()
+            self._notifier.progress(job.job_id, STAGE_PLANNING, DIRECTOR_PERCENT, DIRECTOR_MESSAGE)
+        direction = self._director.decide(music, inputs, job.settings)
+        token.raise_if_cancelled()
+        return build_edit_plan(song.id, music, inputs, job.settings, direction)
 
     def _analysis(self, asset: AssetInput) -> StoredAnalysis:
         file_hash = PurePosixPath(asset.analysis_path or "").parent.name

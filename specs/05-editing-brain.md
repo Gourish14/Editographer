@@ -87,7 +87,8 @@ Output: an ordered list of **slots** `{start, end, section, beatStrength, isDown
    - Photos fill at most 30% of slots and never a drop, unless the input is only photos.
    - At least 70% of drop slots get shots with M in the top half.
 4. **Window placement:** inside the chosen shot, the window is placed so the peak moment lands on the slot's beat.
-5. **Order:** chronological (by capture time) for Travel; energy-driven for every other style. Ties are broken by the seed.
+5. **Order:** chronological (by capture time) for Travel or when the prompt asks; energy-driven for every other style. Ties are broken by the seed. Chronological order walks the timeline and takes the least-used, earliest shot the constraints in step 3 allow. Capture time is not stored yet, so "by capture time" means asset order, then time inside the clip.
+6. **Too few matches:** `includeTags` drop every other shot, unless the matching shots hold less usable footage than the edit window. Then the best-scoring other shots top them up until it is covered, and the plan log says so. A tag no shot has is logged and ignored. If `excludeTags` would remove every shot, that request is ignored and logged.
 
 ## B5. Effect rules (`effects.py`)
 
@@ -101,7 +102,7 @@ Output: an ordered list of **slots** `{start, end, section, beatStrength, isDown
 | Break | Slow motion, grain, no shake |
 | Final downbeat | Freeze frame, then fade to black |
 
-**Caps:** shakes on at most 40% of beats; at most one flash per bar outside drops; transitions on at most half of all cuts. Every strength is multiplied by the style's FX intensity and any prompt override. Motion blur is applied to every segment with zoom, spin or whip, amount = style FX intensity × 0.7.
+**Caps:** shakes on at most 40% of beats; at most one flash per bar outside drops; transitions on at most half of all cuts. Every strength is multiplied by the style's FX intensity; a prompt's `fxIntensity` replaces the style's value, so it can raise effects as well as lower them, and 0 means no effects. Motion blur is applied to every segment with zoom, spin or whip, amount = style FX intensity × 0.7.
 
 ## B6. Speed ramp curve (`ramps.py`)
 
@@ -136,10 +137,13 @@ For a ramped slot of length D (timeline seconds):
 
 The LLM turns the prompt into a constraint JSON (schema in `06-edit-plan-schema.md`) that the rules engine applies. A keyword fallback parser handles common phrases ("slow mo", "no shake", "cinematic", "only car") if the LLM fails. Any request that maps to nothing is skipped and listed in the job log shown to the user.
 
+Requests the current phase cannot carry out (`slowmoAt` until B6 ramps, `text` and `effectsOn` until their effects exist) are recorded in `plan.log` too, so nothing is dropped silently. `durationSec` beats the length setting. The style comes from the prompt first, then the user's style setting, then the director's own pick, then the B10 rules.
+
 ## B10. LLM director and fallback (`director.py`)
 
 - **Input to the LLM:** compact JSON with music sections (type, start, end, energy), the top 40 shots (id, tags, caption, score, cameraMode), user settings and the prompt. Max ~3,000 tokens.
-- **Output:** `{ style, storyHints[], constraints }`, requested with Ollama `format: json` and validated against the schema; one retry on invalid JSON.
+- **Message shape:** the project JSON goes in the system message, worked examples follow as user and assistant turns, and the prompt is the last user turn. Thinking is off. With the JSON and prompt in one user message, `qwen3:4b` echoes its input.
+- **Output:** `{ style, storyHints[], constraints }`, requested with Ollama `format: json` and validated against the schema; one retry on invalid JSON. Unknown fields are invalid, so an echo of the input cannot pass as an empty answer. `storyHints` are logged; no rule reads them yet.
 - **Fallback** (invalid output or Ollama not running): style picked by rule, in order:
   1. BPM ≥ 140 → Hype
   2. BPM ≥ 120 and drop energy ≥ 0.75 → Velocity

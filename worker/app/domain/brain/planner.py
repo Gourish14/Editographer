@@ -10,13 +10,21 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.domain.analysis import StoredAnalysis
-from app.domain.brain.assign import Assignment, Candidate, assign_shots, split_long_slots
-from app.domain.brain.effects import plan_effects
+from app.domain.brain.assign import (
+    Assignment,
+    Candidate,
+    assign_shots,
+    select_candidates,
+    split_long_slots,
+)
+from app.domain.brain.effects import EFFECT_NAMES, plan_effects
 from app.domain.brain.music_map import DEFAULT_LENGTH_SEC, choose_edit_window
 from app.domain.brain.pacing import beat_grid, build_slots
+from app.domain.brain.prompt_rules import parse_prompt
 from app.domain.brain.scoring import score_shots
-from app.domain.brain.style_rules import pick_style
+from app.domain.brain.style_rules import AUTO, pick_style
 from app.domain.brain.validate import validate_plan
+from app.domain.constraints import Constraints, Direction, DirectorDecision
 from app.domain.errors import ErrorCode, RenderError
 from app.domain.models import RenderSettings
 from app.domain.music import MusicMap
@@ -26,6 +34,7 @@ from app.domain.shots import ShotMeasure
 LONG_EDGES = {"4K": 3840, "6K": 6144, "8K": 7680}
 PANO_PREFIX = "OSMO360"
 VIDEO_SEGMENT = "video"
+MAX_NOTE_CHARS = 120
 
 
 @dataclass(frozen=True)
@@ -48,33 +57,49 @@ def build_edit_plan(
     music: MusicMap,
     clips: Sequence[ClipInput],
     settings: RenderSettings,
+    direction: Direction | None = None,
 ) -> EditPlan:
+    """Without a direction the prompt goes through the keyword rules, so an edit always exists."""
     rng = random.Random(settings.seed)
-    style, style_note = pick_style(settings.style, music.bpm)
+    chosen = direction or rule_direction(settings.prompt)
+    constraints = chosen.decision.constraints
+    usable = usable_candidates(clips)
+    if not usable:
+        raise RenderError("None of the clips has a usable shot", ErrorCode.PLAN_INVALID)
+
+    style, style_note = pick_style(
+        _requested_style(settings, chosen.decision),
+        music,
+        [candidate.shot.measure.tags for candidate in usable],
+    )
     window = choose_edit_window(
         music.downbeats,
         music.sections,
         music.energy,
         music.energy_hop_sec,
         music.duration_sec,
-        float(settings.length_sec or DEFAULT_LENGTH_SEC),
+        constraints.duration_sec or float(settings.length_sec or DEFAULT_LENGTH_SEC),
     )
-    candidates = _candidates(clips)
-    if not candidates:
-        raise RenderError("None of the clips has a usable shot", ErrorCode.PLAN_INVALID)
-
+    candidates, tag_notes = select_candidates(usable, constraints, window.end - window.start)
     longest = max(
         window_part.end - window_part.start
         for candidate in candidates
         for window_part in candidate.shot.measure.usable
     )
     slots = split_long_slots(build_slots(music, window, style), beat_grid(music), longest)
-    assignments = assign_shots(slots, candidates, music, rng)
-    effects = plan_effects(assignments, music, style)
+    assignments = assign_shots(
+        slots, candidates, music, rng, constraints, constraints.order or style.order
+    )
+    effects = plan_effects(assignments, music, style, constraints)
     analyses = {clip.asset_id: clip.analysis for clip in clips}
     width, height = output_size(settings.ratio, settings.quality)
 
-    notes = [note for note in (style_note, _pano_note(clips)) if note]
+    notes = (
+        *chosen.notes,
+        *(note for note in (style_note, _pano_note(clips)) if note),
+        *_constraint_notes(constraints),
+        *tag_notes,
+    )
     plan = EditPlan(
         seed=settings.seed,
         style=style.id,
@@ -96,13 +121,19 @@ def build_edit_plan(
                 zip(assignments, effects, strict=True), start=1
             )
         ),
-        log=tuple(notes),
+        log=notes,
     )
     validate_plan(plan, music)
     return plan
 
 
-def _candidates(clips: Sequence[ClipInput]) -> list[Candidate]:
+def rule_direction(prompt: str | None, notes: tuple[str, ...] = ()) -> Direction:
+    """The keyword parser's reading of the prompt. The style is left to the rules."""
+    return Direction(DirectorDecision(constraints=parse_prompt(prompt)), notes)
+
+
+def usable_candidates(clips: Sequence[ClipInput]) -> list[Candidate]:
+    """Every shot worth using, in clip then time order."""
     owners: list[tuple[str, ShotMeasure]] = [
         (clip.asset_id, shot) for clip in clips for shot in clip.analysis.shots
     ]
@@ -114,6 +145,46 @@ def _candidates(clips: Sequence[ClipInput]) -> list[Candidate]:
         for (asset_id, _), shot in zip(owners, scored, strict=True)
         if shot.is_usable and shot.measure.usable
     ]
+
+
+def _requested_style(settings: RenderSettings, decision: DirectorDecision) -> str:
+    """The prompt's words first, then the user's setting, then the director's own pick."""
+    if decision.constraints.style:
+        return decision.constraints.style
+    if settings.style != AUTO:
+        return settings.style
+    return decision.style or AUTO
+
+
+def _constraint_notes(constraints: Constraints) -> list[str]:
+    """Everything asked for that this version cannot apply, so nothing is dropped silently."""
+    notes: list[str] = []
+    if constraints.slowmo_at:
+        sections = ", ".join(constraints.slowmo_at)
+        notes.append(f"Slow motion requested on: {sections}; speed ramps arrive in Phase 3")
+    notes.extend(
+        f"Text '{_short(text)}' requested; text overlays arrive in Phase 3"
+        for text in constraints.text
+    )
+    notes.extend(
+        f"Effect '{_short(name)}' requested; not available yet"
+        for name in constraints.effects_on
+        if name not in EFFECT_NAMES
+    )
+    notes.extend(
+        f"Prompt request 'no {_short(name)}' skipped: no such effect in this edit"
+        for name in constraints.effects_off
+        if name not in EFFECT_NAMES
+    )
+    notes.extend(
+        f"Prompt request '{_short(request)}' skipped: nothing maps to it"
+        for request in constraints.unmapped
+    )
+    return notes
+
+
+def _short(text: str) -> str:
+    return text[:MAX_NOTE_CHARS]
 
 
 def _segment(
