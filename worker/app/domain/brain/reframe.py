@@ -259,7 +259,7 @@ def with_beat_spin(camera: Camera360, start: float, beat_length: float) -> Camer
     end = min(start + beat_length, camera.keyframes[-1].t)
     pose = camera_at(camera, start)
     settled = camera_at(camera, end)
-    return _replace_span(
+    return replace_span(
         camera,
         start,
         end,
@@ -298,7 +298,7 @@ def _with_planet(
     camera: Camera360, start: float, end: float, projection: str, pitch: float
 ) -> Camera360:
     pose = camera_at(camera, start)
-    return _replace_span(
+    return replace_span(
         camera,
         start,
         end,
@@ -316,7 +316,7 @@ def _with_planet(
     )
 
 
-def _replace_span(
+def replace_span(
     camera: Camera360,
     start: float,
     end: float,

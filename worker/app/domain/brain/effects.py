@@ -9,11 +9,22 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from app.domain.brain.assign import Assignment
+from app.domain.brain.ramps import EASE_IN_OUT_CUBIC, EASE_OUT_EXPO
+from app.domain.brain.reframe import CameraPose, camera_at, replace_span
 from app.domain.brain.style_rules import StylePreset
 from app.domain.constraints import NO_CONSTRAINTS, Constraints
+from app.domain.look import BLURRED_TRANSITIONS, MOTION_BLUR, MOTION_BLUR_SHARE
 from app.domain.music import MusicMap, SectionKind
-from app.domain.plan import Effect
+from app.domain.plan import Camera360, CameraKeyframe, Effect, Transition
 
+FOV_PUNCH_WIDE = 140.0
+FOV_PUNCH_TIGHT = 70.0
+FOV_PUNCH_PEAK_SHARE = 0.4
+MIN_PUNCH_SEC = 0.04
+SIGNATURE_TRANSITIONS = ("zoom_through", "spin", "glitch")
+WHIPS = ("whip_left", "whip_right")
+TRANSITION_SEC = 0.18
+TRANSITION_CAP_DIVISOR = 2
 FLASH = "flash"
 SHAKE = "shake"
 ZOOM_PUNCH = "zoomPunch"
@@ -61,7 +72,7 @@ def plan_effects(
 
     shakes = 0
     use_shake_next = True
-    first_drop_beats = _first_beats_of_drops(assignments)
+    first_drop_beats = first_beats_of_drops(assignments)
     planned: list[tuple[Effect, ...]] = []
     for assignment in assignments:
         slot = assignment.slot
@@ -87,7 +98,84 @@ def plan_effects(
     return tuple(planned)
 
 
-def _first_beats_of_drops(assignments: Sequence[Assignment]) -> set[float]:
+def with_fov_punch(camera: Camera360, at: float, duration: float) -> Camera360:
+    """Spec 08 FOV punch: the FOV snaps 140 to 70 and settles back to the view's own FOV."""
+    end = min(at + duration, camera.keyframes[-1].t)
+    if end - at < MIN_PUNCH_SEC:
+        return camera
+    settled = camera_at(camera, end)
+    pose = camera_at(camera, at)
+    peak = at + (end - at) * FOV_PUNCH_PEAK_SHARE
+    return replace_span(
+        camera,
+        at,
+        end,
+        (
+            _key(pose, at, FOV_PUNCH_WIDE, EASE_OUT_EXPO),
+            _key(pose, peak, FOV_PUNCH_TIGHT, EASE_IN_OUT_CUBIC),
+            _key(settled, end, settled.fov),
+        ),
+    )
+
+
+def _key(pose: CameraPose, time: float, fov: float, ease: str = "linear") -> CameraKeyframe:
+    return CameraKeyframe(
+        t=time, yaw=pose.yaw, pitch=pose.pitch, roll=pose.roll, fov=fov, ease=ease
+    )
+
+
+def plan_transitions(
+    assignments: Sequence[Assignment],
+    style: StylePreset,
+    constraints: Constraints = NO_CONSTRAINTS,
+    panoramic: frozenset[str] = frozenset(),
+) -> tuple[Transition, ...]:
+    """B5: a signature transition at each section change, a whip on every other regular cut.
+
+    Capped at half of all cuts, the section changes first. A 360 section change gets its tiny
+    planet from the camera path instead, so its transition stays a cut.
+    """
+    intensity = style.fx_intensity if constraints.fx_intensity is None else constraints.fx_intensity
+    cuts = len(assignments) - 1
+    chosen: dict[int, str] = {}
+    signature = 0
+    regular = 0
+    for index, (current, following) in enumerate(zip(assignments, assignments[1:], strict=False)):
+        if current.slot.section is not following.slot.section:
+            if current.candidate.asset_id not in panoramic:
+                chosen[index] = SIGNATURE_TRANSITIONS[signature % len(SIGNATURE_TRANSITIONS)]
+                signature += 1
+        else:
+            if regular % 2 == 1:
+                chosen[index] = WHIPS[(regular // 2) % len(WHIPS)]
+            regular += 1
+    if intensity <= 0:
+        chosen = {}
+    allowed = sorted(chosen, key=lambda index: (chosen[index] in WHIPS, index))
+    kept = set(allowed[: cuts // TRANSITION_CAP_DIVISOR])
+    return tuple(
+        _transition(chosen[index], assignment.slot.duration) if index in kept else Transition()
+        for index, assignment in enumerate(assignments)
+    )
+
+
+def _transition(kind: str, duration: float) -> Transition:
+    return Transition(type=kind, duration=round(min(TRANSITION_SEC, duration * 0.4), 4))
+
+
+def with_motion_blur(
+    effects: tuple[Effect, ...], transition: Transition, intensity: float
+) -> tuple[Effect, ...]:
+    """Motion blur on every segment with a zoom punch or a spin or whip out, intensity x 0.7."""
+    moving = any(effect.type == ZOOM_PUNCH for effect in effects) or (
+        transition.type in BLURRED_TRANSITIONS
+    )
+    if not moving or intensity <= 0:
+        return effects
+    return (*effects, Effect(type=MOTION_BLUR, amount=round(intensity * MOTION_BLUR_SHARE, 3)))
+
+
+def first_beats_of_drops(assignments: Sequence[Assignment]) -> set[float]:
     firsts: set[float] = set()
     previous: SectionKind | None = None
     for assignment in assignments:

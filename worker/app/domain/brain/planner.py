@@ -17,10 +17,19 @@ from app.domain.brain.assign import (
     select_candidates,
     split_long_slots,
 )
-from app.domain.brain.effects import EFFECT_NAMES, plan_effects
+from app.domain.brain.effects import (
+    EFFECT_NAMES,
+    first_beats_of_drops,
+    plan_effects,
+    plan_transitions,
+    with_motion_blur,
+)
+from app.domain.brain.framing import frame_segment, is_panoramic
 from app.domain.brain.music_map import DEFAULT_LENGTH_SEC, choose_edit_window
 from app.domain.brain.pacing import beat_grid, build_slots
 from app.domain.brain.prompt_rules import parse_prompt
+from app.domain.brain.ramps import ramp_slot_starts, ramp_speed
+from app.domain.brain.reframe import FrameSize
 from app.domain.brain.scoring import score_shots
 from app.domain.brain.style_rules import AUTO, pick_style
 from app.domain.brain.validate import validate_plan
@@ -28,12 +37,20 @@ from app.domain.constraints import Constraints, Direction, DirectorDecision
 from app.domain.errors import ErrorCode, RenderError
 from app.domain.models import RenderSettings
 from app.domain.music import MusicMap
-from app.domain.plan import EditPlan, Effect, MusicWindow, Output, Segment, Source
+from app.domain.plan import (
+    EditPlan,
+    Effect,
+    MusicWindow,
+    Output,
+    Segment,
+    Source,
+    Speed,
+    Transition,
+)
 from app.domain.shots import ShotMeasure
 
 LONG_EDGES = {"4K": 3840, "6K": 6144, "8K": 7680}
-PANO_PREFIX = "OSMO360"
-VIDEO_SEGMENT = "video"
+RAMPED_DROP_STYLE = "velocity"
 MAX_NOTE_CHARS = 120
 
 
@@ -87,17 +104,35 @@ def build_edit_plan(
         for window_part in candidate.shot.measure.usable
     )
     slots = split_long_slots(build_slots(music, window, style), beat_grid(music), longest)
+    ramped = ramp_slot_starts(
+        slots,
+        constraints.slowmo_at,
+        style.id == RAMPED_DROP_STYLE,
+        beat_grid(music),
+        1.0 / settings.fps,
+    )
     assignments = assign_shots(
-        slots, candidates, music, rng, constraints, constraints.order or style.order
+        slots, candidates, music, rng, constraints, constraints.order or style.order, ramped
     )
     effects = plan_effects(assignments, music, style, constraints)
+    panoramic = frozenset(
+        clip.asset_id for clip in clips if is_panoramic(clip.analysis.camera_mode)
+    )
+    transitions = plan_transitions(assignments, style, constraints, panoramic)
+    intensity = style.fx_intensity if constraints.fx_intensity is None else constraints.fx_intensity
+    framing = _Framing(
+        settings,
+        intensity,
+        [beat.time for beat in music.beats],
+        first_beats_of_drops(assignments),
+    )
     analyses = {clip.asset_id: clip.analysis for clip in clips}
     width, height = output_size(settings.ratio, settings.quality)
 
     notes = (
         *chosen.notes,
-        *(note for note in (style_note, _pano_note(clips)) if note),
-        *_constraint_notes(constraints),
+        *(note for note in (style_note,) if note),
+        *_constraint_notes(constraints, sum(a.ramped for a in assignments)),
         *tag_notes,
     )
     plan = EditPlan(
@@ -116,9 +151,18 @@ def build_edit_plan(
         ),
         grade=style.grade,
         segments=tuple(
-            _segment(index, assignment, effect_list, analyses[assignment.candidate.asset_id])
-            for index, (assignment, effect_list) in enumerate(
-                zip(assignments, effects, strict=True), start=1
+            _segment(
+                index,
+                assignment,
+                effect_list,
+                analyses[assignment.candidate.asset_id],
+                transition,
+                framing,
+                following is not None and following.slot.section is not assignment.slot.section,
+            )
+            for index, (assignment, effect_list, transition, following) in enumerate(
+                zip(assignments, effects, transitions, (*assignments[1:], None), strict=True),
+                start=1,
             )
         ),
         log=notes,
@@ -134,15 +178,15 @@ def rule_direction(prompt: str | None, notes: tuple[str, ...] = ()) -> Direction
 
 def usable_candidates(clips: Sequence[ClipInput]) -> list[Candidate]:
     """Every shot worth using, in clip then time order."""
-    owners: list[tuple[str, ShotMeasure]] = [
-        (clip.asset_id, shot) for clip in clips for shot in clip.analysis.shots
+    owners: list[tuple[str, float | None, ShotMeasure]] = [
+        (clip.asset_id, clip.analysis.fps, shot) for clip in clips for shot in clip.analysis.shots
     ]
-    scored = score_shots([shot for _, shot in owners])
+    scored = score_shots([shot for _, _, shot in owners])
     ranked = sorted(shot.measure.motion for shot in scored)
     denominator = max(1, len(ranked) - 1)
     return [
-        Candidate(asset_id, shot, ranked.index(shot.measure.motion) / denominator)
-        for (asset_id, _), shot in zip(owners, scored, strict=True)
+        Candidate(asset_id, shot, ranked.index(shot.measure.motion) / denominator, fps)
+        for (asset_id, fps, _), shot in zip(owners, scored, strict=True)
         if shot.is_usable and shot.measure.usable
     ]
 
@@ -156,12 +200,15 @@ def _requested_style(settings: RenderSettings, decision: DirectorDecision) -> st
     return decision.style or AUTO
 
 
-def _constraint_notes(constraints: Constraints) -> list[str]:
+def _constraint_notes(constraints: Constraints, ramps: int) -> list[str]:
     """Everything asked for that this version cannot apply, so nothing is dropped silently."""
     notes: list[str] = []
     if constraints.slowmo_at:
         sections = ", ".join(constraints.slowmo_at)
-        notes.append(f"Slow motion requested on: {sections}; speed ramps arrive in Phase 3")
+        if ramps:
+            notes.append(f"Slow motion on: {sections}; {ramps} slot(s) got a speed ramp")
+        else:
+            notes.append(f"Slow motion requested on: {sections}; no slot there fits a ramp")
     notes.extend(
         f"Text '{_short(text)}' requested; text overlays arrive in Phase 3"
         for text in constraints.text
@@ -187,31 +234,62 @@ def _short(text: str) -> str:
     return text[:MAX_NOTE_CHARS]
 
 
+@dataclass(frozen=True)
+class _Framing:
+    """What the planner shares with every segment's framing and look."""
+
+    settings: RenderSettings
+    fx_intensity: float
+    beats: list[float]
+    drop_starts: set[float]
+
+
 def _segment(
-    index: int, assignment: Assignment, effects: tuple[Effect, ...], analysis: StoredAnalysis
+    index: int,
+    assignment: Assignment,
+    effects: tuple[Effect, ...],
+    analysis: StoredAnalysis,
+    transition: Transition,
+    framing: _Framing,
+    ends_section: bool,
 ) -> Segment:
     slot = assignment.slot
+    speed = ramp_speed(analysis.fps) if assignment.ramped else Speed()
+    size = (
+        FrameSize(analysis.width, analysis.height) if analysis.width and analysis.height else None
+    )
+    framed = frame_segment(
+        assignment,
+        speed,
+        effects,
+        analysis.camera_mode,
+        size,
+        framing.settings.ratio,
+        framing.beats,
+        slot.start in framing.drop_starts,
+        ends_section,
+        framing.settings.follow_point,
+    )
     return Segment(
         id=f"s{index}",
         asset_id=assignment.candidate.asset_id,
-        type=VIDEO_SEGMENT,
+        type=framed.type,
         src_in=assignment.src_in,
         src_out=assignment.src_out,
         at=slot.start,
         duration=round(slot.duration, 4),
-        effects=effects,
+        speed=speed,
+        reframe=framed.reframe,
+        effects=with_motion_blur(framed.effects, transition, framing.fx_intensity),
+        transition_out=transition,
         source=Source(
             camera_mode=analysis.camera_mode,
             log_profile=analysis.log_profile,
             native_fps=analysis.fps,
+            width=analysis.width,
         ),
+        camera360=framed.camera360,
     )
-
-
-def _pano_note(clips: Sequence[ClipInput]) -> str | None:
-    if any((clip.analysis.camera_mode or "").startswith(PANO_PREFIX) for clip in clips):
-        return "360 clips are center-cropped until 360 reframing arrives in Phase 3"
-    return None
 
 
 def _even(value: float) -> int:
