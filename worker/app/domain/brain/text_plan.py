@@ -7,8 +7,10 @@ audio. All times are on the music timeline, like a segment's `at`.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 
 from app.domain.analysis import StoredAnalysis
+from app.domain.brain.photo_plan import PHOTO_SEGMENT
 from app.domain.brain.text_rules import (
     CaptionWord,
     caption_items,
@@ -42,7 +44,30 @@ def plan_text(
             RuleItem(item.content, item.at + window.start, item.duration, item.anim)
             for item in caption_items(words, window.start, window.end)
         )
-    return tuple(_clipped(item, window.end) for item in (*items, *captions)), notes
+    titles = tuple(_behind(item, segments, analyses) for item in items)
+    return tuple(_clipped(item, window.end) for item in (*titles, *captions)), notes
+
+
+def _behind(
+    item: RuleItem, segments: Sequence[Segment], analyses: Mapping[str, StoredAnalysis]
+) -> RuleItem:
+    """Prompt text goes behind the subject when the shot under its start has one (B8).
+
+    The render still checks that SAM 2 finds a mask; without one the text stays in front.
+    """
+    for segment in segments:
+        if segment.at <= item.at < segment.at + segment.duration:
+            return replace(item, behind_subject=_has_subject(segment, analyses))
+    return item
+
+
+def _has_subject(segment: Segment, analyses: Mapping[str, StoredAnalysis]) -> bool:
+    analysis = analyses.get(segment.asset_id)
+    if analysis is None or segment.type == PHOTO_SEGMENT:
+        return False
+    return any(
+        shot.start <= segment.src_in < shot.end and shot.subject_track for shot in analysis.shots
+    )
 
 
 def _words(spoken: Sequence[Segment], analyses: Mapping[str, StoredAnalysis]) -> list[CaptionWord]:
