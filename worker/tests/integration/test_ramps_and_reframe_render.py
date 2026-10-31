@@ -38,10 +38,11 @@ from app.domain.brain.reframe import SubjectBearing, follow_camera
 from app.domain.constraints import Constraints, DirectorDecision
 from app.domain.models import AssetInput, AssetType, FollowPoint, RenderJob, RenderSettings
 from app.domain.music import SectionKind
-from app.domain.plan import Reframe, ReframePoint, Segment, Source
+from app.domain.photo import FocusBox, FocusSource, PhotoAnalysis, PhotoMotion
+from app.domain.plan import Reframe, ReframePoint, Segment, Source, Transition
 from app.domain.shots import ShotMeasure, SubjectSample, TimeWindow
 from app.ports.backend_notifier import AssetAnalysis
-from app.ports.render import EncodeProfile, SegmentLook
+from app.ports.render import EncodeProfile, NextClip, SegmentLook
 
 pytestmark = [
     pytest.mark.gpu,
@@ -440,3 +441,48 @@ def test_max_quality_edit_of_flat_native_and_360_clips(
     assert "UPSCALING" in {stage for stage, _ in recorder.stages}
     percents = [percent for _, percent in recorder.stages]
     assert max(percents) <= 100
+
+
+def test_a_photo_beside_a_ramp_and_a_360_clip_keeps_every_frame_count(
+    media: Path, tmp_path: Path
+) -> None:
+    photo = ROOT / "worker/tests/fixtures/astronaut.jpg"
+    analysis = PhotoAnalysis(
+        512, 512, FocusBox(0.4, 0.2, 0.2, 0.2, FocusSource.FACE), PhotoMotion.KEN_BURNS, None
+    )
+    pano_segment = segment(
+        id="s3",
+        type="video360",
+        at=2.0 + 0.8,
+        duration=1.1,
+        camera360=follow_camera([SubjectBearing(0.0, 0.0)], [0.0, 1.1], "9:16"),
+        source=Source(camera_mode="OSMO360_PANO_8K", log_profile=None, native_fps=30.0, width=4096),
+    )
+    ramp = ramped(120.0).model_copy(
+        update={"transition_out": Transition(type="whip_left", duration=0.18)}
+    )
+    still = segment(id="s2", type="photo", duration=0.8, at=2.0)
+    pano = media / "uploads/pano.mp4"
+    plan = [
+        (
+            ramp,
+            media / "uploads/flat120.mp4",
+            60,
+            SegmentLook(next_clip=NextClip(pano, 1.0, None, pano_segment)),
+        ),
+        (still, photo, 24, SegmentLook(photo=analysis)),
+        (pano_segment, pano, 33, SegmentLook()),
+        (still.model_copy(update={"id": "s4"}), photo, 17, SegmentLook(photo=analysis)),
+    ]
+    compositor = FfmpegCompositor()
+    parts = []
+    for part_segment, source, frames, look in plan:
+        part = tmp_path / f"{part_segment.id}.mp4"
+        compositor.render_segment(source, part_segment, frames, TALL, part, look)
+        assert len(frames_of(part, TALL.width, TALL.height)) == frames
+        parts.append(part)
+
+    joined = tmp_path / "joined.mp4"
+    compositor.join(parts, joined)
+
+    assert len(frames_of(joined, TALL.width, TALL.height)) == 60 + 24 + 33 + 17
