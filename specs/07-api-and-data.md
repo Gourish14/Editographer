@@ -15,7 +15,7 @@ Single-user local app: no login. The backend binds to `localhost` only.
 | GET | /api/assets/{id}/thumbnail | JPEG thumbnail, 404 until analysis has made one |
 | GET | /api/assets/{id}/waveform | Music: `{ durationSec, peaks[], beats[], downbeats[], sections[] }` from `media/cache/{fileHash}/waveform.json`; 404 until analysis has made it |
 | DELETE | /api/assets/{id} | Remove an asset |
-| POST | /api/projects/{id}/renders | Start a render `{ ratio, quality, fps, style, mode, lengthSec, prompt, coolMode, seed? }`. Omitted values take the defaults from spec 00. The project needs at least one music track and one clip. |
+| POST | /api/projects/{id}/renders | Start a render `{ ratio, quality, fps, style, mode, lengthSec, prompt, coolMode, seed?, startAt?, followPoint? }`. `startAt` holds the job until that time. `followPoint` is `{ x, y, timeSec }`, with x and y as fractions of the equirect frame. Omitted values take the defaults from spec 00. The project needs at least one music track and one clip. |
 | GET | /api/renders/{id} | Status, progress, stage, log, edit plan |
 | GET | /api/renders/{id}/events | SSE stream: `progress`, `preview-ready`, `done`, `failed` |
 | POST | /api/renders/{id}/regenerate | New variation (new seed) with the same settings |

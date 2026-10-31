@@ -109,6 +109,28 @@ class JpaJobQueueAdapterTest {
   }
 
   @Test
+  void aJobWithAStartTimeWaitsUntilThatTime() {
+    UUID refId = UUID.randomUUID();
+    queueWithClockAt("2026-10-30T10:00:00Z")
+        .enqueue(JobKind.RENDER, refId, Instant.parse("2026-10-30T22:00:00Z"));
+
+    assertThat(queueWithClockAt("2026-10-30T21:59:59Z").nextQueued()).isEmpty();
+    assertThat(queueWithClockAt("2026-10-30T22:00:00Z").nextQueued())
+        .hasValueSatisfying(job -> assertThat(job.refId()).isEqualTo(refId));
+  }
+
+  @Test
+  void aWaitingJobDoesNotBlockLaterReadyWork() {
+    queueWithClockAt("2026-10-30T10:00:00Z")
+        .enqueue(JobKind.ANALYZE, UUID.randomUUID(), Instant.parse("2026-10-30T22:00:00Z"));
+    UUID ready = UUID.randomUUID();
+    queueWithClockAt("2026-10-30T11:00:00Z").enqueue(JobKind.RENDER, ready);
+
+    assertThat(queueWithClockAt("2026-10-30T12:00:00Z").nextQueued())
+        .hasValueSatisfying(job -> assertThat(job.refId()).isEqualTo(ready));
+  }
+
+  @Test
   void findByIdIsEmptyForAnUnknownJob() {
     assertThat(queue.findById(UUID.randomUUID())).isEmpty();
   }
