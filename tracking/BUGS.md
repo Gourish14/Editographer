@@ -6,6 +6,7 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
+| BUG-016 | Uploads from the user's Chrome crawl at about 0.03 MB/s, cause unknown | High | Open | First real upload, 2026-11-01 |
 | BUG-015 | Removing a clip deletes its file at one click, with no confirmation and no log line | High | Open | First real upload, 2026-11-01 |
 | BUG-012 | A VS Code build with an old classpath can put crash stubs in `editographer.jar` | Medium | Open | Running the app, 2026-11-01 |
 
@@ -30,6 +31,18 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 ## Details
 
 <!-- Add one section per bug using the template, newest first. -->
+
+### BUG-016 — Uploads from the user's Chrome crawl at about 0.03 MB/s, cause unknown
+- Status: Open
+- Severity: High
+- Found: 2026-11-01, by Claude on the first real upload
+- Spec: 02-architecture.md
+- Steps to reproduce: Drop `.OSV` clips from `C:\DJI OSMO Videos` on the project page in the user's Chrome. An Incognito window is just as slow.
+- Expected: About 95 MB/s, as measured on the same page and file in a clean headless Chrome driven by Playwright. A Python tus client reached 98.8 MB/s.
+- Actual: 0.01 to 0.05 MB/s per clip. Tomcat upload threads wait on the socket, so the backend is not the limit. Two uploads were running at the same time.
+- Not yet compared: a visible window against headless, one upload against two, and a hidden or covered window.
+- Workaround: Clips 1 and 2 were sent by a Python tus client (1977 MB in 19.6 s, 2448 MB in 87.8 s).
+- Fix: Not done.
 
 ### BUG-015 — Removing a clip deletes its file at one click, with no confirmation and no log line
 - Status: Open
