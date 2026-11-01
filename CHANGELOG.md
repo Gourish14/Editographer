@@ -4,6 +4,8 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-01
+
 ### Fixed
 - Ollama runs on its own port, so models stay in the project and other Ollama servers are left alone [BUG-011].
 - The beat spin is spread over its beat, so the drop flash no longer hides it [BUG-010].

@@ -14,7 +14,7 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-008 | Define how .LRF proxies link to their .OSV, and which photo formats count | Implemented |
 | CR-009 | Add fileHash and logProfile to the asset-analyzed callback | Implemented |
 | CR-010 | A render needs at least one music track and one clip | Implemented |
-| CR-011 | Define how the UI learns that an asset finished analysis | Proposed |
+| CR-011 | Define how the UI learns that an asset finished analysis | Implemented |
 | CR-012 | Subject-aware crop moves to Phase 3 with B7 | Implemented |
 | CR-013 | Render start time and follow point in the render request | Implemented |
 | CR-014 | Say which 360 clip a follow point belongs to | Implemented |
@@ -41,12 +41,12 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 - Decision: auto-approved, the gate does not depend on it.
 
 ### CR-011 — Define how the UI learns that an asset finished analysis
-- Status: Proposed
+- Status: Implemented, the project page polls, spec 07 updated
 - Requested: 2026-10-31, by Claude during T-107
 - Reason: Spec 07 job flow step 3 says "SSE to the UI", but the only SSE endpoint is per render.
 - Impact: specs `07`; T-115.
 - Assumption meanwhile: the project page polls `GET /api/projects/{id}/assets`.
-- Decision: pending, to settle in T-115.
+- Decision: Polling. It stops when no asset is analyzing, and the browser test covers it.
 
 ### CR-010 — A render needs at least one music track and one clip
 - Status: Implemented

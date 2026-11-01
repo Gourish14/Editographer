@@ -1,6 +1,6 @@
 # Task board
 
-Current phase: **All four phase gates passed. Open items are in BUGS.md and CHANGE_REQUESTS.md** (`specs/10-roadmap.md`).
+Current phase: **All four phase gates passed. Released 1.0.0. No open tasks, bugs or change requests** (`specs/10-roadmap.md`).
 Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High bugs first. See `specs/12-spec-driven-development.md`.
 
 ## Summary

@@ -64,7 +64,7 @@ Analysis results stay as JSON files in `media/cache/{fileHash}/analysis.json`; t
 
 1. Upload finishes → `asset` row (PENDING) + `job` ANALYZE (priority 1).
 2. Dispatcher sees worker idle → `POST /jobs/analyze`.
-3. Worker → `/internal/asset-analyzed` → asset DONE → SSE to the UI.
+3. Worker → `/internal/asset-analyzed` → asset DONE. The project page polls `GET /api/projects/{id}/assets` while assets are analyzing (CR-011).
 4. User clicks Render → `render_job` QUEUED + `job` RENDER (priority 2). If any asset is not analyzed yet, its analysis runs first.
 5. Worker posts progress → backend updates `render_job` and pushes SSE.
 6. Preview ready → SSE `preview-ready` → UI plays it.
