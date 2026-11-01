@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 
 ENV_BAT = Path(__file__).resolve().parent / "env.bat"
+ROOT = ENV_BAT.parent.parent
 
 
 @unittest.skipUnless(os.name == "nt", "env.bat only runs on Windows")
@@ -49,6 +50,51 @@ class EnvBatTests(unittest.TestCase):
             entries = self.path_entries_with(Path(temp))
 
         self.assertTrue(any(entry.endswith(r"tools\uv") for entry in entries))
+
+    def env_after_env_bat(self) -> dict[str, str]:
+        result = subprocess.run(
+            ["cmd", "/c", "call", str(ENV_BAT), "&&", "set"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return dict(row.split("=", 1) for row in result.stdout.splitlines() if "=" in row)
+
+    def test_rule3_ollama_runs_on_its_own_port_and_stores_models_in_the_project(self) -> None:
+        env = self.env_after_env_bat()
+        port = env["OLLAMA_PORT"]
+
+        self.assertNotEqual("11434", port)
+        self.assertEqual(f"127.0.0.1:{port}", env["OLLAMA_HOST"])
+        self.assertEqual(f"http://127.0.0.1:{port}", env["OLLAMA_URL"])
+        self.assertEqual(str(ROOT / "models" / "ollama"), env["OLLAMA_MODELS"])
+
+    def test_rule3_no_script_or_config_points_at_the_shared_ollama_port(self) -> None:
+        for path in [*ROOT.glob("*.bat"), ROOT / "config" / "local.env.example"]:
+            text = path.read_text()
+            self.assertNotIn("11434", text, path.name)
+            self.assertNotIn("OLLAMA_URL=", text.replace("set \"OLLAMA_URL=", ""), path.name)
+
+    def test_rule3_scripts_never_stop_ollama_by_program_name(self) -> None:
+        for path in [*ROOT.glob("*.bat"), *(ROOT / "scripts").glob("*.bat")]:
+            for line in path.read_text().lower().splitlines():
+                if "taskkill" in line:
+                    self.assertNotIn("/im", line, path.name)
+                    self.assertNotIn("windowtitle", line, path.name)
+
+    def test_rule3_an_old_ollama_url_in_local_env_is_dropped(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "scripts").mkdir()
+            (root / "config").mkdir()
+            for name in ("env.bat", "drop_stale_ollama_url.bat"):
+                (root / "scripts" / name).write_bytes((ROOT / "scripts" / name).read_bytes())
+            local = root / "config" / "local.env"
+            local.write_bytes(b"WORKER_PORT=8090\r\nOLLAMA_URL=http://127.0.0.1:11434\r\nWORKER_TOKEN=abc\r\n")
+
+            subprocess.run(["cmd", "/c", str(root / "scripts" / "drop_stale_ollama_url.bat")], check=True)
+
+            self.assertEqual(b"WORKER_PORT=8090\r\nWORKER_TOKEN=abc\r\n", local.read_bytes())
 
 
 if __name__ == "__main__":

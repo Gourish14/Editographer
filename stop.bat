@@ -1,5 +1,5 @@
 @echo off
-rem Stops the backend, the worker and Ollama. Spec: specs/09-local-setup.md#startbat
+rem Stops the backend, the worker and Editographer's own Ollama (never another Ollama). Spec: specs/09-local-setup.md#startbat
 setlocal EnableExtensions EnableDelayedExpansion
 call "%~dp0scripts\env.bat"
 cd /d "%ROOT%"
@@ -12,8 +12,7 @@ if exist "config\local.env" (
 
 call :stop_port %BACKEND_PORT%
 call :stop_port %WORKER_PORT%
-taskkill /f /im "ollama app.exe" >nul 2>nul
-taskkill /f /im ollama.exe >nul 2>nul
+call "%ROOT%\scripts\ollama_server.bat" stop
 echo Editographer stopped.
 exit /b 0
 

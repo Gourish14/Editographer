@@ -11,6 +11,11 @@ set "UV_CACHE_DIR=%ROOT%\tools\uv-cache"
 set "UV_PROJECT_ENVIRONMENT=%ROOT%\worker\.venv"
 set "UV_PYTHON=3.12"
 set "OLLAMA_MODELS=%ROOT%\models\ollama"
+rem Editographer runs its own Ollama on its own port, so it never meets another Ollama (the desktop app
+rem owns 11434) that would store models outside the project. The port is set here and nowhere else.
+set "OLLAMA_PORT=11500"
+set "OLLAMA_HOST=127.0.0.1:%OLLAMA_PORT%"
+set "OLLAMA_URL=http://127.0.0.1:%OLLAMA_PORT%"
 
 rem winget adds these folders to the user PATH only, which a running shell never sees.
 set "FFMPEG_DIR=%ROOT%\tools\ffmpeg\bin"

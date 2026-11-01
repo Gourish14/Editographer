@@ -12,13 +12,13 @@ if not exist "backend\target\editographer.jar" (
     echo Run setup.bat first: the backend has not been built.
     exit /b 1
 )
+call "%ROOT%\scripts\drop_stale_ollama_url.bat"
 for /f "usebackq eol=# tokens=1,* delims==" %%A in ("config\local.env") do set "%%A=%%B"
+rem The Ollama address always comes from env.bat, whatever an old local.env says.
+call "%ROOT%\scripts\env.bat"
 
 where ollama >nul 2>nul
-if not errorlevel 1 (
-    curl -s -o nul -m 2 %OLLAMA_URL%/api/version
-    if errorlevel 1 start "Editographer Ollama" /min ollama serve
-)
+if not errorlevel 1 call "%ROOT%\scripts\ollama_server.bat" start
 
 start "Editographer worker" /min cmd /c "cd /d "%ROOT%\worker" && uv run uvicorn app.main:app --host %WORKER_HOST% --port %WORKER_PORT%"
 start "Editographer backend" /min java -jar "%ROOT%\backend\target\editographer.jar"

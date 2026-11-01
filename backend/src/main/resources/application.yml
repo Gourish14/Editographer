@@ -22,7 +22,7 @@ app:
   media-dir: ${MEDIA_DIR:media}
   worker-url: http://${WORKER_HOST:127.0.0.1}:${WORKER_PORT:8090}
   worker-token: ${WORKER_TOKEN:}
-  ollama-url: ${OLLAMA_URL:http://127.0.0.1:11434}
+  ollama-url: ${OLLAMA_URL:http://127.0.0.1:11500}
   dispatch-interval-ms: 2000
   job-stuck-grace-ms: 30000
   job-max-attempts: 3

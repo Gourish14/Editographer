@@ -10,7 +10,7 @@ Spring Boot backend  ──── H2 file database (data/editographer.mv.db)
       │  HTTP (localhost:8090, shared token)          ▲
       ▼                                                │ progress callbacks
 Python AI worker (FastAPI)  ───────────────────────────┘
-      │  HTTP (localhost:11434)
+      │  HTTP (localhost:11500)
       ▼
 Ollama (Qwen3 4B director, Qwen2.5-VL 3B captions)
 
@@ -24,7 +24,7 @@ All processes read/write the same local folder: media/
 | Backend | Spring Boot 4, Java 25 | 8080 | REST API, uploads, job queue, progress (SSE), serves the built Angular app |
 | Frontend | Angular | served by backend (dev: 4200) | Upload, settings, prompt, live progress, player |
 | Worker | Python 3.12 (uv venv), FastAPI + Uvicorn | 8090 (localhost only) | All analysis, planning (brain), rendering |
-| Ollama | Ollama for Windows | 11434 | Runs the local LLMs |
+| Ollama | Ollama for Windows, started by us | 11500 | Runs the local LLMs. Its own port (`OLLAMA_PORT` in `scripts/env.bat`, the only place it is set) so another Ollama on 11434, such as the desktop app, can never answer in its place and store models outside the project |
 
 In normal use the user opens only `http://localhost:8080`. Angular is built once by `setup.bat` and copied into the backend's static resources.
 

@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     backend_port: int = 8080
     worker_host: str = "127.0.0.1"
     worker_port: int = 8090
-    ollama_url: str = "http://127.0.0.1:11434"
+    ollama_url: str = "http://127.0.0.1:11500"
     media_dir: Path = Path("media")
     logs_dir: Path = Path("logs")
     models_dir: Path = Path("models")
