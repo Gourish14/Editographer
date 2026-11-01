@@ -47,10 +47,10 @@ def followed(samples: tuple[SubjectSample, ...]) -> EditPlan:
 
 
 def spun(segment: Segment) -> bool:
-    """A beat spin: an expo-eased first span that changes yaw only (a punch changes FOV)."""
+    """A beat spin: a first span that turns the yaw about a full circle (a punch changes FOV)."""
     assert segment.camera360 is not None
     first, second = segment.camera360.keyframes[:2]
-    return first.ease == "easeOutExpo" and first.fov == second.fov
+    return abs(second.yaw - first.yaw) > 300.0 and first.fov == second.fov
 
 
 def steady(segment: Segment) -> bool:
@@ -280,7 +280,8 @@ def wired(follower: FakeFollower, tmp_path: Path) -> tuple[EditPlan, EditPlan]:
     asset = AssetInput(
         "v0", AssetType.VIDEO, "uploads/c.mp4", None, None, None, 30.0, 7680, 3840, 30.0
     )
-    job = RenderJob("j", "r", "p", dataclasses.replace(SETTINGS, follow_point=POINT), (asset,))
+    tapped = dataclasses.replace(POINT, asset_id="v0")
+    job = RenderJob("j", "r", "p", dataclasses.replace(SETTINGS, follow_point=tapped), (asset,))
     first = plan_of([clip], follow_point=POINT)
     second = edit._followed(
         job, first, ("m1", music_map()), [asset], [clip], Direction(), [], CancellationToken()

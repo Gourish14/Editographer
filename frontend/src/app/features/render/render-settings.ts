@@ -121,11 +121,26 @@ const MODES = [
             <p class="muted">
               Drag to look around {{ clip.filename }}, then tap the person or vehicle to follow.
             </p>
-            <app-preview-360 [imageUrl]="thumbnailUrl(clip.id)" (picked)="follow.set($event)" />
+            @if (clips360().length > 1) {
+              <div class="row" role="group" aria-label="360 clip to tap on">
+                @for (option of clips360(); track option.id) {
+                  <button
+                    matButton
+                    type="button"
+                    [attr.aria-pressed]="option.id === clip.id"
+                    [disabled]="option.id === clip.id"
+                    (click)="choose360(option.id)"
+                  >
+                    {{ option.filename }}
+                  </button>
+                }
+              </div>
+            }
+            <app-preview-360 [imageUrl]="thumbnailUrl(clip.id)" (picked)="pick($event, clip.id)" />
             <div class="row">
               @if (follow(); as point) {
                 <span>Following the spot at {{ percent(point.x) }}, {{ percent(point.y) }}</span>
-                <button matButton type="button" (click)="follow.set(null)">Clear</button>
+                <button matButton type="button" (click)="pick(null, null)">Clear</button>
               } @else {
                 <span class="muted">No subject picked, the app will choose.</span>
               }
@@ -203,12 +218,19 @@ export class RenderSettingsPage {
   protected readonly starting = signal(false);
   protected readonly projectAssets = signal<readonly Asset[]>([]);
   protected readonly follow = signal<TapPoint | null>(null);
-  /** The first analyzed 360 clip: its thumbnail is the equirectangular frame to tap on. */
+  /** The 360 clip the follow point was tapped on: the API ties the subject to this clip. */
+  private readonly followClipId = signal<string | null>(null);
+  private readonly chosen360 = signal<string | null>(null);
+  /** Every analyzed 360 clip: its thumbnail is the equirectangular frame to tap on. */
+  protected readonly clips360 = computed(() =>
+    this.projectAssets().filter(
+      (asset) => asset.cameraMode?.startsWith('OSMO360') && asset.analysisStatus === 'DONE',
+    ),
+  );
+  /** The clip being shown: the one chosen, else the first. */
   protected readonly clip360 = computed(
     () =>
-      this.projectAssets().find(
-        (asset) => asset.cameraMode?.startsWith('OSMO360') && asset.analysisStatus === 'DONE',
-      ) ?? null,
+      this.clips360().find((asset) => asset.id === this.chosen360()) ?? this.clips360()[0] ?? null,
   );
 
   protected readonly form = new FormGroup({
@@ -232,6 +254,16 @@ export class RenderSettingsPage {
     return this.assets.thumbnailUrl(id);
   }
 
+  protected pick(point: TapPoint | null, clipId: string | null): void {
+    this.follow.set(point);
+    this.followClipId.set(point ? clipId : null);
+  }
+
+  protected choose360(id: string): void {
+    this.chosen360.set(id);
+    this.pick(null, null); // a point belongs to the clip it was tapped on
+  }
+
   protected percent(value: number): string {
     return `${Math.round(value * 100)}%`;
   }
@@ -248,7 +280,10 @@ export class RenderSettingsPage {
       prompt: values.prompt.trim() || null,
       startAt: toInstant(startAt),
       // The preview shows the clip's thumbnail, a frame from the start of the clip.
-      followPoint: point && this.clip360() ? { x: point.x, y: point.y, timeSec: 0 } : null,
+      followPoint:
+        point && this.followClipId()
+          ? { x: point.x, y: point.y, timeSec: 0, assetId: this.followClipId() }
+          : null,
     };
     this.starting.set(true);
     this.api.start(this.id(), settings).subscribe({

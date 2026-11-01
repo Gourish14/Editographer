@@ -118,7 +118,7 @@ class RenderServiceTest {
             true,
             7L,
             tonight,
-            new RenderSettings.FollowPoint(0.25, 0.5, 3.0));
+            new RenderSettings.FollowPoint(0.25, 0.5, 3.0, null));
 
     Render render = service.startRender(projectId, scheduled);
 
@@ -151,6 +151,73 @@ class RenderServiceTest {
     assertThat(version.settings().startAt()).isNull();
     verify(queue).enqueue(JobKind.RENDER, version.id().value(), null);
     assertThat(scheduled.startAt()).isNull();
+  }
+
+  private Asset panoramic() {
+    Asset clip = asset(AssetType.VIDEO);
+    return new Asset(
+        clip.id(),
+        clip.projectId(),
+        clip.type(),
+        clip.filename(),
+        clip.path(),
+        clip.sizeBytes(),
+        clip.analysisStatus(),
+        clip.fileHash(),
+        clip.durationSec(),
+        clip.width(),
+        clip.height(),
+        clip.fps(),
+        "OSMO360_PANO_8K",
+        clip.logProfile(),
+        clip.analysisPath(),
+        clip.createdAt());
+  }
+
+  private RenderSettings following(UUID assetId) {
+    return new RenderSettings(
+        "9:16",
+        "4K",
+        30,
+        "velocity",
+        "fast",
+        30,
+        null,
+        false,
+        7L,
+        null,
+        new RenderSettings.FollowPoint(0.25, 0.5, 3.0, assetId));
+  }
+
+  @Test
+  void aFollowPointMayNameA360ClipOfTheProject() {
+    Asset clip = panoramic();
+    when(assets.findByProject(projectId)).thenReturn(List.of(asset(AssetType.MUSIC), clip));
+
+    Render render = service.startRender(projectId, following(clip.id().value()));
+
+    assertThat(render.settings().followPoint().assetId()).isEqualTo(clip.id().value());
+  }
+
+  @Test
+  void aFollowPointWithoutAnAssetIdStillMeansTheFirst360Clip() {
+    Render render = service.startRender(projectId, following(null));
+
+    assertThat(render.settings().followPoint().assetId()).isNull();
+  }
+
+  @Test
+  void aFollowPointNamingAFlatClipOrAnUnknownAssetIsRefused() {
+    Asset flat = asset(AssetType.VIDEO);
+    when(assets.findByProject(projectId)).thenReturn(List.of(asset(AssetType.MUSIC), flat));
+
+    assertFailsWith(
+        () -> service.startRender(projectId, following(flat.id().value())),
+        ErrorCode.VALIDATION_FAILED);
+    assertFailsWith(
+        () -> service.startRender(projectId, following(UUID.randomUUID())),
+        ErrorCode.VALIDATION_FAILED);
+    verify(queue, never()).enqueue(any(), any(), any());
   }
 
   @Test

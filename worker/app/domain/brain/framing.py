@@ -13,7 +13,7 @@ crossing the 0/360 seam moves the camera by the real angle, never the long way r
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from app.domain.brain.assign import Assignment
 from app.domain.brain.effects import ZOOM_PUNCH, with_fov_punch
@@ -52,6 +52,33 @@ class Framing:
 
 def is_panoramic(camera_mode: str | None) -> bool:
     return (camera_mode or "").startswith(PANO_PREFIX)
+
+
+def resolve_follow_point(
+    point: FollowPoint | None, panoramic: Sequence[str]
+) -> tuple[FollowPoint | None, str | None]:
+    """Which 360 clip the picked point belongs to (spec 08 rule 5), and a plan note if none.
+
+    `panoramic` holds the 360 clip ids in project order. A point with no asset id belongs to the
+    first 360 clip. An id that is not a 360 clip of this render drops the follow, with a note, so
+    the point never lands on a clip it was not tapped on.
+    """
+    if point is None:
+        return None, None
+    if point.asset_id is None:
+        if not panoramic:
+            return None, None
+        return replace(point, asset_id=panoramic[0]), None
+    if point.asset_id in panoramic:
+        return point, None
+    return None, "Subject follow skipped: the picked clip is not a 360 clip of this project"
+
+
+def follows(point: FollowPoint | None, asset_id: str) -> FollowPoint | None:
+    """The picked point when it is meant for this clip: no asset id means every 360 clip."""
+    if point is None or point.asset_id in (None, asset_id):
+        return point
+    return None
 
 
 def frame_segment(

@@ -65,6 +65,7 @@ class _Rules:
     order: ShotOrder
     can_vary_clips: bool
     positions: dict[tuple[str, float], int]
+    preferred_asset: str | None = None
 
 
 def prompt_fit(tags: Sequence[str], include: Sequence[str], exclude: Sequence[str]) -> float:
@@ -149,12 +150,13 @@ def assign_shots(
     constraints: Constraints = NO_CONSTRAINTS,
     order: ShotOrder = "energy",
     ramped: frozenset[float] = frozenset(),
+    drop_clip: str | None = None,
 ) -> tuple[Assignment, ...]:
     """Fills slots, honoring the B4 constraints. `ramped` holds the starts of slots with a B6 ramp.
 
     Energy order fills from the most important slot down and takes the best match. Chronological
     order walks the timeline and takes the earliest allowed shot, with `candidates` in capture
-    order.
+    order. The first slot of a drop takes a shot from `drop_clip` when one fits (spec 05 B4).
     """
     if not candidates:
         raise RenderError("No usable shots to edit with", ErrorCode.PLAN_INVALID)
@@ -173,6 +175,7 @@ def assign_shots(
         order,
         len({candidate.asset_id for candidate in candidates}) > 1,
         {candidate.key: position for position, candidate in enumerate(candidates)},
+        drop_clip,
     )
     for index in turns:
         filled[index] = _fill(index, slots, candidates, music, rng, filled, used, rules)
@@ -207,6 +210,8 @@ def _fill(
         raise RenderError(f"No shot fits the {slot.duration:.2f} s slot", ErrorCode.PLAN_INVALID)
 
     pool = [candidate for candidate in pool if candidate.key not in used] or pool
+    if rules.preferred_asset and _starts_drop(index, slots):
+        pool = _preferred(pool, candidates, length, rules.preferred_asset) or pool
     if slot.section is SectionKind.DROP:
         energetic = [candidate for candidate in pool if candidate.motion_rank >= 0.5]
         pool = energetic or pool
@@ -219,6 +224,20 @@ def _fill(
     src_in = _place(best, length, used.get(best.key, []))
     used.setdefault(best.key, []).append(TimeWindow(start=src_in, end=src_in + length))
     return Assignment(slot, best, round(src_in, 4), round(src_in + length, 4), ramped)
+
+
+def _starts_drop(index: int, slots: Sequence[Slot]) -> bool:
+    return slots[index].section is SectionKind.DROP and (
+        index == 0 or slots[index - 1].section is not SectionKind.DROP
+    )
+
+
+def _preferred(
+    pool: list[Candidate], candidates: Sequence[Candidate], length: float, asset_id: str
+) -> list[Candidate]:
+    """Shots of the preferred clip: from the pool, else any that fits, neighbour or not."""
+    own = [candidate for candidate in pool if candidate.asset_id == asset_id]
+    return own or [c for c in candidates if c.asset_id == asset_id and _fits(c, length)]
 
 
 def _pool(

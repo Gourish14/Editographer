@@ -4,6 +4,7 @@ import com.editographer.common.error.ApiException;
 import com.editographer.common.error.ErrorCode;
 import com.editographer.render.domain.RenderSettings;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Body of POST /api/projects/{id}/renders. Anything left out takes the default from
@@ -23,7 +24,7 @@ public record CreateRenderRequest(
     FollowPointRequest followPoint) {
 
   /** The tap point as sent by the browser. */
-  public record FollowPointRequest(double x, double y, double timeSec) {}
+  public record FollowPointRequest(double x, double y, double timeSec, UUID assetId) {}
 
   /** The settings to render with, using randomSeed when the request names no seed. */
   public RenderSettings toSettings(long randomSeed) {
@@ -42,7 +43,7 @@ public record CreateRenderRequest(
           followPoint == null
               ? null
               : new RenderSettings.FollowPoint(
-                  followPoint.x(), followPoint.y(), followPoint.timeSec()));
+                  followPoint.x(), followPoint.y(), followPoint.timeSec(), followPoint.assetId()));
     } catch (IllegalArgumentException exception) {
       throw new ApiException(ErrorCode.VALIDATION_FAILED, exception.getMessage(), exception);
     }
