@@ -6,6 +6,7 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
+| BUG-015 | Removing a clip deletes its file at one click, with no confirmation and no log line | High | Open | First real upload, 2026-11-01 |
 | BUG-012 | A VS Code build with an old classpath can put crash stubs in `editographer.jar` | Medium | Open | Running the app, 2026-11-01 |
 
 ## Closed
@@ -29,6 +30,16 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 ## Details
 
 <!-- Add one section per bug using the template, newest first. -->
+
+### BUG-015 — Removing a clip deletes its file at one click, with no confirmation and no log line
+- Status: Open
+- Severity: High
+- Found: 2026-11-01, by Claude after a real upload disappeared
+- Spec: 07-api-and-data.md
+- Steps to reproduce: Click remove on a clip in `asset-grid.ts`.
+- Expected: A confirmation first, and a log line naming the asset.
+- Actual: `AssetService.deleteAsset` deletes the row and the file at once and logs nothing. Two `.OSV` clips of project `Bike_Vlogging` went this way at 08:01:24 UTC, 21 s after a backend start. The folder time and the first `job.orphaned` line match to the second. What sent the requests cannot be told from the logs. No other code path deletes an asset.
+- Fix: Not done.
 
 ### BUG-013 — The `.OSV` stitch used 17.9 GB of memory on a 36 s clip and starved the machine
 - Status: Fixed
