@@ -33,6 +33,7 @@ final class RenderMapper {
     entity.followX = follow == null ? null : follow.x();
     entity.followY = follow == null ? null : follow.y();
     entity.followTimeSec = follow == null ? null : follow.timeSec();
+    entity.followAssetId = follow == null ? null : follow.assetId();
     entity.status = state.status().name();
     entity.stage = state.stage();
     entity.progress = state.progress();
@@ -64,7 +65,7 @@ final class RenderMapper {
             entity.followX == null
                 ? null
                 : new RenderSettings.FollowPoint(
-                    entity.followX, entity.followY, entity.followTimeSec)),
+                    entity.followX, entity.followY, entity.followTimeSec, entity.followAssetId)),
         new RenderState(
             RenderStatus.valueOf(entity.status),
             entity.stage,

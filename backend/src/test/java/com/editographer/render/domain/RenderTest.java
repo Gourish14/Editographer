@@ -22,9 +22,9 @@ class RenderTest {
 
   @Test
   void aFollowPointMustSitInsideTheFrame() {
-    assertThatThrownBy(() -> new RenderSettings.FollowPoint(1.2, 0.5, 0))
+    assertThatThrownBy(() -> new RenderSettings.FollowPoint(1.2, 0.5, 0, null))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new RenderSettings.FollowPoint(0.5, 0.5, -1))
+    assertThatThrownBy(() -> new RenderSettings.FollowPoint(0.5, 0.5, -1, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

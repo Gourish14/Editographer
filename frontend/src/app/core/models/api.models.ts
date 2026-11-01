@@ -58,6 +58,8 @@ export interface FollowPoint {
   /** 0 to 1 from the top of the frame. */
   readonly y: number;
   readonly timeSec: number;
+  /** The 360 clip the point was tapped on. Null means the first 360 clip. */
+  readonly assetId: string | null;
 }
 
 export type NewRender = Partial<Omit<RenderSettings, 'seed'>>;

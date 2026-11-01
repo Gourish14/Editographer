@@ -32,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RenderService {
 
+  private static final String PANORAMIC_MODE_PREFIX = "OSMO360";
+
   private final RenderRepository renders;
   private final ProjectRepository projects;
   private final AssetRepository assets;
@@ -70,7 +72,8 @@ public class RenderService {
     if (!styles.existsById(settings.style())) {
       throw new ApiException(ErrorCode.VALIDATION_FAILED, "Unknown style: " + settings.style());
     }
-    requireInputs(projectId);
+    List<Asset> inputs = requireInputs(projectId);
+    requireFollowClip(settings, inputs);
     return enqueue(Render.queued(projectId, settings, clock.instant()));
   }
 
@@ -132,7 +135,7 @@ public class RenderService {
     return saved;
   }
 
-  private void requireInputs(ProjectId projectId) {
+  private List<Asset> requireInputs(ProjectId projectId) {
     List<Asset> inputs = assets.findByProject(projectId);
     boolean hasMusic = inputs.stream().anyMatch(asset -> asset.type() == AssetType.MUSIC);
     boolean hasFootage =
@@ -141,6 +144,28 @@ public class RenderService {
     if (!hasMusic || !hasFootage) {
       throw new ApiException(
           ErrorCode.VALIDATION_FAILED, "A render needs at least one music track and one clip");
+    }
+    return inputs;
+  }
+
+  /** A follow point that names a clip must name a 360 video of this project (spec 08 rule 5). */
+  private void requireFollowClip(RenderSettings settings, List<Asset> inputs) {
+    RenderSettings.FollowPoint follow = settings.followPoint();
+    if (follow == null || follow.assetId() == null) {
+      return;
+    }
+    boolean is360 =
+        inputs.stream()
+            .anyMatch(
+                asset ->
+                    asset.id().value().equals(follow.assetId())
+                        && asset.type() == AssetType.VIDEO
+                        && asset.cameraMode() != null
+                        && asset.cameraMode().startsWith(PANORAMIC_MODE_PREFIX));
+    if (!is360) {
+      throw new ApiException(
+          ErrorCode.VALIDATION_FAILED,
+          "followPoint assetId must be a 360 clip of this project: " + follow.assetId());
     }
   }
 

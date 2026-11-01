@@ -43,6 +43,8 @@ class FollowPoint:
     x: float
     y: float
     time_sec: float
+    asset_id: str | None = None
+    """The 360 clip the tap was made on. None means the first 360 clip (spec 08 rule 5)."""
 
 
 @dataclass(frozen=True)

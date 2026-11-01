@@ -56,6 +56,9 @@ class JpaRenderEntity {
   @Column(name = "follow_time_sec")
   Double followTimeSec;
 
+  @Column(name = "follow_asset_id")
+  UUID followAssetId;
+
   @Column(nullable = false)
   String status;
 

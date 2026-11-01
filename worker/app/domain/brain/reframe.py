@@ -14,7 +14,7 @@ from bisect import bisect_right
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from app.domain.brain.ramps import EASE_OUT_EXPO, eased
+from app.domain.brain.ramps import EASE_IN_OUT_CUBIC, eased
 from app.domain.plan import Camera360, CameraKeyframe, Motion
 
 DEAD_ZONE_SHARE = 0.10
@@ -38,6 +38,7 @@ TINY_PLANET_PITCH = -90.0
 RABBIT_HOLE_PITCH = 90.0
 PLANET_FOV = 160.0
 FULL_TURN = 360.0
+SPIN_EASE = EASE_IN_OUT_CUBIC
 
 KEN_BURNS_START_SCALE = 1.0
 KEN_BURNS_END_SCALE = 1.12
@@ -255,7 +256,12 @@ def _sample(times: Sequence[float], values: Sequence[float], time: float) -> flo
 
 
 def with_beat_spin(camera: Camera360, start: float, beat_length: float) -> Camera360:
-    """Drop: a 360 degree yaw spin over one beat. A slot shorter than a beat still gets it all."""
+    """Drop: a 360 degree yaw spin over one beat. A slot shorter than a beat still gets it all.
+
+    The spin eases in and out (BUG-010): the drop's white flash covers the first 0.08 s, so a
+    spin that starts at full speed turned half the way unseen, and its first frame jumped past
+    the whole view. Eased in, the turn is still near the start when the flash fades.
+    """
     end = min(start + beat_length, camera.keyframes[-1].t)
     pose = camera_at(camera, start)
     settled = camera_at(camera, end)
@@ -270,7 +276,7 @@ def with_beat_spin(camera: Camera360, start: float, beat_length: float) -> Camer
                 pitch=pose.pitch,
                 roll=pose.roll,
                 fov=pose.fov,
-                ease=EASE_OUT_EXPO,
+                ease=SPIN_EASE,
             ),
             CameraKeyframe(
                 t=end,

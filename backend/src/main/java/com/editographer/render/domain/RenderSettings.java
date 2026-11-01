@@ -3,6 +3,7 @@ package com.editographer.render.domain;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * What the user chose for a render. A null lengthSec means Auto. Spec:
@@ -35,9 +36,10 @@ public record RenderSettings(
 
   /**
    * Where the user tapped to pick the subject to follow. x and y run 0 to 1 across the frame,
-   * timeSec is the moment of the clip being previewed. Spec: specs/08-osmo360.md#ui-additions
+   * timeSec is the moment of the clip being previewed, assetId the 360 clip it was tapped on (null
+   * means the first 360 clip). Spec: specs/08-osmo360.md#ui-additions
    */
-  public record FollowPoint(double x, double y, double timeSec) {
+  public record FollowPoint(double x, double y, double timeSec, UUID assetId) {
     public FollowPoint {
       if (x < 0 || x > 1 || y < 0 || y > 1) {
         throw new IllegalArgumentException("followPoint x and y must be between 0 and 1");

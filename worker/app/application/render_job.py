@@ -23,7 +23,7 @@ from app.application.follow_subject import FollowSubject
 from app.application.job_runner import CancellationToken
 from app.application.look import audio_mix, segment_look
 from app.domain.analysis import StoredAnalysis
-from app.domain.brain.framing import is_panoramic
+from app.domain.brain.framing import is_panoramic, resolve_follow_point
 from app.domain.brain.planner import ClipInput, build_edit_plan
 from app.domain.brain.text_rules import TextItem as OverlayItem
 from app.domain.constraints import Direction
@@ -182,6 +182,7 @@ class RenderEdit:
         if music is None:
             raise RenderError(f"No music map for {song.id}", ErrorCode.PLAN_INVALID)
         inputs = [ClipInput(clip.id, self._analysis(clip)) for clip in clips]
+        job, follow_note = self._with_resolved_follow(job, clips, inputs)
         if self._director.has_work(job.settings):
             token.raise_if_cancelled()
             self._notifier.progress(job.job_id, STAGE_PLANNING, DIRECTOR_PERCENT, DIRECTOR_MESSAGE)
@@ -189,9 +190,26 @@ class RenderEdit:
         token.raise_if_cancelled()
         photo_inputs = [ClipInput(photo.id, self._analysis(photo)) for photo in photos]
         plan = build_edit_plan(song.id, music, inputs, job.settings, direction, photo_inputs)
-        return self._followed(
+        plan = self._followed(
             job, plan, (song.id, music), clips, inputs, direction, photo_inputs, token
         )
+        return plan.model_copy(update={"log": (*plan.log, follow_note)}) if follow_note else plan
+
+    @staticmethod
+    def _with_resolved_follow(
+        job: RenderJob, clips: list[AssetInput], inputs: list[ClipInput]
+    ) -> tuple[RenderJob, str | None]:
+        """Spec 08 rule 5: the picked point is tied to one 360 clip before anything is planned."""
+        point = job.settings.follow_point
+        panoramic = [
+            clip.id
+            for clip, item in zip(clips, inputs, strict=True)
+            if is_panoramic(item.analysis.camera_mode)
+        ]
+        resolved, note = resolve_follow_point(point, panoramic)
+        if resolved == point:
+            return job, note
+        return replace(job, settings=replace(job.settings, follow_point=resolved)), note
 
     def _followed(
         self,
@@ -206,18 +224,11 @@ class RenderEdit:
     ) -> EditPlan:
         """Spec 08 rule 5: with a picked subject, SAM 2 measures it and the plan is framed again.
 
-        The picked point belongs to the first 360 clip. The second pass only changes framing:
-        the seed and the direction are the same, so the segments are the same.
+        The picked point belongs to the 360 clip it names (resolved in `_plan`). The second pass
+        only changes framing: the seed and the direction are the same, so the segments are the same.
         """
         point = job.settings.follow_point
-        target = next(
-            (
-                clip
-                for clip, item in zip(clips, inputs, strict=True)
-                if is_panoramic(item.analysis.camera_mode)
-            ),
-            None,
-        )
+        target = next((clip for clip in clips if point and clip.id == point.asset_id), None)
         if point is None or target is None or self._follow is None:
             return plan
         token.raise_if_cancelled()

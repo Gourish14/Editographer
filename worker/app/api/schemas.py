@@ -56,9 +56,10 @@ class FollowPointBody(ApiModel):
     x: float
     y: float
     time_sec: float = 0.0
+    asset_id: str | None = None
 
     def to_point(self) -> FollowPoint:
-        return FollowPoint(self.x, self.y, self.time_sec)
+        return FollowPoint(self.x, self.y, self.time_sec, self.asset_id)
 
 
 class RenderSettingsBody(ApiModel):

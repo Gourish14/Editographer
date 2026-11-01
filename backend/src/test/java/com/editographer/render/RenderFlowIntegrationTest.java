@@ -156,7 +156,7 @@ class RenderFlowIntegrationTest {
     assertThat(created.statusCode()).as(created.body()).isEqualTo(201);
     assertThat(created.body())
         .contains("\"startAt\":\"" + start + "\"")
-        .contains("\"followPoint\":{\"x\":0.25,\"y\":0.5,\"timeSec\":3.5}");
+        .contains("\"followPoint\":{\"x\":0.25,\"y\":0.5,\"timeSec\":3.5,\"assetId\":null}");
 
     when(worker.isIdle()).thenReturn(true);
     dispatcher.dispatchNext();
@@ -165,6 +165,63 @@ class RenderFlowIntegrationTest {
     assertThat(
             jdbc.queryForObject("SELECT COUNT(*) FROM job WHERE status = 'QUEUED'", Integer.class))
         .isEqualTo(1);
+  }
+
+  @Test
+  void aFollowPointKeepsItsClipAndReachesTheWorker() throws Exception {
+    Asset base =
+        assets.findByProject(projectId).stream()
+            .filter(asset -> asset.type() == AssetType.VIDEO)
+            .findFirst()
+            .orElseThrow();
+    Asset panoramic =
+        assets.save(
+            new Asset(
+                base.id(),
+                base.projectId(),
+                base.type(),
+                base.filename(),
+                base.path(),
+                base.sizeBytes(),
+                base.analysisStatus(),
+                base.fileHash(),
+                base.durationSec(),
+                base.width(),
+                base.height(),
+                base.fps(),
+                "OSMO360_PANO_8K",
+                base.logProfile(),
+                base.analysisPath(),
+                base.createdAt()));
+    String clip = panoramic.id().value().toString();
+
+    HttpResponse<String> created =
+        post(
+            "/api/projects/" + projectId.value() + "/renders",
+            "{\"followPoint\":{\"x\":0.25,\"y\":0.5,\"timeSec\":3.5,\"assetId\":\""
+                + clip
+                + "\"}}");
+
+    assertThat(created.statusCode()).as(created.body()).isEqualTo(201);
+    assertThat(created.body())
+        .contains("\"followPoint\":{\"x\":0.25,\"y\":0.5,\"timeSec\":3.5,\"assetId\":\"" + clip);
+  }
+
+  @Test
+  void aFollowPointOnAClipThatIsNot360IsRefused() throws Exception {
+    Asset flat =
+        assets.findByProject(projectId).stream()
+            .filter(asset -> asset.type() == AssetType.VIDEO)
+            .findFirst()
+            .orElseThrow();
+    HttpResponse<String> response =
+        post(
+            "/api/projects/" + projectId.value() + "/renders",
+            "{\"followPoint\":{\"x\":0.25,\"y\":0.5,\"timeSec\":0,\"assetId\":\""
+                + flat.id().value()
+                + "\"}}");
+
+    assertThat(response.statusCode()).isEqualTo(400);
   }
 
   @Test

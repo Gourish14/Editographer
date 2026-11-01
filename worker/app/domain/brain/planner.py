@@ -24,7 +24,7 @@ from app.domain.brain.effects import (
     plan_transitions,
     with_motion_blur,
 )
-from app.domain.brain.framing import frame_segment, is_panoramic
+from app.domain.brain.framing import follows, frame_segment, is_panoramic
 from app.domain.brain.music_map import DEFAULT_LENGTH_SEC, choose_edit_window
 from app.domain.brain.pacing import beat_grid, build_slots
 from app.domain.brain.photo_plan import photo_segment, photo_slots
@@ -125,7 +125,14 @@ def build_edit_plan(
             1.0 / settings.fps,
         )
         assignments = assign_shots(
-            slots, candidates, music, rng, constraints, constraints.order or style.order, ramped
+            slots,
+            candidates,
+            music,
+            rng,
+            constraints,
+            constraints.order or style.order,
+            ramped,
+            settings.follow_point.asset_id if settings.follow_point else None,
         )
         effects = plan_effects(assignments, music, style, constraints)
         panoramic = frozenset(
@@ -285,7 +292,7 @@ def _segment(
         framing.beats,
         slot.start in framing.drop_starts,
         ends_section,
-        framing.settings.follow_point,
+        follows(framing.settings.follow_point, assignment.candidate.asset_id),
         framing.follow_tracks.get(assignment.candidate.asset_id, ()),
     )
     return Segment(

@@ -7,6 +7,7 @@ import random
 
 import pytest
 
+from app.domain.brain.effects import FLASH_SEC
 from app.domain.brain.ramps import EASE_LINEAR, EASE_OUT_EXPO
 from app.domain.brain.reframe import (
     DEAD_ZONE_SHARE,
@@ -298,6 +299,29 @@ def test_b7_drop_spin_turns_exactly_360_degrees_over_one_beat() -> None:
 
     assert camera_at(camera, 0.0).yaw == pytest.approx(30.0)
     assert camera_at(camera, 0.5).yaw == pytest.approx(390.0)
+
+
+@pytest.mark.parametrize("beat", [0.5, 0.7])
+def test_b5_the_drop_flash_hides_almost_none_of_the_spin(beat: float) -> None:
+    """BUG-010: with an expo ease, 67 % of the turn happened inside the 0.08 s flash."""
+    camera = with_beat_spin(path((0.0, 0.0), (2.0, 0.0)), 0.0, beat)
+
+    turned_in_flash = camera_at(camera, FLASH_SEC).yaw / 360.0
+
+    assert turned_in_flash < 0.05
+    assert camera_at(camera, beat / 2).yaw == pytest.approx(180.0)
+
+
+@pytest.mark.parametrize("beat", [0.5, 0.7])
+def test_b7_the_drop_spin_never_jumps_further_than_the_view_in_one_frame(beat: float) -> None:
+    """A spin that reads as a spin: every frame at 30 fps still overlaps the one before."""
+    camera = with_beat_spin(path((0.0, 0.0), (2.0, 0.0)), 0.0, beat)
+    frames = [camera_at(camera, i / 30).yaw for i in range(int(beat * 30) + 2)]
+
+    steps = [after - before for before, after in zip(frames, frames[1:], strict=False)]
+
+    assert max(steps) < 100.0  # the 9:16 view is 90 degrees, the 16:9 view 100
+    assert sum(1 for step in steps if step > 10.0) >= 5  # several visible frames of turning
 
 
 def test_b7_drop_spin_does_not_unwind_after_the_beat() -> None:
