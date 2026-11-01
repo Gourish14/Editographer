@@ -6,7 +6,7 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
-| — | No open bugs | — | — | — |
+| BUG-010 | The white flash on a drop hides the first half of a beat spin | Low | New | T-414 |
 
 ## Closed
 

@@ -1,6 +1,6 @@
 # Task board
 
-Current phase: **Phase 1, 2 and 4 gates passed. Phase 3 gate is running on real Osmo clips** (`specs/10-roadmap.md`).
+Current phase: **All four phase gates passed. Open items are in BUGS.md and CHANGE_REQUESTS.md** (`specs/10-roadmap.md`).
 Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High bugs first. See `specs/12-spec-driven-development.md`.
 
 ## Summary
@@ -38,13 +38,13 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-406 | Tune B1 and B2 on real media: drops, BPM, duplicates, shot over-detection | Done | T-118 |
 | T-407 | Retry worker callbacks and recover jobs stuck RUNNING | Done | T-118 |
 | T-408 | Qwen2.5-VL shot captions and SAM 2 text behind subject | Done | T-118 |
-| T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | In review | T-118 |
+| T-409 | 60 fps interpolation, raw .OSV stitching, 6K and 8K checks | Done | T-118 |
 | T-410 | Browser end-to-end test of the UI and UI polish | Done | T-118 |
 | T-411 | Phase 2 gate on real media: three prompts and Ollama stopped | Done | T-118 |
 | T-412 | Phase 4 gate: full-length Max render with cool mode, 8K 9:16 playback | Done | T-411 |
 | T-413 | Check whether B1 section labels are too broad (135 s drop on the gate song) | Done | T-118 |
-| T-414 | Calibrate the `.OSV` stitch on real Osmo files, then run the Phase 3 gate | In progress | T-409 |
-| T-415 | Follow a picked 360 subject with SAM 2 across the seam | In review, generated clip only | T-405, T-408 |
+| T-414 | Calibrate the `.OSV` stitch on real Osmo files, then run the Phase 3 gate | Done | T-409 |
+| T-415 | Follow a picked 360 subject with SAM 2 across the seam | Done | T-405, T-408 |
 
 ## Details
 
