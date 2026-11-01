@@ -17,12 +17,12 @@ Status: Proposed → Approved → Specs updated → Implemented → Closed (or R
 | CR-011 | Define how the UI learns that an asset finished analysis | Proposed |
 | CR-012 | Subject-aware crop moves to Phase 3 with B7 | Implemented |
 | CR-013 | Render start time and follow point in the render request | Implemented |
-| CR-014 | Say which 360 clip a follow point belongs to | Proposed |
+| CR-014 | Say which 360 clip a follow point belongs to | Implemented |
 
 ## Details
 
 ### CR-014 — Say which 360 clip a follow point belongs to
-- Status: Proposed
+- Status: Implemented, T-417
 - Why: A follow point has no asset id, so it applies to the first 360 clip only. In the Phase 3 gate the beat spin landed on the other clip, so it did not turn around the tapped rider, while spec 08 calls subject follow the default for every 360 clip.
 - Impact: `followPoint` in spec 07, the 360 picker, and planning. Smallest change: add an asset id.
 

@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-027 | The first slot of a drop prefers the followed clip | Accepted |
 | ADR-026 | Split B1 parts over 32 bars at a change above 0.15 | Accepted |
 | ADR-025 | 360 follow: plan, measure with SAM 2, plan again | Accepted |
 | ADR-024 | Per-camera stitch profiles fitted on real clips | Accepted |
@@ -30,6 +31,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-027 — The first slot of a drop prefers the followed clip
+- Date / Status: 2026-11-01 / Accepted
+- Context: The gate's beat spin landed on a clip with no follow point, so it did not turn around the tapped subject.
+- Options considered: Leave it to scoring; force the slot.
+- Decision: When a follow point resolves, the first slot of a drop takes a shot from that clip, ignoring the neighbour-clip rule for that slot only. Slots and cuts do not change.
+- Consequences: One slot can sit next to the same clip. A follow point with no asset id still means the first 360 clip.
 
 ### ADR-026 — Split B1 parts over 32 bars at a change above 0.15
 - Date / Status: 2026-11-01 / Accepted

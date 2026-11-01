@@ -5,11 +5,13 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- The beat spin is spread over its beat, so the drop flash no longer hides it [BUG-010].
 - Long song parts are split, so one drop no longer covers half a song [T-413].
 - Raw `.OSV` seams are calibrated on real Osmo files, with per-camera profiles and a feathered join [T-414].
 - Segment joins are placed by exact frame count, to stop a small timestamp drift [BUG-009].
 
 ### Added
+- A follow point names its 360 clip, and the 360 picker can switch clips [CR-014].
 - 16 GB upload gate script: survives a client kill and a backend restart [T-418].
 - Phase 3 gate script, run on real Osmo 360 and 360 II footage [T-414].
 - A picked 360 subject is tracked with SAM 2, across the seam, with stated fallbacks [T-415].
