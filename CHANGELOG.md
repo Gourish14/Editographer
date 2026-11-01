@@ -5,6 +5,7 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- Ollama runs on its own port, so models stay in the project and other Ollama servers are left alone [BUG-011].
 - The beat spin is spread over its beat, so the drop flash no longer hides it [BUG-010].
 - Long song parts are split, so one drop no longer covers half a song [T-413].
 - Raw `.OSV` seams are calibrated on real Osmo files, with per-camera profiles and a feathered join [T-414].

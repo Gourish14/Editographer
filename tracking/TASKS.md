@@ -47,7 +47,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-415 | Follow a picked 360 subject with SAM 2 across the seam | Done | T-405, T-408 |
 | T-417 | Fix the flash over a beat spin and give a follow point its clip | In review, needs the Phase 3 re-run | T-414 |
 | T-418 | Prove a 16 GB resumable upload | Done | T-118 |
-| T-419 | Keep Ollama models in the project even when another Ollama runs | In progress | T-411 |
+| T-419 | Keep Ollama models in the project even when another Ollama runs | Done | T-411 |
 
 ## Details
 

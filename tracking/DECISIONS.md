@@ -4,6 +4,7 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 
 | ID | Decision | Status |
 | --- | --- | --- |
+| ADR-028 | Editographer's Ollama runs on its own port | Accepted |
 | ADR-027 | The first slot of a drop prefers the followed clip | Accepted |
 | ADR-026 | Split B1 parts over 32 bars at a change above 0.15 | Accepted |
 | ADR-025 | 360 follow: plan, measure with SAM 2, plan again | Accepted |
@@ -31,6 +32,13 @@ Template: `specs/12-spec-driven-development.md` §8. Newest first.
 | ADR-003 | Spring Boot 4 on Java 25 | Accepted |
 | ADR-002 | Job queue as an H2 table with a polling dispatcher | Accepted |
 | ADR-001 | H2 file database and local media folder | Accepted |
+
+### ADR-028 — Editographer's Ollama runs on its own port
+- Date / Status: 2026-11-01 / Accepted
+- Context: With another Ollama on 11434, pulls landed in the user profile, the worker reached a server without our models, and the director quietly fell back.
+- Options considered: Detect and warn; a dedicated port.
+- Decision: Port 11500, named only in `scripts/env.bat`. `scripts/ollama_server.bat` starts and stops our server, by the PID on that port.
+- Consequences: The real `config/local.env` loses its old `OLLAMA_URL` the next time `setup.bat` or `start.bat` runs. Gate scripts keep their own port 18434.
 
 ### ADR-027 — The first slot of a drop prefers the followed clip
 - Date / Status: 2026-11-01 / Accepted
