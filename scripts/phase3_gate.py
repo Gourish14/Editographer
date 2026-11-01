@@ -409,7 +409,9 @@ def run_render(
 
 def phase_render(args: argparse.Namespace, tools: dict[str, str]) -> int:
     state = load_state(args.run)
-    follow = parse_follow(args.follow) if args.follow else None
+    follow: dict[str, Any] | None = parse_follow(args.follow) if args.follow else None
+    if follow and args.follow_clip:
+        follow = {**follow, "assetId": state["clips"][args.follow_clip]["assetId"]}
     runs = state.setdefault("renders", {})
     with Session(args, args.run, tools) as session:
         api = gate.Api(args.backend_port)
@@ -627,6 +629,7 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     render = sub.add_parser("render")
     render.add_argument("--run", type=Path, required=True)
     render.add_argument("--follow", type=float, nargs=3, metavar=("X", "Y", "TIME_SEC"))
+    render.add_argument("--follow-clip", help="file name of the clip the point was tapped on")
     render.add_argument("--ratios", nargs="+", default=list(RATIOS))
     render.add_argument("--length", type=int, default=LENGTH_SEC)
     render.add_argument("--mode", default=MODE)
