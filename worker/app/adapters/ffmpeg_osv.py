@@ -27,6 +27,8 @@ CALIBRATION_FILE = Path(__file__).with_name("osmo_calibration.json")
 BASE_ARGUMENTS = ("ffmpeg", "-hide_banner", "-loglevel", "error", "-y")
 STITCH_QUALITY = 14
 STITCH_PRESET = "p5"
+DECODE_THREADS = 2  # the default threads queue 3 GB more lens frames, on a 16 GB laptop (BUG-013)
+PARTIAL_SUFFIX = ".part.mp4"
 TWO_LENSES = 2
 COVER_CODECS = frozenset({"mjpeg", "png", "bmp", "gif", "webp"})
 SEAM_LONGITUDE = 90.0  # the lenses meet a quarter and three quarters across the picture
@@ -128,6 +130,7 @@ class FfmpegOsvStitcher:
         streams, lens_height, encoder, frames = self._inspect(source)
         profile = pick_profile(calibration, encoder)
         target.parent.mkdir(parents=True, exist_ok=True)
+        partial = target.with_suffix(PARTIAL_SUFFIX)  # analysis reuses any file at target (BUG-014)
         log.info(
             "osv.stitch",
             streams=streams,
@@ -139,6 +142,8 @@ class FfmpegOsvStitcher:
             run_tool(
                 [
                     *BASE_ARGUMENTS,
+                    "-threads",
+                    str(DECODE_THREADS),
                     "-i",
                     str(source),
                     "-filter_complex",
@@ -167,12 +172,13 @@ class FfmpegOsvStitcher:
                     "aac",
                     "-b:a",
                     "256k",
-                    str(target),
+                    str(partial),
                 ]
             )
         except FfmpegError as error:
-            target.unlink(missing_ok=True)
+            partial.unlink(missing_ok=True)
             raise AnalysisError(str(error), ErrorCode.ASSET_UNSUPPORTED) from error
+        partial.replace(target)
 
     @staticmethod
     def _inspect(source: Path) -> tuple[int, int, str | None, int]:

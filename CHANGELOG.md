@@ -4,6 +4,12 @@ All notable changes to Editographer. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- The `.OSV` stitch uses linear interpolation, for about 8.6 GB of memory instead of 17 GB and a 3 to 9 times faster stitch. It keeps about 78% of the fine detail [BUG-013].
+
+### Fixed
+- A stopped `.OSV` stitch no longer leaves a partial file that a retry would reuse [BUG-014].
+
 ## [1.0.0] - 2026-11-01
 
 ### Fixed

@@ -2,13 +2,50 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
+
+from app.adapters import ffmpeg_osv
 from app.adapters.ffmpeg_osv import (
+    DECODE_THREADS,
+    FfmpegOsvStitcher,
     blend_mask,
     frame_count,
     load_calibration,
     pick_profile,
     stitch_graph,
 )
+from app.adapters.ffmpeg_runner import FfmpegError
+from app.domain.errors import AnalysisError
+
+PROBE = json.dumps(
+    {
+        "streams": [
+            {"codec_type": "video", "codec_name": "hevc", "height": 3840, "nb_frames": "25"},
+            {"codec_type": "video", "codec_name": "hevc", "height": 3840, "nb_frames": "25"},
+        ],
+        "format": {"duration": "1.0", "tags": {"encoder": "Osmo 360"}},
+    }
+)
+
+
+class FakeFfmpeg:
+    """Stands in for run_tool: answers ffprobe, and writes the output file ffmpeg was given."""
+
+    def __init__(self, fail: bool = False) -> None:
+        self.fail = fail
+        self.command: list[str] = []
+
+    def __call__(self, command: list[str]) -> str:
+        if command[0] == "ffprobe":
+            return PROBE
+        self.command = command
+        Path(command[-1]).write_text("half a file")
+        if self.fail:
+            raise FfmpegError("killed")
+        return ""
 
 
 def test_rule_3_the_profile_follows_the_encoder_tag_of_the_file() -> None:
@@ -86,6 +123,52 @@ def test_rule_3_the_stitch_writes_exactly_the_lens_frames_because_the_mask_never
 
 def test_rule_3_a_file_without_a_frame_count_uses_rate_and_length() -> None:
     assert frame_count({"avg_frame_rate": "25/1"}, "23.4") == 585
+
+
+def test_bug_013_the_lenses_use_linear_tables_because_cubic_outgrows_the_laptop() -> None:
+    calibration = load_calibration()
+
+    graph = stitch_graph(calibration, pick_profile(calibration, "Osmo 360"), 2, 3840)
+
+    assert graph.count("interp=linear") == 2
+
+
+def test_bug_013_the_lens_decoders_are_held_to_a_few_threads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeFfmpeg()
+    monkeypatch.setattr(ffmpeg_osv, "run_tool", fake)
+
+    FfmpegOsvStitcher().stitch(tmp_path / "a.osv", tmp_path / "a.mp4")
+
+    threads = fake.command.index("-threads")
+    assert fake.command[threads + 1] == str(DECODE_THREADS)
+    assert threads < fake.command.index("-i")  # after -i it would mean the encoder
+
+
+def test_bug_014_a_finished_stitch_reaches_its_final_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeFfmpeg()
+    monkeypatch.setattr(ffmpeg_osv, "run_tool", fake)
+    target = tmp_path / "a.mp4"
+
+    FfmpegOsvStitcher().stitch(tmp_path / "a.osv", target)
+
+    assert fake.command[-1] != str(target)
+    assert target.read_text() == "half a file"
+    assert [path.name for path in tmp_path.iterdir()] == ["a.mp4"]
+
+
+def test_bug_014_a_failed_stitch_leaves_nothing_a_retry_could_mistake_for_finished(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ffmpeg_osv, "run_tool", FakeFfmpeg(fail=True))
+
+    with pytest.raises(AnalysisError):
+        FfmpegOsvStitcher().stitch(tmp_path / "a.osv", tmp_path / "a.mp4")
+
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_rule_3_the_calibration_says_what_was_proven() -> None:

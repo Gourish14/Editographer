@@ -2,7 +2,7 @@
   "proven_on_real_files": true,
   "proof": "Measured on two real files from the Bennetts bikesocial reviews (local test inputs, not in git): an Osmo 360 clip (CAM_20250715191201_0003_D.OSV) and an Osmo 360 II clip (CAM_20260822131942_0016_D_1.osv). Each lens was projected separately with v360 and the two pictures were compared across their overlap (phase correlation of the high-passed far field, 0 to 35 degrees above the horizon, both seams). Profile values were fitted on 2 frames per file and checked on 3 other frames: residual seam error fell from 1.42 to 0.08 degrees (Osmo 360) and from 0.58 to 0.19 degrees (Osmo 360 II). Near objects (rider, bike body) cannot align at any setting: that is parallax, and the blend hides it. Unit-to-unit variation is not measured: only one unit per model was available.",
   "layout": "dual_fisheye",
-  "interpolation": "cubic",
+  "interpolation": "linear",
   "feather_degrees": 4,
   "equirect_height_per_lens_height": 1.0,
   "default_profile": "osmo-360",

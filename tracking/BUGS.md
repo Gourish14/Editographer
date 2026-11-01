@@ -6,12 +6,14 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
-| — | No open bugs | — | — | — |
+| BUG-012 | A VS Code build with an old classpath can put crash stubs in `editographer.jar` | Medium | Open | Running the app, 2026-11-01 |
 
 ## Closed
 
 | ID | Title | Severity | Fixed in |
 | --- | --- | --- | --- |
+| BUG-014 | A stopped `.OSV` stitch left a partial file that analysis would reuse as finished | High | This commit |
+| BUG-013 | The `.OSV` stitch used 17.9 GB of memory on a 36 s clip and starved the machine | High | This commit |
 | BUG-010 | The white flash on a drop hid the first half of a beat spin | Low | T-417 |
 | BUG-011 | `setup.bat` and `start.bat` used any Ollama on 11434, and `stop.bat` killed every Ollama by name | High | T-419 |
 | BUG-009 | A join could end a frame 0.33 ms early, so timestamps drifted | Low | 50fa6db |
@@ -27,6 +29,39 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 ## Details
 
 <!-- Add one section per bug using the template, newest first. -->
+
+### BUG-013 — The `.OSV` stitch used 17.9 GB of memory on a 36 s clip and starved the machine
+- Status: Fixed
+- Severity: High
+- Found: 2026-11-01, by Claude on the first real upload
+- Spec: 08-osmo360.md
+- Steps to reproduce: Upload `CAM_20261025215451_0004_D.OSV` (618 MB, 36 s) on the 15.7 GB laptop and let analysis run.
+- Expected: The stitch stays within what the machine has and takes about as long as the Phase 3 run (18.6 min of analysis for 594 MB).
+- Actual: 23 minutes in, ffmpeg held 17.9 GB of private memory, 0.35 GB of RAM was free and 2 GB of the 40.9 GB commit limit remained. The stitched file was 62 MB and growing about 3.6 MB a minute. Port 11500 was listening but gave no reply within 5 s. Docker's WSL distros were stopped.
+- Cause: Not a leak, memory rises and stays flat. `v360` builds per-pixel tables, and `interp=cubic` at 8K twice costs about 5.5 GB more than `linear`. Default decode threads queue about 3 GB more frames.
+- Measured, 60 frames of that clip: cubic 17.1 GB at 0.17 fps, cubic with 2 threads 14.6 GB at 0.33 fps, linear 11.7 GB at 0.78 fps, linear with 2 threads 8.5 GB at 2.94 fps. A daylight clip with linear and 2 threads gave 8.6 GB at 0.73 fps, against 0.23 fps for cubic with 2 threads.
+- Fix: `interp=linear` and `-threads 2` on the input. Cost: linear keeps 78.6% of cubic's detail by Laplacian variance on a daylight frame. Seam geometry was not refitted, the profile values are unchanged.
+
+### BUG-014 — A stopped `.OSV` stitch left a partial file that analysis would reuse as finished
+- Status: Fixed
+- Severity: High
+- Found: 2026-11-01, by Claude while stopping the job for BUG-013
+- Spec: 08-osmo360.md
+- Steps to reproduce: Stop the worker during a stitch, then analyze the asset again.
+- Expected: The stitch starts over.
+- Actual: `_stitched` checks only that `media/stitched/{assetId}.mp4` exists, and ffmpeg was writing to that name, so a 75 MB file with no index was left to be reused.
+- Fix: The stitch writes `{assetId}.part.mp4` and renames it when finished.
+
+### BUG-012 — A VS Code build with an old classpath can put crash stubs in `editographer.jar`
+- Status: Open
+- Severity: Medium
+- Found: 2026-11-01, by Claude while starting the app
+- Spec: 09-local-setup.md
+- Steps to reproduce: Open `backend` in VS Code with a classpath saved before a dependency was added, then run `mvnw package` without a separate build folder.
+- Expected: The jar holds classes that Maven compiled.
+- Actual: The Java extension also writes to `backend/target/classes`. `TusConfig` and `TusUploadAdapter` became "Unresolved compilation problems" stubs, Maven packaged them as up to date, and the backend failed at startup. 2 of 115 classes were affected.
+- Workaround: Run **Java: Reload Projects** in VS Code. The running jar was built in a separate folder and scanned, 0 stubs.
+- Fix: Not done. `setup.bat` still builds in `backend/target`.
 
 ### BUG-005 — Database writes failed after about 25 minutes on a fresh install
 - Status: Fixed
