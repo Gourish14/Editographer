@@ -97,14 +97,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Pulling the local AI models
-start "Editographer setup Ollama" /min ollama serve
-ping -n 4 127.0.0.1 >nul
-ollama pull qwen3:4b
-if errorlevel 1 echo Could not pull qwen3:4b. Edits still work with the rule-based director.
-ollama pull qwen2.5vl:3b
-if errorlevel 1 echo Could not pull qwen2.5vl:3b. Shot captions will be skipped.
-taskkill /f /fi "windowtitle eq Editographer setup Ollama*" >nul 2>nul
+echo Pulling the local AI models into models\ollama
+set "OLLAMA_STARTED_BY_SETUP="
+curl -s -o nul -m 2 %OLLAMA_URL%/api/version
+if errorlevel 1 set "OLLAMA_STARTED_BY_SETUP=1"
+call "%ROOT%\scripts\ollama_server.bat" start
+if errorlevel 1 (
+    echo Could not start Ollama. Edits still work with the rule-based director.
+) else (
+    ollama pull qwen3:4b
+    if errorlevel 1 echo Could not pull qwen3:4b. Edits still work with the rule-based director.
+    ollama pull qwen2.5vl:3b
+    if errorlevel 1 echo Could not pull qwen2.5vl:3b. Shot captions will be skipped.
+)
+if defined OLLAMA_STARTED_BY_SETUP call "%ROOT%\scripts\ollama_server.bat" stop
 
 echo [7/9] Building the web app
 if exist "frontend\package.json" (
@@ -135,6 +141,7 @@ if not "!BUILD_RESULT!"=="0" (
 )
 
 echo [9/9] Creating config\local.env and data folders
+call "%ROOT%\scripts\drop_stale_ollama_url.bat"
 if not exist "media" mkdir "media"
 if not exist "data" mkdir "data"
 if not exist "logs" mkdir "logs"

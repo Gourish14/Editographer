@@ -59,7 +59,7 @@ Toggle in render settings. When on:
 
 1. Check Java ≥ 25, Node ≥ 24.15 and the NVIDIA driver (`nvidia-smi`); stop with a clear message if missing or too old.
 2. Install FFmpeg (`winget install Gyan.FFmpeg`) if `ffmpeg -encoders` lacks `hevc_nvenc`, then confirm `hevc_nvenc` really opens in 10-bit.
-3. Install Ollama (`winget install Ollama.Ollama`). `ollama pull qwen3:4b` and `ollama pull qwen2.5vl:3b` are added with Phase 2, the first phase that uses them.
+3. Install Ollama (`winget install Ollama.Ollama`). `ollama pull qwen3:4b` and `ollama pull qwen2.5vl:3b` are added with Phase 2, the first phase that uses them. Both run against Editographer's own Ollama server (see "Ollama server" below), so the models land in `models/ollama/`.
 4. Install uv into `tools/uv`, then `uv python install 3.12` (into `tools/python`) and `uv sync` in `worker/` (PyTorch CUDA wheels). `scripts/env.bat` points uv at these folders.
 5. Download model weights into `models/` with checksums, resuming interrupted downloads. The list lives in `scripts/models.json`, tagged by phase: Beat This! and the MediaPipe face model in Phase 1, YOLO nano, OpenCLIP and the LAION aesthetic head in Phase 2, then SAM 2.1 small, Depth Anything V2 Small, RIFE and Real-ESRGAN with the phases that use them. The worker points torch hub, Hugging Face, Ultralytics and Matplotlib at `models/` before loading them, and sets them offline, which also turns off Ultralytics analytics and its automatic package installs (`adapters/model_runtime.py`).
 6. Make the free assets with `scripts/make_look_assets.py`: style LUTs and SFX are generated locally and are not DJI files; DJI's official Osmo 360 D-Log M to Rec.709 LUT is downloaded from DJI with a checksum into `luts/`. If that download fails, setup continues and renders use `generic_log_to_rec709.cube`, a plain approximation, with a warning in the log.
@@ -69,12 +69,19 @@ Toggle in render settings. When on:
 
 ## start.bat
 
-1. Start Ollama if not running.
+1. Start Editographer's Ollama if it is not answering on its port.
 2. Start the worker: `uv run uvicorn app.main:app --host 127.0.0.1 --port 8090`.
 3. Start the backend: `java -jar backend/target/editographer.jar`.
 4. Wait for `/api/system` to answer, then open `http://localhost:8080`.
 
-`stop.bat` stops all three.
+`stop.bat` stops all three, each by its listening port, never by program name.
+
+## Ollama server
+
+Editographer never shares an Ollama with anything else (hard rule 3: one project folder). A desktop Ollama on 11434 would store pulled models in `%USERPROFILE%\.ollama\models`, and a worker that reached it would miss ours (404, quietly dropping the director to the rule fallback).
+
+- `scripts/env.bat` is the only place that names the port: `OLLAMA_PORT=11500`, `OLLAMA_HOST=127.0.0.1:11500` (read by both `ollama serve` and `ollama pull`), `OLLAMA_URL` (read by the worker and backend) and `OLLAMA_MODELS=models\ollama`. `config/local.env` has no `OLLAMA_URL`; `start.bat` and `setup.bat` remove an old one (`scripts/drop_stale_ollama_url.bat`), and `start.bat` re-reads `env.bat` after `local.env`, so an old value cannot win.
+- `scripts/ollama_server.bat start|stop` starts the server if nothing answers on that port (waiting up to 60 s) and stops only the process listening on that port. `setup.bat` stops it afterwards only if it started it.
 
 ## Phone access (optional)
 
