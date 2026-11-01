@@ -46,7 +46,7 @@ Rules: pick the first `Todo` task whose dependencies are `Done`; Critical/High b
 | T-414 | Calibrate the `.OSV` stitch on real Osmo files, then run the Phase 3 gate | Done | T-409 |
 | T-415 | Follow a picked 360 subject with SAM 2 across the seam | Done | T-405, T-408 |
 | T-417 | Fix the flash over a beat spin and give a follow point its clip | In progress | T-414 |
-| T-418 | Prove a 16 GB resumable upload | In progress | T-118 |
+| T-418 | Prove a 16 GB resumable upload | Done | T-118 |
 | T-419 | Keep Ollama models in the project even when another Ollama runs | In progress | T-411 |
 
 ## Details

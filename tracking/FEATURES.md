@@ -4,7 +4,7 @@ Status: Planned → In progress → Done → Verified (phase gate passed). Templ
 
 | ID | Feature | Spec | Phase | Status |
 | --- | --- | --- | --- | --- |
-| FEAT-001 | Projects and resumable uploads (incl. 16 GB .OSV) | 07, 02 | 1 | In progress |
+| FEAT-001 | Projects and resumable uploads (incl. 16 GB .OSV) | 07, 02 | 1 | Verified |
 | FEAT-002 | Beat, downbeat, energy and section detection | 05#B1 | 1 | Verified |
 | FEAT-003 | Shot detection and highlight scoring | 05#B2 | 1 (basic), 2 (full) | In progress |
 | FEAT-004 | Beat-synced pacing and style presets | 05#B3 | 1 (2 styles), 2 (all 7) | In progress |
