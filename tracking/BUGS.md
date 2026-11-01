@@ -6,12 +6,13 @@ Status: New → Confirmed → In progress → Fixed → Verified (or Won't fix).
 
 | ID | Title | Severity | Status | Found in |
 | --- | --- | --- | --- | --- |
-| BUG-010 | The white flash on a drop hides the first half of a beat spin | Low | In review, needs the Phase 3 re-run | T-414 |
+| — | No open bugs | — | — | — |
 
 ## Closed
 
 | ID | Title | Severity | Fixed in |
 | --- | --- | --- | --- |
+| BUG-010 | The white flash on a drop hid the first half of a beat spin | Low | T-417 |
 | BUG-011 | `setup.bat` and `start.bat` used any Ollama on 11434, and `stop.bat` killed every Ollama by name | High | T-419 |
 | BUG-009 | A join could end a frame 0.33 ms early, so timestamps drifted | Low | 50fa6db |
 | BUG-008 | A worker callback that fails was not retried, so a render could stay unfinished forever | High | T-407 |
